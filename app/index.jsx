@@ -1,383 +1,429 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useState, useRef } from 'react';
-import styles, { COLORS } from './styles';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Dimensions,
+  StatusBar,
+} from 'react-native';
 
-const defaultPhoto = require('../assets/def_icon.png');
+const { width, height } = Dimensions.get('window');
 
-// placeholder user data — replace with real data from your database later
-const userData = {
-  firstName: 'Ash',
-  fullName: 'Hilary Ashley Pagadora',
-  username: '@hmpgdra',
-  floor: 2,
-  roomNumber: '202',
-  roomCode: 'R202-01',
-  currentBill: '206.25',
-  pendingRequests: 0,
-  profilePhoto: null, // null = use default photo. replace with url string from database
-};
+import Checkbox from 'expo-checkbox';
 
-// placeholder announcements — replace with real data from your database later
-const announcements = [
-  {
-    id: '1',
-    title: 'Water Billing Reminder',
-    date: 'February 18, 2026',
-    preview: 'Please note that the water billing...',
-  },
-];
+import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 
-// shows good morning / afternoon / evening based on current time
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
-};
+const PINK_PRIMARY = '#E84393';
+const PINK_LIGHT = '#FFF0F3';
+const PINK_MEDIUM = '#FFD6E4';
+const TEXT_DARK = '#2D1B2E';
+const TEXT_MUTED = '#9E7A88';
 
-// quick action card component
-const QuickActionCard = ({ iconName, title, description, onPress }) => (
-  <TouchableOpacity style={styles.actionCard} onPress={onPress}>
-    <View style={styles.actionIconBox}>
-      <MaterialIcons name={iconName} size={26} color={COLORS.primary} />
-    </View>
-    <Text style={styles.actionTitle}>{title}</Text>
-    <Text style={styles.actionDesc}>{description}</Text>
-  </TouchableOpacity>
-);
+function LoginScreen() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [error, setError] = useState('');
 
-// bottom nav item component
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-  <TouchableOpacity
-    style={[styles.navItem, isCenter && styles.navCenter]}
-    onPress={onPress}
-  >
-    {isCenter ? (
-      <View style={styles.navCenterCircle}>
-        <MaterialIcons name={iconName} size={26} color={COLORS.white} />
-      </View>
-    ) : (
-      <>
-        <MaterialIcons
-          name={iconName}
-          size={24}
-          color={isActive ? COLORS.primary : COLORS.grayText}
-        />
-        <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
-          {label}
-        </Text>
-      </>
-    )}
-  </TouchableOpacity>
-);
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(40)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-// single announcement row component
-const AnnouncementItem = ({ title, date, preview }) => (
-  <View style={styles.announcementCard}>
-    <View style={styles.announceMegaphone}>
-      <Ionicons name="megaphone" size={18} color={COLORS.primary} />
-    </View>
-    <View style={{ flex: 1, marginLeft: 10 }}>
-      <Text style={styles.announceTitle}>{title}</Text>
-      <Text style={styles.announceDate}>{date}</Text>
-      <Text style={styles.announceText}>{preview}</Text>
-    </View>
-    <TouchableOpacity style={styles.viewBtn}>
-      <Text style={styles.viewBtnText}>View</Text>
-    </TouchableOpacity>
-  </View>
-);
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 60,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 80,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
-// main screen
-const Home = () => {
-  const greeting = getGreeting();
-
-  // controls if the drawer is open or closed
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // controls if the documents submenu is expanded
-  const [documentsExpanded, setDocumentsExpanded] = useState(false);
-
-  // animation value for sliding the drawer in and out
-  const drawerAnim = useRef(new Animated.Value(-400)).current;
-
-  // if user has a photo from the database use it, otherwise use the default
-  const photoSource = userData.profilePhoto
-    ? { uri: userData.profilePhoto }
-    : defaultPhoto;
-
-  // slides the drawer in from the left
-  const openDrawer = () => {
-    setDrawerOpen(true);
-    Animated.timing(drawerAnim, {
-      toValue: 0,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
+  const validateEmail = (email) => {
+    const emailRegex = /\S+@\S+\.\S+/;
+    return emailRegex.test(email);
   };
 
-  // slides the drawer back out to the left
-  const closeDrawer = () => {
-    Animated.timing(drawerAnim, {
-      toValue: -400,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => setDrawerOpen(false));
+  const handleLogin = () => {
+    setError('');
+
+    if (!email.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    // TODO: Connect to backend for authentication
+    console.log('Login attempt:', { email, password, rememberMe });
+    // After successful login, navigate to dashboard
+    router.replace('/dashboard');
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-
-      {/* header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={openDrawer}>
-          <Ionicons name="menu-outline" size={28} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={26} color="#333" />
-          </TouchableOpacity>
-          <Image source={photoSource} style={styles.headerAvatarImage} />
-        </View>
-      </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor={PINK_LIGHT} />
 
       <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        keyboardShouldPersistTaps="handled"
       >
-
-        {/* greeting */}
-        <View style={styles.greeting}>
-          <Text style={styles.greetTitle}>
-            {greeting}, {userData.firstName}! 👋
-          </Text>
-          <Text style={styles.greetSub}>Your dorm services are just a tap away.</Text>
-        </View>
-
-        {/* user card */}
-        <View style={styles.userCard}>
-          <View style={styles.userCardTop}>
-            <Image source={photoSource} style={styles.avatar} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.userName}>{userData.fullName}</Text>
-              <Text style={styles.userRoom}>
-                Floor {userData.floor}, Room {userData.roomNumber}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.white} />
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Current Bill</Text>
-              <Text style={styles.statValue}>{userData.currentBill}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Pending Requests</Text>
-              <Text style={styles.statValue}>{userData.pendingRequests}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* quick actions */}
-        <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 12 }]}>
-          Quick Actions
-        </Text>
-        <View style={styles.actionsGrid}>
-          <QuickActionCard
-            iconName="build"
-            title="Maintenance Request"
-            description="Report room issues for quick repair"
-            onPress={() => {/* go to maintenance screen */}}
-          />
-          <QuickActionCard
-            iconName="warning"
-            title="Emergency Report"
-            description="Alert staff immediately for urgent help"
-            onPress={() => {/* go to emergency screen */}}
-          />
-          <QuickActionCard
-            iconName="water-drop"
-            title="Water Bill"
-            description="View and track your current charges"
-            onPress={() => {/* go to billing screen */}}
-          />
-          <QuickActionCard
-            iconName="person-add"
-            title="Register Visitor"
-            description="Log your guest for smooth entry"
-            onPress={() => {/* go to visitor screen */}}
-          />
-        </View>
-
-        {/* announcements */}
-        <View style={styles.announcementHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.sectionTitle}>Announcements</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{announcements.length}</Text>
-            </View>
-          </View>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* loops through announcements array */}
-        {announcements.map((item) => (
-          <AnnouncementItem
-            key={item.id}
-            title={item.title}
-            date={item.date}
-            preview={item.preview}
-          />
-        ))}
-
-      </ScrollView>
-
-      {/* bottom nav */}
-      <View style={styles.bottomNav}>
-        <NavItem iconName="home"           label="Home"       isActive />
-        <NavItem iconName="person-outline" label="Visitor" />
-        <NavItem iconName="warning"        label="Emergency"  isCenter />
-        <NavItem iconName="water-drop"     label="Water Bill" />
-        <NavItem iconName="account-circle" label="Profile" />
-      </View>
-
-      {/* dark overlay behind drawer — only shows when drawer is open */}
-      {drawerOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={closeDrawer}
-        />
-      )}
-
-      {/* drawer / hamburger nav */}
-      <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-
-        {/* drawer top: user photo, username, room code */}
-        <View style={styles.drawerTop}>
-          <Image source={photoSource} style={styles.drawerAvatar} />
-          <Text style={styles.drawerUsername}>{userData.username}</Text>
-          <Text style={styles.drawerRoom}>{userData.roomCode}</Text>
-        </View>
-
-        {/* close button */}
-        <TouchableOpacity style={styles.drawerCloseBtn} onPress={closeDrawer}>
-          <Ionicons name="close" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        <View style={styles.drawerDivider} />
-
-        {/* dashboard */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="home-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Dashboard</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        {/* announcements */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="megaphone-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Announcements</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        {/* documents — has a submenu that expands/collapses */}
-        <TouchableOpacity
-          style={styles.drawerItem}
-          onPress={() => setDocumentsExpanded(!documentsExpanded)}
+        {/* Pink Header Section with Illustration */}
+        <Animated.View
+          style={[
+            styles.headerSection,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
         >
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Documents</Text>
+          {/* Decorative top background */}
+          <View style={styles.headerBackground} />
+
+          {/* User Icon / Illustration placeholder */}
+          <View style={styles.illustrationContainer}>
+            <View style={styles.circleIcon}>
+              <MaterialIcons name="person" size={60} color={PINK_PRIMARY} />
+            </View>
           </View>
-          {/* arrow flips when submenu is open */}
-          <Ionicons
-            name={documentsExpanded ? 'chevron-down' : 'chevron-forward'}
-            size={18}
-            color={COLORS.white}
-          />
-        </TouchableOpacity>
+        </Animated.View>
 
-        {/* documents submenu — only shows when documentsExpanded is true */}
-        {documentsExpanded && (
-          <>
-            <TouchableOpacity style={styles.drawerSubItem}>
-              <Text style={styles.drawerSubItemText}>Documents Request</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.drawerSubItem}>
-              <Text style={styles.drawerSubItemText}>Tenant Records</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {/* Form Section */}
+        <Animated.View
+          style={[
+            styles.formSection,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {/* Title */}
+          <Text style={styles.title}>Log-In</Text>
 
-        {/* maintenance */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <MaterialIcons name="build" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Maintenance</Text>
+          {/* Subtitle */}
+          <Text style={styles.subtitle}>
+            Welcome! Please enter your information below and get started.
+          </Text>
+
+          {/* Error Message */}
+          {error ? (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error-outline" size={18} color="#D32F2F" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Email Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Your email</Text>
+            <View
+              style={[
+                styles.inputContainer,
+                emailFocused && styles.inputContainerFocused,
+                error && email === '' && styles.inputContainerError,
+              ]}
+            >
+              <MaterialIcons
+                name="mail-outline"
+                size={20}
+                color={emailFocused ? PINK_PRIMARY : TEXT_MUTED}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="student@school.edu.ph"
+                placeholderTextColor={TEXT_MUTED}
+                value={email}
+                onChangeText={setEmail}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
 
-        {/* emergency */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="warning-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Emergency</Text>
+          {/* Password Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <View
+              style={[
+                styles.inputContainer,
+                passwordFocused && styles.inputContainerFocused,
+                error && password === '' && styles.inputContainerError,
+              ]}
+            >
+              <MaterialIcons
+                name="lock-outline"
+                size={20}
+                color={passwordFocused ? PINK_PRIMARY : TEXT_MUTED}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor={TEXT_MUTED}
+                value={password}
+                onChangeText={setPassword}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <MaterialIcons
+                  name={showPassword ? 'visibility' : 'visibility-off'}
+                  size={20}
+                  color={TEXT_MUTED}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
 
-        {/* visitor */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="people-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Visitor</Text>
+          {/* Keep me logged in checkbox */}
+          <View style={styles.checkboxContainer}>
+            <Checkbox
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              color={rememberMe ? PINK_PRIMARY : undefined}
+            />
+            <Text style={styles.checkboxLabel}>Keep me logged in</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
 
-        {/* billing */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="receipt-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Billing</Text>
+          {/* Login Button */}
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.loginButtonText}>Log-In</Text>
+          </TouchableOpacity>
+
+          {/* Admin Sign Up Message */}
+          <View style={styles.adminMessageContainer}>
+            <Text style={styles.adminMessage}>
+              New here? Kindly ask the{' '}
+              <Text style={styles.adminHighlight}>admin</Text> to set up your account.
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        {/* settings */}
-        <TouchableOpacity style={styles.drawerItem}>
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="settings-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Settings</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        <View style={styles.drawerDivider} />
-
-        {/* logout button at the bottom */}
-        <TouchableOpacity style={styles.drawerLogout}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
-          <Text style={styles.drawerLogoutText}>Logout</Text>
-        </TouchableOpacity>
-
-      </Animated.View>
-
-    </SafeAreaView>
+        </Animated.View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-};
+}
 
-export default Home;
+export default LoginScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PINK_LIGHT,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+
+  // Header Section
+  headerSection: {
+    backgroundColor: PINK_PRIMARY,
+    paddingTop: 40,
+    paddingBottom: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    width: width,
+    height: 250,
+    backgroundColor: PINK_PRIMARY,
+  },
+  illustrationContainer: {
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  circleIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: PINK_LIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  // Form Section
+  formSection: {
+    backgroundColor: PINK_LIGHT,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+
+  // Error Message
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#D32F2F',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+
+  // Input Group
+  inputGroup: {
+    marginBottom: 18,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#E8E0E8',
+  },
+  inputContainerFocused: {
+    borderColor: PINK_PRIMARY,
+    backgroundColor: '#FFF9FC',
+  },
+  inputContainerError: {
+    borderColor: '#D32F2F',
+    backgroundColor: '#FFF5F5',
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: TEXT_DARK,
+    marginLeft: 10,
+  },
+  eyeButton: {
+    padding: 6,
+  },
+
+  // Checkbox
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+    marginTop: 6,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+    color: TEXT_DARK,
+    marginLeft: 8,
+  },
+
+  // Login Button
+  loginButton: {
+    backgroundColor: PINK_PRIMARY,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: PINK_PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+
+  // Admin Message
+  adminMessageContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  adminMessage: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  adminHighlight: {
+    fontWeight: '700',
+    color: PINK_PRIMARY,
+  },
+});
