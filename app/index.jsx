@@ -89,7 +89,7 @@ function LoginForm({ router }) {
     if (!validateEmail(email)) return setError('Please enter a valid email');
     if (!password) return setError('Please enter your password');
     if (password.length < 6) return setError('Password must be at least 6 characters');
-    router.replace('/dashboard');
+    router.replace('/tenant/dashboard');
   };
 
   return (

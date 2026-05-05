@@ -1,16 +1,9 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { COLORS } from './colors';
 
 // used for the drawer width
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-export const COLORS = {
-  primary: '#D63375',
-  background: '#F5F3EE',
-  white: '#FFFFFF',
-  darkText: '#1C1C1C',
-  grayText: '#9E9E9E',
-  lightPink: '#FDE8F0',
-};
 
 const styles = StyleSheet.create({
 
@@ -378,6 +371,102 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 15,
     fontWeight: '500',
+  },
+  // urgency badges — used in maintenance and emergency screens
+  urgencyBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  urgencyText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+
+  // form inputs — used across all submission screens
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+  input: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.darkText,
+  },
+  inputMultiline: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.darkText,
+    height: 100,
+    textAlignVertical: 'top',
+  },
+
+  // primary button — used across all screens
+  primaryBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  primaryBtnText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+
+  // secondary / outline button
+  outlineBtn: {
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  outlineBtnText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // empty state — when no records found
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: COLORS.grayText,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  // status badge row — for request cards
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
 });
 
