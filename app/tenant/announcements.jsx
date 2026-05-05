@@ -13,7 +13,7 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import styles, { COLORS } from '../../src/announcementsstyles';
+import styles, { COLORS } from '../../src/constants/announcementsstyles';
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 
 // placeholder data — swap for real api call when backend is ready
@@ -55,7 +55,7 @@ const MOCK_ANNOUNCEMENTS = [
 
 const priorityColors = {
   High: { bg: '#FFD7C7', text: '#EB9C7D' },
-  Low:  { bg: '#E5ECF6', text: '#B5B7C0' },
+  Low: { bg: '#E5ECF6', text: '#B5B7C0' },
 };
 
 // single announcement card
@@ -156,7 +156,7 @@ export default function AnnouncementsScreen() {
   };
 
   return (
-<   SafeAreaView style={styles.container} edges={['bottom']}>
+    <   SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       {/* header row */}
