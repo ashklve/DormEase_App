@@ -332,4 +332,53 @@ navCenterCircle: {
     fontWeight: '700',
   },
 
+  // notification items
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
+  },
+  notifAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notifAvatarText: {
+    fontSize: 24,
+  },
+  notifContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.dark,
+    lineHeight: 18,
+  },
+  notifDescription: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+  notifTime: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 6,
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+    marginTop: 4,
+  },
+
 });

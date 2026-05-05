@@ -468,6 +468,89 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
+
+  // notifications screen
+  notificationHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  notificationTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.darkText,
+    marginBottom: 4,
+  },
+  notificationSubtitle: {
+    fontSize: 13,
+    color: COLORS.grayText,
+  },
+  recentsLabel: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  recentsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.darkText,
+  },
+  markAllRead: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 0,
+  },
+  notifAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notifAvatarText: {
+    fontSize: 24,
+  },
+  notifContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    lineHeight: 18,
+  },
+  notifDescription: {
+    fontSize: 12,
+    color: COLORS.grayText,
+    marginTop: 4,
+  },
+  notifTime: {
+    fontSize: 11,
+    color: COLORS.grayText,
+    marginTop: 6,
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+    marginTop: 4,
+  },
 });
 
 export default styles;

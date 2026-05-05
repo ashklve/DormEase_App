@@ -165,7 +165,10 @@ export default function AnnouncementsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
         </TouchableOpacity>
         <View style={styles.topRowRight}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/tenant/notifications')}
+          >
             <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
             <View style={styles.notifDot} />
           </TouchableOpacity>
