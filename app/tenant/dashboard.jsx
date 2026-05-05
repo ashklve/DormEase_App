@@ -3,8 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import styles from '../../src/constants/styles';
-import { COLORS } from '../../src/constants/colors';
+import styles, { COLORS } from '../../src/constants/announcementsstyles';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -162,20 +161,24 @@ const Dashboard = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+        <SafeAreaView style={styles.container} edges={['bottom']}>
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             {/* header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={openDrawer}>
-                    <Ionicons name="menu-outline" size={28} color={COLORS.darkText} />
+            <View style={styles.topRow}>
+                <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
+                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={() => router.push('/tenant/notifications')}>
-                        <Ionicons name="notifications-outline" size={26} color={COLORS.darkText} />
+                <View style={styles.topRowRight}>
+                    <TouchableOpacity
+                        style={styles.iconBtn}
+                        onPress={() => router.push('/tenant/notifications')}
+                    >
+                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
+                        <View style={styles.notifDot} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image source={photoSource} style={styles.headerAvatarImage} />
+                        <Image source={photoSource} style={styles.avatar} />
                     </TouchableOpacity>
                 </View>
             </View>
