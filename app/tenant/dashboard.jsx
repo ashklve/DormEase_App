@@ -3,9 +3,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import styles, { COLORS } from './styles';
+import styles, { COLORS } from '../../src/constants/styles';
 
-const defaultPhoto = require('../assets/def_icon.png');
+const defaultPhoto = require('../../assets/def_icon.png');
 
 // placeholder user data — replace with real data from your database later
 const userData = {
@@ -17,7 +17,7 @@ const userData = {
     roomCode: 'R202-01',
     currentBill: '206.25',
     pendingRequests: 0,
-    profilePhoto: null, // null = use default photo. replace with url string from database
+    profilePhoto: null,
 };
 
 // placeholder announcements — replace with real data from your database later
@@ -75,7 +75,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 );
 
 // single announcement row component
-const AnnouncementItem = ({ title, date, preview }) => (
+const AnnouncementItem = ({ title, date, preview, onPress }) => (
     <View style={styles.announcementCard}>
         <View style={styles.announceMegaphone}>
             <Ionicons name="megaphone" size={18} color={COLORS.primary} />
@@ -85,16 +85,35 @@ const AnnouncementItem = ({ title, date, preview }) => (
             <Text style={styles.announceDate}>{date}</Text>
             <Text style={styles.announceText}>{preview}</Text>
         </View>
-        <TouchableOpacity style={styles.viewBtn}>
+        <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
             <Text style={styles.viewBtnText}>View</Text>
         </TouchableOpacity>
     </View>
+);
+
+// drawer nav item component
+const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
+    <TouchableOpacity style={styles.drawerItem} onPress={onPress}>
+        <View style={styles.drawerItemLeft}>
+            {iconLib === 'MaterialIcons'
+                ? <MaterialIcons name={iconName} size={20} color={COLORS.white} />
+                : <Ionicons name={iconName} size={20} color={COLORS.white} />
+            }
+            <Text style={styles.drawerItemText}>{label}</Text>
+        </View>
+        {hasChevron && (
+            <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
+        )}
+    </TouchableOpacity>
 );
 
 // main screen
 const Dashboard = () => {
     const router = useRouter();
     const greeting = getGreeting();
+
+    // controls which bottom tab is active
+    const [activeTab, setActiveTab] = useState('home');
 
     // controls if the drawer is open or closed
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -129,6 +148,18 @@ const Dashboard = () => {
         }).start(() => setDrawerOpen(false));
     };
 
+    // navigate and close drawer at the same time
+    const drawerNavigate = (route) => {
+        closeDrawer();
+        setTimeout(() => router.push(route), 260);
+    };
+
+    // navigate bottom tab and set active state
+    const tabNavigate = (tab, route) => {
+        setActiveTab(tab);
+        if (route) router.push(route);
+    };
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
@@ -136,13 +167,15 @@ const Dashboard = () => {
             {/* header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={openDrawer}>
-                    <Ionicons name="menu-outline" size={28} color="#333" />
+                    <Ionicons name="menu-outline" size={28} color={COLORS.darkText} />
                 </TouchableOpacity>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity>
-                        <Ionicons name="notifications-outline" size={26} color="#333" />
+                    <TouchableOpacity onPress={() => router.push('/tenant/notifications')}>
+                        <Ionicons name="notifications-outline" size={26} color={COLORS.darkText} />
                     </TouchableOpacity>
-                    <Image source={photoSource} style={styles.headerAvatarImage} />
+                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                        <Image source={photoSource} style={styles.headerAvatarImage} />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -159,8 +192,12 @@ const Dashboard = () => {
                     <Text style={styles.greetSub}>Your dorm services are just a tap away.</Text>
                 </View>
 
-                {/* user card */}
-                <View style={styles.userCard}>
+                {/* user card — tappable to go to profile */}
+                <TouchableOpacity
+                    style={styles.userCard}
+                    onPress={() => router.push('/tenant/profile')}
+                    activeOpacity={0.85}
+                >
                     <View style={styles.userCardTop}>
                         <Image source={photoSource} style={styles.avatar} />
                         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -175,7 +212,7 @@ const Dashboard = () => {
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>Current Bill</Text>
-                            <Text style={styles.statValue}>{userData.currentBill}</Text>
+                            <Text style={styles.statValue}>₱{userData.currentBill}</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
@@ -183,7 +220,7 @@ const Dashboard = () => {
                             <Text style={styles.statValue}>{userData.pendingRequests}</Text>
                         </View>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 {/* quick actions */}
                 <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 12 }]}>
@@ -194,25 +231,25 @@ const Dashboard = () => {
                         iconName="build"
                         title="Maintenance Request"
                         description="Report room issues for quick repair"
-                        onPress={() => {/* go to maintenance screen */ }}
+                        onPress={() => router.push('/tenant/maintenance')}
                     />
                     <QuickActionCard
                         iconName="warning"
                         title="Emergency Report"
                         description="Alert staff immediately for urgent help"
-                        onPress={() => {/* go to emergency screen */ }}
+                        onPress={() => router.push('/tenant/emergency')}
                     />
                     <QuickActionCard
                         iconName="water-drop"
                         title="Water Bill"
                         description="View and track your current charges"
-                        onPress={() => {/* go to billing screen */ }}
+                        onPress={() => router.push('/tenant/water-bill')}
                     />
                     <QuickActionCard
                         iconName="person-add"
                         title="Register Visitor"
                         description="Log your guest for smooth entry"
-                        onPress={() => {/* go to visitor screen */ }}
+                        onPress={() => router.push('/tenant/visitor')}
                     />
                 </View>
 
@@ -224,7 +261,7 @@ const Dashboard = () => {
                             <Text style={styles.badgeText}>{announcements.length}</Text>
                         </View>
                     </View>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/tenant/announcements')}>
                         <Text style={styles.seeAll}>See All</Text>
                     </TouchableOpacity>
                 </View>
@@ -236,6 +273,7 @@ const Dashboard = () => {
                         title={item.title}
                         date={item.date}
                         preview={item.preview}
+                        onPress={() => router.push('/tenant/announcements')}
                     />
                 ))}
 
@@ -243,14 +281,39 @@ const Dashboard = () => {
 
             {/* bottom nav */}
             <View style={styles.bottomNav}>
-                <NavItem iconName="home" label="Home" isActive />
-                <NavItem iconName="person-outline" label="Visitor" />
-                <NavItem iconName="warning" label="Emergency" isCenter />
-                <NavItem iconName="water-drop" label="Water Bill" />
-                <NavItem iconName="account-circle" label="Profile" />
+                <NavItem
+                    iconName="home"
+                    label="Home"
+                    isActive={activeTab === 'home'}
+                    onPress={() => tabNavigate('home')}
+                />
+                <NavItem
+                    iconName="person-outline"
+                    label="Visitor"
+                    isActive={activeTab === 'visitor'}
+                    onPress={() => tabNavigate('visitor', '/tenant/visitor')}
+                />
+                <NavItem
+                    iconName="warning"
+                    label="Emergency"
+                    isCenter
+                    onPress={() => router.push('/tenant/emergency')}
+                />
+                <NavItem
+                    iconName="water-drop"
+                    label="Water Bill"
+                    isActive={activeTab === 'billing'}
+                    onPress={() => tabNavigate('billing', '/tenant/water-bill')}
+                />
+                <NavItem
+                    iconName="account-circle"
+                    label="Profile"
+                    isActive={activeTab === 'profile'}
+                    onPress={() => tabNavigate('profile', '/tenant/profile')}
+                />
             </View>
 
-            {/* dark overlay behind drawer — only shows when drawer is open */}
+            {/* dark overlay behind drawer */}
             {drawerOpen && (
                 <TouchableOpacity
                     style={styles.overlay}
@@ -277,24 +340,20 @@ const Dashboard = () => {
                 <View style={styles.drawerDivider} />
 
                 {/* dashboard */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="home-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Dashboard</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="home-outline"
+                    label="Dashboard"
+                    onPress={() => closeDrawer()}
+                />
 
                 {/* announcements */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="megaphone-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Announcements</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="megaphone-outline"
+                    label="Announcements"
+                    onPress={() => drawerNavigate('/tenant/announcements')}
+                />
 
-                {/* documents — has a submenu that expands/collapses */}
+                {/* documents — expandable submenu */}
                 <TouchableOpacity
                     style={styles.drawerItem}
                     onPress={() => setDocumentsExpanded(!documentsExpanded)}
@@ -303,7 +362,6 @@ const Dashboard = () => {
                         <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
                         <Text style={styles.drawerItemText}>Documents</Text>
                     </View>
-                    {/* arrow flips when submenu is open */}
                     <Ionicons
                         name={documentsExpanded ? 'chevron-down' : 'chevron-forward'}
                         size={18}
@@ -311,67 +369,70 @@ const Dashboard = () => {
                     />
                 </TouchableOpacity>
 
-                {/* documents submenu — only shows when documentsExpanded is true */}
+                {/* documents submenu */}
                 {documentsExpanded && (
                     <>
-                        <TouchableOpacity style={styles.drawerSubItem}>
-                            <Text style={styles.drawerSubItemText}>Documents Request</Text>
+                        <TouchableOpacity
+                            style={styles.drawerSubItem}
+                            onPress={() => drawerNavigate('/tenant/documents')}
+                        >
+                            <Text style={styles.drawerSubItemText}>Document Request</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.drawerSubItem}>
+                        <TouchableOpacity
+                            style={styles.drawerSubItem}
+                            onPress={() => drawerNavigate('/tenant/records')}
+                        >
                             <Text style={styles.drawerSubItemText}>Tenant Records</Text>
                         </TouchableOpacity>
                     </>
                 )}
 
                 {/* maintenance */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <MaterialIcons name="build" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Maintenance</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="build"
+                    iconLib="MaterialIcons"
+                    label="Maintenance"
+                    onPress={() => drawerNavigate('/tenant/maintenance')}
+                />
 
                 {/* emergency */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="warning-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Emergency</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="warning-outline"
+                    label="Emergency"
+                    onPress={() => drawerNavigate('/tenant/emergency')}
+                />
 
                 {/* visitor */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="people-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Visitor</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="people-outline"
+                    label="Visitor"
+                    onPress={() => drawerNavigate('/tenant/visitor')}
+                />
 
                 {/* billing */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="receipt-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Billing</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="receipt-outline"
+                    label="Billing"
+                    onPress={() => drawerNavigate('/tenant/water-bill')}
+                />
 
                 {/* settings */}
-                <TouchableOpacity style={styles.drawerItem}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="settings-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Settings</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
-                </TouchableOpacity>
+                <DrawerItem
+                    iconName="settings-outline"
+                    label="Settings"
+                    onPress={() => drawerNavigate('/tenant/settings')}
+                />
 
                 <View style={styles.drawerDivider} />
 
-                {/* logout button at the bottom */}
-                <TouchableOpacity style={styles.drawerLogout} onPress={() => router.replace('/')}>
+                {/* logout */}
+                <TouchableOpacity
+                    style={styles.drawerLogout}
+                    onPress={() => {
+                        closeDrawer();
+                        setTimeout(() => router.replace('/auth/login'), 260);
+                    }}
+                >
                     <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
                     <Text style={styles.drawerLogoutText}>Logout</Text>
                 </TouchableOpacity>
