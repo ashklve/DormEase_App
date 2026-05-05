@@ -3,7 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import styles, { COLORS } from '../../src/constants/styles';
+import styles from '../../src/constants/styles';
+import { COLORS } from '../../src/constants/colors';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
