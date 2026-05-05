@@ -102,8 +102,7 @@ function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={PINK_LIGHT} />
-
+    <StatusBar translucent barStyle="light-content" backgroundColor="transparent" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -269,7 +268,7 @@ const styles = StyleSheet.create({
   // Header Section
   headerSection: {
     backgroundColor: PINK_PRIMARY,
-    paddingTop: 40,
+    paddingTop: (StatusBar.currentHeight || 44) + 16,
     paddingBottom: 60,
     alignItems: 'center',
     justifyContent: 'center',
