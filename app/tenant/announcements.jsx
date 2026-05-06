@@ -14,9 +14,9 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
+
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 
-// placeholder data — swap for real api call when backend is ready
 const MOCK_ANNOUNCEMENTS = [
   {
     id: '1',
@@ -55,10 +55,9 @@ const MOCK_ANNOUNCEMENTS = [
 
 const priorityColors = {
   High: { bg: '#FFD7C7', text: '#EB9C7D' },
-  Low: { bg: '#E5ECF6', text: '#B5B7C0' },
+  Low:  { bg: '#E5ECF6', text: '#B5B7C0' },
 };
 
-// single announcement card
 const AnnouncementCard = ({ item }) => {
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
   const [imageError, setImageError] = useState(false);
@@ -73,10 +72,8 @@ const AnnouncementCard = ({ item }) => {
           <MaterialIcons name="more-horiz" size={20} color={COLORS.muted} />
         </TouchableOpacity>
       </View>
-
       <Text style={styles.cardTitle}>{item.title}</Text>
       <Text style={styles.cardPreview}>{item.preview}</Text>
-
       {item.image && !imageError ? (
         <View style={styles.cardImageWrapper}>
           <Image
@@ -88,7 +85,6 @@ const AnnouncementCard = ({ item }) => {
           <Text style={styles.cardImageCaption}>{item.title}</Text>
         </View>
       ) : null}
-
       <View style={styles.cardFooter}>
         <Text style={styles.cardDate}>{item.date}</Text>
         <View style={styles.filesRow}>
@@ -99,6 +95,7 @@ const AnnouncementCard = ({ item }) => {
     </View>
   );
 };
+
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
   <TouchableOpacity
     style={[styles.navItem, isCenter && styles.navCenter]}
@@ -122,6 +119,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     )}
   </TouchableOpacity>
 );
+
 export default function AnnouncementsScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('All');
@@ -136,10 +134,6 @@ export default function AnnouncementsScreen() {
 
   const fetchAnnouncements = async () => {
     try {
-      // TODO: replace with real api call when backend is ready
-      // const res = await fetch
-      // const data = await res.json();
-      // setAnnouncements(data);
       setAnnouncements(MOCK_ANNOUNCEMENTS);
     } catch (error) {
       console.error('failed to fetch announcements:', error);
@@ -149,17 +143,15 @@ export default function AnnouncementsScreen() {
   };
 
   const filteredAnnouncements = () => {
-    let list = announcements;
-    if (activeTab === 'Unread') list = list.filter((a) => !a.read);
-    if (activeTab === 'Pinned') list = list.filter((a) => a.pinned);
-    return list;
+    if (activeTab === 'Unread') return announcements.filter((a) => !a.read);
+    if (activeTab === 'Pinned') return announcements.filter((a) => a.pinned);
+    return announcements;
   };
 
   return (
-    <   SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-      {/* header row */}
       <View style={styles.topRow}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
@@ -178,31 +170,23 @@ export default function AnnouncementsScreen() {
         </View>
       </View>
 
-      {/* page title */}
       <View style={styles.headerSection}>
         <Text style={styles.headerTitle}>Announcements 📢</Text>
         <Text style={styles.headerSub}>View notices and announcements</Text>
       </View>
 
-      {/* filter row */}
       <View style={styles.filterRow}>
         <TouchableOpacity style={styles.filterBtn}>
           <Ionicons name="options-outline" size={16} color="#fff" />
           <Text style={styles.filterBtnText}>Filter</Text>
         </TouchableOpacity>
-
-        {/* this week dropdown trigger */}
-        <TouchableOpacity
-          style={styles.weekBtn}
-          onPress={() => setShowDropdown(true)}
-        >
+        <TouchableOpacity style={styles.weekBtn} onPress={() => setShowDropdown(true)}>
           <Ionicons name="calendar-outline" size={16} color={COLORS.dark} />
           <Text style={styles.weekBtnText}>{selectedFilter}</Text>
           <Ionicons name="chevron-down" size={14} color={COLORS.dark} />
         </TouchableOpacity>
       </View>
 
-      {/* tabs */}
       <View style={styles.tabRow}>
         {['All', 'Unread', 'Pinned'].map((tab) => (
           <TouchableOpacity
@@ -218,7 +202,6 @@ export default function AnnouncementsScreen() {
         ))}
       </View>
 
-      {/* list or loading */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -239,14 +222,18 @@ export default function AnnouncementsScreen() {
       )}
 
       <View style={styles.bottomNav}>
-        <NavItem iconName="home" label="Home" isActive onPress={() => router.replace('/dashboard')} />
-        <NavItem iconName="person-outline" label="Visitor" />
+        <NavItem
+          iconName="home"
+          label="Home"
+          isActive={false}
+          onPress={() => router.push('/tenant/dashboard')}
+        />
+        <NavItem iconName="person-outline" label="Visitor" isActive={false} />
         <NavItem iconName="warning" label="Emergency" isCenter />
-        <NavItem iconName="water-drop" label="Water Bill" />
-        <NavItem iconName="account-circle" label="Profile" />
+        <NavItem iconName="water-drop" label="Water Bill" isActive={false} />
+        <NavItem iconName="account-circle" label="Profile" isActive={false} />
       </View>
 
-      {/* dropdown modal for week filter */}
       <Modal
         visible={showDropdown}
         transparent
@@ -270,12 +257,10 @@ export default function AnnouncementsScreen() {
                       setShowDropdown(false);
                     }}
                   >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        selectedFilter === option && styles.dropdownItemTextActive,
-                      ]}
-                    >
+                    <Text style={[
+                      styles.dropdownItemText,
+                      selectedFilter === option && styles.dropdownItemTextActive,
+                    ]}>
                       {option}
                     </Text>
                     {selectedFilter === option && (
