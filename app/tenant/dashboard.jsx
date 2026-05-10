@@ -1,22 +1,21 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
-import { clearSession } from '../../api/auth';
+import { clearSession, loadSession } from '../../api/auth';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-// placeholder user data — replace with real data from your database later
-const userData = {
-    firstName: 'Ash',
-    fullName: 'Hilary Ashley Pagadora',
-    username: '@hmpgdra',
-    floor: 2,
-    roomNumber: '202',
-    roomCode: 'R202-01',
-    currentBill: '206.25',
+const defaultUser = {
+    firstName: '',
+    fullName: '',
+    username: '',
+    floor: '',
+    roomNumber: '',
+    roomCode: '',
+    currentBill: '0.00',
     pendingRequests: 0,
     profilePhoto: null,
 };
@@ -108,10 +107,34 @@ const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron
     </TouchableOpacity>
 );
 
-// main screen
+// ── main screen ───────────────────────────────────────────────────────────────
 const Dashboard = () => {
     const router = useRouter();
     const greeting = getGreeting();
+
+    // ── load real user data from AsyncStorage ─────────────────────────────────
+    const [userData, setUserData] = useState(defaultUser);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const session = await loadSession();
+            if (!session) return;
+
+            const u = session.user;
+            setUserData({
+                firstName: u.name?.split(' ')[0] ?? '',
+                fullName: u.name ?? '',
+                username: '@' + (u.name?.replace(/\s+/g, '').toLowerCase() ?? ''),
+                floor: u.floor ?? '',
+                roomNumber: u.room ?? '',
+                roomCode: u.room ? `R${u.room}-01` : '',
+                currentBill: '0.00',       // load from API later
+                pendingRequests: 0,            // load from API later
+                profilePhoto: u.profile_photo ?? null,
+            });
+        };
+        loadUser();
+    }, []);
 
     // controls which bottom tab is active
     const [activeTab, setActiveTab] = useState('home');
@@ -188,7 +211,6 @@ const Dashboard = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
-
                 {/* greeting */}
                 <View style={styles.greeting}>
                     <Text style={styles.greetTitle}>
