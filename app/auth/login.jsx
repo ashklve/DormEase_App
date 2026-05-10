@@ -7,7 +7,7 @@ import {
 import Checkbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { loginTenant } from '../../api/auth';
+import { loginTenant, saveSession } from '../../api/auth';
 
 const { width } = Dimensions.get('window');
 const PINK_PRIMARY = '#CA5D86';
@@ -39,23 +39,29 @@ export default function LoginScreen() {
     }, []);
 
     const handleLogin = async () => {
-    setError('');
-    if (!accountId.trim()) return setError('Please enter your Account ID');
-    if (!password) return setError('Please enter your password');
-    if (password.length < 6) return setError('Password must be at least 6 characters');
+        setError('');
+        if (!accountId.trim()) return setError('Please enter your Account ID');
+        if (!password) return setError('Please enter your password');
+        if (password.length < 6) return setError('Password must be at least 6 characters');
 
-    setLoading(true);
-    try {
-        const res = await loginTenant(accountId, password);
-        if (res.user.role === 'tenant') router.replace('/tenant/dashboard');
-        else if (res.user.role === 'admin') router.replace('/admin/dashboard');
-        else if (res.user.role === 'staff') router.replace('/staff/dashboard');
-    } catch (err) {
-        setError(err.response?.data?.message || 'Login failed. Please try again.');
-    } finally {
-        setLoading(false);
-    }
-};
+        setLoading(true);
+        try {
+            const res = await loginTenant(accountId, password);
+
+            // ── Save session if "Keep me logged in" is checked ────────────────────
+            if (rememberMe) {
+                await saveSession(res.token, res.user);
+            }
+
+            if (res.user.role === 'tenant') router.replace('/tenant/dashboard');
+            else if (res.user.role === 'admin') router.replace('/admin/dashboard');
+            else if (res.user.role === 'staff') router.replace('/staff/dashboard');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <KeyboardAvoidingView

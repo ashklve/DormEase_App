@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
+import { clearSession } from '../../api/auth';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -432,8 +433,9 @@ const Dashboard = () => {
                 {/* logout */}
                 <TouchableOpacity
                     style={styles.drawerLogout}
-                    onPress={() => {
+                    onPress={async () => {
                         closeDrawer();
+                        await clearSession();
                         setTimeout(() => router.replace('/auth/login'), 260);
                     }}
                 >
