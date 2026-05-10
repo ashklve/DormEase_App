@@ -7,9 +7,9 @@ import {
 import Checkbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { loginTenant } from '../../api/auth';
 
 const { width } = Dimensions.get('window');
-
 const PINK_PRIMARY = '#CA5D86';
 const PINK_DARK = '#CA5D86';
 const PINK_FORM = '#FFF0F3';
@@ -38,29 +38,24 @@ export default function LoginScreen() {
         ]).start();
     }, []);
 
-    const handleLogin = () => {
-        setError('');
-        if (!accountId.trim()) return setError('Please enter your Account ID');
-        if (!password) return setError('Please enter your password');
-        if (password.length < 6) return setError('Password must be at least 6 characters');
+    const handleLogin = async () => {
+    setError('');
+    if (!accountId.trim()) return setError('Please enter your Account ID');
+    if (!password) return setError('Please enter your password');
+    if (password.length < 6) return setError('Password must be at least 6 characters');
 
-        setLoading(true);
-
-        // TODO: replace with actual Laravel API call
-        // const res = await api.post('/login', { account_id: accountId, password });
-        // await AsyncStorage.setItem('token', res.data.token);
-        // await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
-        // navigate based on res.data.role:
-        // if (res.data.role === 'tenant') router.replace('/tenant/dashboard');
-        // if (res.data.role === 'admin')  router.replace('/admin/dashboard');
-        // if (res.data.role === 'staff')  router.replace('/staff/dashboard');
-
-        // temporary — remove when API is ready
-        setTimeout(() => {
-            setLoading(false);
-            router.replace('/tenant/dashboard');
-        }, 800);
-    };
+    setLoading(true);
+    try {
+        const res = await loginTenant(accountId, password);
+        if (res.user.role === 'tenant') router.replace('/tenant/dashboard');
+        else if (res.user.role === 'admin') router.replace('/admin/dashboard');
+        else if (res.user.role === 'staff') router.replace('/staff/dashboard');
+    } catch (err) {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
         <KeyboardAvoidingView
