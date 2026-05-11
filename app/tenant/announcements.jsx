@@ -14,48 +14,13 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
+import client from '../../api/client';
 
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 
-const MOCK_ANNOUNCEMENTS = [
-  {
-    id: '1',
-    priority: 'Low',
-    title: 'Internet Downtime Notification',
-    preview: 'Be prepared for possible internet downtime later from 9:00 PM to midnight. Plan your activities accordingly.',
-    date: 'February 19, 2026 · 5:00 PM',
-    files: 0,
-    image: null,
-    read: false,
-    pinned: false,
-  },
-  {
-    id: '2',
-    priority: 'Low',
-    title: 'Water Billing Reminder: Due on the 28th',
-    preview: 'Please note that the water billing for February 2026 was already posted, and payments are due on the 28th.',
-    date: 'February 18, 2026 · 3:35 PM',
-    files: 0,
-    image: null,
-    read: true,
-    pinned: true,
-  },
-  {
-    id: '3',
-    priority: 'High',
-    title: 'Urgent Pest Control Notice',
-    preview: 'Pest Control will be conducted in all rooms tomorrow, February 19 from 9:00 AM to 12:00 PM. Please vacate your rooms.',
-    date: 'February 17, 2026 · 3:25 PM',
-    files: 2,
-    image: null,
-    read: false,
-    pinned: false,
-  },
-];
-
 const priorityColors = {
   High: { bg: '#FFD7C7', text: '#EB9C7D' },
-  Low:  { bg: '#E5ECF6', text: '#B5B7C0' },
+  Low: { bg: '#E5ECF6', text: '#B5B7C0' },
 };
 
 const AnnouncementCard = ({ item }) => {
@@ -130,11 +95,13 @@ export default function AnnouncementsScreen() {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, []);
+  }, [selectedFilter]);
 
   const fetchAnnouncements = async () => {
     try {
-      setAnnouncements(MOCK_ANNOUNCEMENTS);
+      setLoading(true);
+      const res = await client.get('/announcements');
+      setAnnouncements(res.data);
     } catch (error) {
       console.error('failed to fetch announcements:', error);
     } finally {
