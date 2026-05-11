@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { clearSession, loadSession } from '../../api/auth';
+import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -19,16 +20,6 @@ const defaultUser = {
     pendingRequests: 0,
     profilePhoto: null,
 };
-
-// placeholder announcements — replace with real data from your database later
-const announcements = [
-    {
-        id: '1',
-        title: 'Water Billing Reminder',
-        date: 'February 18, 2026',
-        preview: 'Please note that the water billing...',
-    },
-];
 
 // shows good morning / afternoon / evening based on current time
 const getGreeting = () => {
@@ -74,16 +65,16 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// single announcement row component
+// single announcement row component on dashboard
 const AnnouncementItem = ({ title, date, preview, onPress }) => (
     <View style={styles.announcementCard}>
         <View style={styles.announceMegaphone}>
             <Ionicons name="megaphone" size={18} color={COLORS.primary} />
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={styles.announceTitle}>{title}</Text>
+            <Text style={styles.announceTitle} numberOfLines={1}>{title}</Text>
             <Text style={styles.announceDate}>{date}</Text>
-            <Text style={styles.announceText}>{preview}</Text>
+            <Text style={styles.announceText} numberOfLines={1}>{preview}</Text>
         </View>
         <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
             <Text style={styles.viewBtnText}>View</Text>
@@ -128,12 +119,28 @@ const Dashboard = () => {
                 floor: u.floor ?? '',
                 roomNumber: u.room ?? '',
                 roomCode: u.room ? `R${u.room}-01` : '',
-                currentBill: '0.00',       // load from API later
-                pendingRequests: 0,            // load from API later
+                currentBill: '0.00',
+                pendingRequests: 0,
                 profilePhoto: u.profile_photo ?? null,
             });
         };
         loadUser();
+    }, []);
+
+    // ── load latest announcements from API ────────────────────────────────────
+    const [announcements, setAnnouncements] = useState([]);
+
+    useEffect(() => {
+        const fetchAnnouncements = async () => {
+            try {
+                const res = await client.get('/announcements');
+                // show only the 3 most recent on the dashboard
+                setAnnouncements(res.data.slice(0, 3));
+            } catch (err) {
+                console.error('failed to load announcements:', err);
+            }
+        };
+        fetchAnnouncements();
     }, []);
 
     // controls which bottom tab is active
@@ -280,29 +287,36 @@ const Dashboard = () => {
                     />
                 </View>
 
-                {/* announcements */}
+                {/* announcements — live from API, shows latest 3 */}
                 <View style={styles.announcementHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={styles.sectionTitle}>Announcements</Text>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{announcements.length}</Text>
-                        </View>
+                        {announcements.length > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>{announcements.length}</Text>
+                            </View>
+                        )}
                     </View>
                     <TouchableOpacity onPress={() => router.push('/tenant/announcements')}>
                         <Text style={styles.seeAll}>See All</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* loops through announcements array */}
-                {announcements.map((item) => (
-                    <AnnouncementItem
-                        key={item.id}
-                        title={item.title}
-                        date={item.date}
-                        preview={item.preview}
-                        onPress={() => router.push('/tenant/announcements')}
-                    />
-                ))}
+                {announcements.length === 0 ? (
+                    <Text style={{ paddingHorizontal: 20, color: COLORS.muted, fontSize: 13 }}>
+                        No announcements yet.
+                    </Text>
+                ) : (
+                    announcements.map((item) => (
+                        <AnnouncementItem
+                            key={item.id}
+                            title={item.title}
+                            date={item.date}
+                            preview={item.preview}
+                            onPress={() => router.push('/tenant/announcements')}
+                        />
+                    ))
+                )}
 
             </ScrollView>
 
