@@ -51,7 +51,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }} edges={['top']}>
         {/* header */}
         <View style={detailStyles.header}>
           <TouchableOpacity onPress={onClose} style={detailStyles.backBtn}>
@@ -221,7 +221,7 @@ export default function AnnouncementsScreen() {
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const res = await client.get('/announcements', { timeout: 8000 });
+      const res = await client.get('/announcements', { timeout: 15000 });
       setAnnouncements(res.data);
     } catch (error) {
       console.error('announcements error:', error.message);
