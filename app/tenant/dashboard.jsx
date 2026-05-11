@@ -1,7 +1,8 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { clearSession, loadSession } from '../../api/auth';
@@ -130,18 +131,19 @@ const Dashboard = () => {
     // ── load latest announcements from API ────────────────────────────────────
     const [announcements, setAnnouncements] = useState([]);
 
-    useEffect(() => {
-        const fetchAnnouncements = async () => {
-            try {
-                const res = await client.get('/announcements');
-                // show only the 3 most recent on the dashboard
-                setAnnouncements(res.data.slice(0, 3));
-            } catch (err) {
-                console.error('failed to load announcements:', err);
-            }
-        };
-        fetchAnnouncements();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            const fetchAnnouncements = async () => {
+                try {
+                    const res = await client.get('/announcements', { timeout: 15000 });
+                    setAnnouncements(res.data.slice(0, 3));
+                } catch (err) {
+                    console.error('failed to load announcements:', err);
+                }
+            };
+            fetchAnnouncements();
+        }, [])
+    );
 
     // controls which bottom tab is active
     const [activeTab, setActiveTab] = useState('home');
