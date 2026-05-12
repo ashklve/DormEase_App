@@ -53,8 +53,8 @@ export default function ChangePasswordScreen() {
 
             Alert.alert(
                 '✅ Password Changed',
-                'Your password has been updated successfully.',
-                [{ text: 'Continue', onPress: () => router.replace('/tenant/dashboard') }]
+                'Your password has been updated. Please log in with your new password.',
+                [{ text: 'Log In', onPress: () => router.replace('/auth/login') }]
             );
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to change password. Try again.');
