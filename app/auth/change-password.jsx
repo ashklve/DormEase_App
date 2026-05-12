@@ -13,6 +13,20 @@ const PINK_FORM = '#FFF0F3';
 const TEXT_DARK = '#2D1B2E';
 const TEXT_MUTED = '#B5B7C0';
 
+// ── password strength checker ─────────────────────────────────────────────────
+const getStrength = (pwd) => {
+    if (!pwd) return null;
+    if (pwd.length < 8) return { label: 'Too short', color: '#DF0404', width: '25%' };
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasNum = /[0-9]/.test(pwd);
+    const hasSpec = /[^A-Za-z0-9]/.test(pwd);
+    const score = [hasUpper, hasNum, hasSpec].filter(Boolean).length;
+    if (score === 0) return { label: 'Weak', color: '#FF6B35', width: '40%' };
+    if (score === 1) return { label: 'Fair', color: '#F0C040', width: '60%' };
+    if (score === 2) return { label: 'Strong', color: '#4CAF50', width: '80%' };
+    return { label: 'Very Strong', color: '#2E7D32', width: '100%' };
+};
+
 export default function ChangePasswordScreen() {
     const router = useRouter();
 
@@ -24,6 +38,10 @@ export default function ChangePasswordScreen() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const strength = getStrength(newPassword);
+    const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
+    const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
     const handleChange = async () => {
         setError('');
@@ -90,6 +108,7 @@ export default function ChangePasswordScreen() {
                 {/* form card */}
                 <View style={styles.card}>
 
+                    {/* error message */}
                     {error ? (
                         <View style={styles.errorBox}>
                             <MaterialIcons name="error-outline" size={16} color="#DF0404" />
@@ -114,7 +133,8 @@ export default function ChangePasswordScreen() {
                             <TouchableOpacity onPress={() => setShowCurrent(!showCurrent)}>
                                 <MaterialIcons
                                     name={showCurrent ? 'visibility' : 'visibility-off'}
-                                    size={18} color={TEXT_MUTED}
+                                    size={18}
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -137,16 +157,36 @@ export default function ChangePasswordScreen() {
                             <TouchableOpacity onPress={() => setShowNew(!showNew)}>
                                 <MaterialIcons
                                     name={showNew ? 'visibility' : 'visibility-off'}
-                                    size={18} color={TEXT_MUTED}
+                                    size={18}
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
+
+                        {/* strength indicator */}
+                        {strength && (
+                            <View style={{ marginTop: 8 }}>
+                                <View style={styles.strengthTrack}>
+                                    <View style={[styles.strengthFill, {
+                                        width: strength.width,
+                                        backgroundColor: strength.color,
+                                    }]} />
+                                </View>
+                                <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                                    {strength.label}
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
-                    {/* confirm password */}
+                    {/* confirm new password */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Confirm New Password</Text>
-                        <View style={styles.inputRow}>
+                        <View style={[
+                            styles.inputRow,
+                            passwordsMatch && { borderColor: '#4CAF50' },
+                            passwordsMismatch && { borderColor: '#DF0404' },
+                        ]}>
                             <MaterialIcons name="lock" size={18} color={TEXT_MUTED} />
                             <TextInput
                                 style={styles.input}
@@ -160,13 +200,32 @@ export default function ChangePasswordScreen() {
                             <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
                                 <MaterialIcons
                                     name={showConfirm ? 'visibility' : 'visibility-off'}
-                                    size={18} color={TEXT_MUTED}
+                                    size={18}
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
+
+                        {/* match indicator */}
+                        {passwordsMatch && (
+                            <View style={styles.matchRow}>
+                                <MaterialIcons name="check-circle" size={14} color="#4CAF50" />
+                                <Text style={[styles.matchText, { color: '#4CAF50' }]}>
+                                    Passwords match
+                                </Text>
+                            </View>
+                        )}
+                        {passwordsMismatch && (
+                            <View style={styles.matchRow}>
+                                <MaterialIcons name="cancel" size={14} color="#DF0404" />
+                                <Text style={[styles.matchText, { color: '#DF0404' }]}>
+                                    Passwords do not match
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
-                    {/* submit */}
+                    {/* submit button */}
                     <TouchableOpacity
                         style={[styles.btn, loading && { opacity: 0.7 }]}
                         onPress={handleChange}
@@ -267,6 +326,31 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         color: TEXT_DARK,
+    },
+    strengthTrack: {
+        height: 4,
+        backgroundColor: '#E5ECF6',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    strengthFill: {
+        height: 4,
+        borderRadius: 2,
+    },
+    strengthLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 4,
+    },
+    matchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 6,
+    },
+    matchText: {
+        fontSize: 12,
+        fontWeight: '500',
     },
     btn: {
         backgroundColor: PINK,
