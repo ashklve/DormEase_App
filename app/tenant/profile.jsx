@@ -32,15 +32,15 @@ const fmt = (d) => {
 };
 
 const statusColors = {
-  active:   { bg: '#E8F8EF', text: '#1A6E3C' },
-  pending:  { bg: '#FFF3CD', text: '#7D5A00' },
+  active: { bg: '#E8F8EF', text: '#1A6E3C' },
+  pending: { bg: '#FFF3CD', text: '#7D5A00' },
   move_out: { bg: '#FDECEA', text: '#922B21' },
   inactive: { bg: '#F1EFE8', text: '#5F5E5A' },
 };
 
 const statusLabels = {
-  active:   'Active',
-  pending:  'Pending',
+  active: 'Active',
+  pending: 'Pending',
   move_out: 'Move Out',
   inactive: 'Inactive',
 };
@@ -78,7 +78,7 @@ const Toast = ({ visible, type, message }) => {
 
 // ── Password Input ────────────────────────────────────────────────────────────
 const PwInput = ({ label, value, onChangeText, first = false }) => {
-  const [show, setShow]       = useState(false);
+  const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
 
   return (
@@ -176,19 +176,19 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function ProfileScreen() {
   const router = useRouter();
 
-  const [user, setUser]         = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [email, setEmail]               = useState('');
+  const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
 
-  const [currentPw, setCurrentPw]   = useState('');
-  const [newPw, setNewPw]           = useState('');
-  const [confirmPw, setConfirmPw]   = useState('');
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
 
-  const [toast, setToast]   = useState({ visible: false, type: 'success', message: '' });
-  const toastTimer          = useRef(null);
+  const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
+  const toastTimer = useRef(null);
 
   useEffect(() => {
     fetchProfile();
@@ -252,8 +252,8 @@ export default function ProfileScreen() {
     try {
       setSaving(true);
       await client.post('/change-password', {
-        current_password:          currentPw,
-        new_password:              newPw,
+        current_password: currentPw,
+        new_password: newPw,
         new_password_confirmation: confirmPw,
       });
       showToast('success', 'Password updated successfully!');
@@ -287,7 +287,7 @@ export default function ProfileScreen() {
     const asset = result.assets[0];
     const formData = new FormData();
     formData.append('profile_photo', {
-      uri:  asset.uri,
+      uri: asset.uri,
       name: 'profile.jpg',
       type: 'image/jpeg',
     });
@@ -321,10 +321,10 @@ export default function ProfileScreen() {
     );
   }
 
-  const avatarUri  = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
-  const statusKey  = user?.status || 'inactive';
-  const sc         = statusColors[statusKey] || statusColors.inactive;
-  const isTemp     = user?.is_temp_password === 1 || user?.is_temp_password === true;
+  const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
+  const statusKey = user?.status || 'inactive';
+  const sc = statusColors[statusKey] || statusColors.inactive;
+  const isTemp = user?.is_temp_password === 1 || user?.is_temp_password === true;
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -392,10 +392,10 @@ export default function ProfileScreen() {
         {/* ── Residence Info ── */}
         <Text style={styles.sectionLabel}>Residence</Text>
         <View style={styles.infoCard}>
-          <InfoRow icon="bed-outline"            label="Room number"   value={user?.room_number} />
-          <InfoRow icon="business-outline"       label="Floor"         value={user?.floor != null ? `Floor ${user.floor}` : null} />
-          <InfoRow icon="home-outline"           label="Stay type"     value={user?.stay_type} />
-          <InfoRow icon="calendar-outline"       label="Move-in date"  value={fmt(user?.move_in_date)} />
+          <InfoRow icon="bed-outline" label="Room number" value={user?.room_number} />
+          <InfoRow icon="business-outline" label="Floor" value={user?.floor != null ? `Floor ${user.floor}` : null} />
+          <InfoRow icon="home-outline" label="Stay type" value={user?.stay_type} />
+          <InfoRow icon="calendar-outline" label="Move-in date" value={fmt(user?.move_in_date)} />
           <InfoRow icon="calendar-clear-outline" label="Move-out date" value={fmt(user?.move_out_date)} last />
         </View>
 
@@ -469,11 +469,11 @@ export default function ProfileScreen() {
 
       {/* ── Bottom Nav ── */}
       <View style={styles.bottomNav}>
-        <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-        <NavItem iconName="person-outline" label="Visitor"    isActive={false} />
-        <NavItem iconName="warning"        label="Emergency"  isCenter />
-        <NavItem iconName="water-drop"     label="Water Bill" isActive={false} />
-        <NavItem iconName="account-circle" label="Profile"    isActive />
+        <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+        <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
+        <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
+        <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+        <NavItem iconName="account-circle" label="Profile" isActive={true} onPress={() => router.push('/tenant/profile')} />
       </View>
     </SafeAreaView>
   );
