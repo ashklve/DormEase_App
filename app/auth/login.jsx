@@ -49,17 +49,22 @@ export default function LoginScreen() {
         try {
             const res = await loginTenant(accountId, password);
 
-            
             await AsyncStorage.setItem('auth_token', res.token);
 
-            // Save full session only if "Keep me logged in" is checked
             if (rememberMe) {
                 await saveSession(res.token, res.user);
             }
 
-            if (res.user.role === 'tenant') router.replace('/tenant/dashboard');
-            else if (res.user.role === 'admin') router.replace('/admin/dashboard');
-            else if (res.user.role === 'staff') router.replace('/staff/dashboard');
+            // ── redirect to change password first if temp ─────────────────────────
+            if (res.user.is_temp_password) {
+                router.replace('/auth/change-password');
+            } else if (res.user.role === 'tenant') {
+                router.replace('/tenant/dashboard');
+            } else if (res.user.role === 'admin') {
+                router.replace('/admin/dashboard');
+            } else if (res.user.role === 'staff') {
+                router.replace('/staff/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {
