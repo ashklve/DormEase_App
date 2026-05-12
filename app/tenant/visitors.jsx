@@ -13,7 +13,6 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
 
 // ── sample data (replace with your API call) ─────────────────────────────────
@@ -26,7 +25,13 @@ const MOCK_VISITORS = [
     },
 ];
 
-const ID_TYPES = ['Government ID', 'Passport', "Driver's License", 'SSS / GSIS', 'PhilHealth'];
+const ID_TYPES = [
+    'Government ID',
+    'Passport',
+    "Driver's License",
+    'SSS / GSIS',
+    'PhilHealth',
+];
 
 // ── Bottom Nav ────────────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -45,7 +50,12 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
                     size={24}
                     color={isActive ? COLORS.primary : COLORS.grayText}
                 />
-                <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
+                <Text
+                    style={[
+                        styles.navLabel,
+                        isActive && { color: COLORS.primary },
+                    ]}
+                >
                     {label}
                 </Text>
             </>
@@ -60,13 +70,24 @@ const VisitorCard = ({ item }) => (
             <View style={styles.approvedBadge}>
                 <Text style={styles.approvedBadgeText}>{item.status}</Text>
             </View>
+
             <TouchableOpacity style={styles.eyeBtn}>
-                <Ionicons name="eye-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                    name="eye-outline"
+                    size={20}
+                    color={COLORS.primary}
+                />
             </TouchableOpacity>
         </View>
+
         <Text style={styles.visitorName}>{item.name}</Text>
+
         <View style={styles.visitorDateRow}>
-            <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
+            <Ionicons
+                name="calendar-outline"
+                size={13}
+                color={COLORS.primary}
+            />
             <Text style={styles.visitorDate}>{item.date}</Text>
         </View>
     </View>
@@ -75,7 +96,6 @@ const VisitorCard = ({ item }) => (
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function VisitorsScreen() {
     const router = useRouter();
-    const navigation = useNavigation();
 
     const [visitors, setVisitors] = useState(MOCK_VISITORS);
     const [loading, setLoading] = useState(false);
@@ -93,6 +113,7 @@ export default function VisitorsScreen() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
+
         try {
             // TODO: replace with your API call
             // const res = await client.get('/visitors');
@@ -106,7 +127,14 @@ export default function VisitorsScreen() {
 
     const handleSubmit = () => {
         // TODO: wire up to your API
-        console.log({ fullName, contactNo, purpose, idType, dateOfVisit, timeOfVisit });
+        console.log({
+            fullName,
+            contactNo,
+            purpose,
+            idType,
+            dateOfVisit,
+            timeOfVisit,
+        });
     };
 
     const handleUpload = () => {
@@ -116,39 +144,71 @@ export default function VisitorsScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={[]}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+            <StatusBar
+                barStyle="dark-content"
+                backgroundColor={COLORS.bg}
+            />
 
             {/* ── Top Row ──────────────────────────────────────────────── */}
             <View style={styles.topRow}>
-                {/* Hamburger — opens the drawer sidebar */}
-                <TouchableOpacity style={styles.backBtn} onPress={() => navigation.openDrawer()}>
-                    <MaterialIcons name="menu" size={26} color={COLORS.dark} />
+
+                {/* Menu Button */}
+                <TouchableOpacity
+                    style={styles.backBtn}
+                    onPress={() => router.push('/tenant/dashboard')}
+                >
+                    <MaterialIcons
+                        name="menu"
+                        size={26}
+                        color={COLORS.dark}
+                    />
                 </TouchableOpacity>
 
                 <View style={styles.topRowRight}>
-                    {/* Bell — navigates to notifications */}
+
+                    {/* Notifications */}
                     <TouchableOpacity
                         style={styles.iconBtn}
                         onPress={() => router.push('/tenant/notifications')}
                     >
-                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
+                        <Ionicons
+                            name="notifications-outline"
+                            size={22}
+                            color={COLORS.dark}
+                        />
                         <View style={styles.notifDot} />
                     </TouchableOpacity>
-                    <TouchableOpacity>
-                        <Image source={require('../../assets/def_icon.png')} style={styles.avatar} />
+
+                    {/* Profile */}
+                    <TouchableOpacity
+                        onPress={() => router.push('/tenant/profile')}
+                    >
+                        <Image
+                            source={require('../../assets/def_icon.png')}
+                            style={styles.avatar}
+                        />
                     </TouchableOpacity>
+
                 </View>
             </View>
 
             {/* ── Header ───────────────────────────────────────────────── */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>Visitor Registration 👥</Text>
-                <Text style={styles.headerSub}>Stay updated on important updates</Text>
+                <Text style={styles.headerTitle}>
+                    Visitor Registration 👥
+                </Text>
+
+                <Text style={styles.headerSub}>
+                    Stay updated on important updates
+                </Text>
             </View>
 
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <ActivityIndicator
+                        size="large"
+                        color={COLORS.primary}
+                    />
                 </View>
             ) : (
                 <ScrollView
@@ -164,34 +224,60 @@ export default function VisitorsScreen() {
                         />
                     }
                 >
-                    {/* ── Stats Row ──────────────────────────────────────────── */}
+
+                    {/* ── Stats Row ───────────────────────────────────── */}
                     <View style={styles.statsRow}>
+
                         <View style={styles.statCard}>
-                            <Text style={styles.statLabel}>Visitors Today</Text>
-                            <Text style={styles.statValue}>{visitors.length}</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <Text style={styles.statLabel}>Active Passes</Text>
+                            <Text style={styles.statLabel}>
+                                Visitors Today
+                            </Text>
+
                             <Text style={styles.statValue}>
-                                {visitors.filter((v) => v.status === 'Approved').length}
+                                {visitors.length}
                             </Text>
                         </View>
+
+                        <View style={styles.statCard}>
+                            <Text style={styles.statLabel}>
+                                Active Passes
+                            </Text>
+
+                            <Text style={styles.statValue}>
+                                {
+                                    visitors.filter(
+                                        (v) => v.status === 'Approved'
+                                    ).length
+                                }
+                            </Text>
+                        </View>
+
                     </View>
 
-                    {/* ── Registered Visitors ────────────────────────────────── */}
-                    <Text style={styles.sectionTitle}>Registered Visitors</Text>
+                    {/* ── Registered Visitors ───────────────────────── */}
+                    <Text style={styles.sectionTitle}>
+                        Registered Visitors
+                    </Text>
 
                     {visitors.length === 0 ? (
-                        <Text style={styles.emptyText}>No registered visitors yet.</Text>
+                        <Text style={styles.emptyText}>
+                            No registered visitors yet.
+                        </Text>
                     ) : (
                         visitors.map((item) => (
-                            <VisitorCard key={item.id} item={item} />
+                            <VisitorCard
+                                key={item.id}
+                                item={item}
+                            />
                         ))
                     )}
 
-                    {/* ── Register New Visitor Form ───────────────────────────── */}
+                    {/* ── Register Form ─────────────────────────────── */}
                     <View style={styles.formSection}>
-                        <Text style={styles.formSectionTitle}>Register New Visitor</Text>
+
+                        <Text style={styles.formSectionTitle}>
+                            Register New Visitor
+                        </Text>
 
                         {/* Full Name */}
                         <TextInput
@@ -202,7 +288,7 @@ export default function VisitorsScreen() {
                             onChangeText={setFullName}
                         />
 
-                        {/* Contact No. */}
+                        {/* Contact Number */}
                         <TextInput
                             style={styles.input}
                             placeholder="Contact No."
@@ -212,7 +298,7 @@ export default function VisitorsScreen() {
                             keyboardType="phone-pad"
                         />
 
-                        {/* Purpose of Visit */}
+                        {/* Purpose */}
                         <TextInput
                             style={styles.input}
                             placeholder="Purpose of Visit"
@@ -221,17 +307,27 @@ export default function VisitorsScreen() {
                             onChangeText={setPurpose}
                         />
 
-                        {/* ID Type Dropdown */}
+                        {/* ID Type */}
                         <TouchableOpacity
                             style={styles.pickerWrapper}
                             activeOpacity={0.8}
                             onPress={() => setIdTypeOpen(!idTypeOpen)}
                         >
-                            <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
+                            <Text
+                                style={[
+                                    styles.pickerText,
+                                    idType && styles.pickerTextSelected,
+                                ]}
+                            >
                                 {idType || 'ID Type'}
                             </Text>
+
                             <MaterialIcons
-                                name={idTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                name={
+                                    idTypeOpen
+                                        ? 'keyboard-arrow-up'
+                                        : 'keyboard-arrow-down'
+                                }
                                 size={20}
                                 color={COLORS.muted}
                             />
@@ -239,61 +335,112 @@ export default function VisitorsScreen() {
 
                         {idTypeOpen && (
                             <View style={styles.dropdownList}>
+
                                 {ID_TYPES.map((item) => (
                                     <TouchableOpacity
                                         key={item}
                                         style={[
                                             styles.dropdownListItem,
-                                            idType === item && styles.dropdownListItemActive,
+                                            idType === item &&
+                                            styles.dropdownListItemActive,
                                         ]}
                                         onPress={() => {
                                             setIdType(item);
                                             setIdTypeOpen(false);
                                         }}
                                     >
+
                                         <Text
                                             style={[
                                                 styles.dropdownListItemText,
-                                                idType === item && styles.dropdownListItemTextActive,
+                                                idType === item &&
+                                                styles.dropdownListItemTextActive,
                                             ]}
                                         >
                                             {item}
                                         </Text>
+
                                         {idType === item && (
-                                            <MaterialIcons name="check" size={16} color={COLORS.primary} />
+                                            <MaterialIcons
+                                                name="check"
+                                                size={16}
+                                                color={COLORS.primary}
+                                            />
                                         )}
+
                                     </TouchableOpacity>
                                 ))}
+
                             </View>
                         )}
 
-                        {/* Upload ID */}
+                        {/* Upload */}
                         <View style={styles.uploadBox}>
-                            <Text style={styles.uploadHint}>10 MB Maximum file size (.png)</Text>
-                            <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
-                                <MaterialIcons name="upload" size={16} color={COLORS.dark} />
+
+                            <Text style={styles.uploadHint}>
+                                10 MB Maximum file size (.png)
+                            </Text>
+
+                            <TouchableOpacity
+                                style={styles.uploadBtn}
+                                onPress={handleUpload}
+                            >
+                                <MaterialIcons
+                                    name="upload"
+                                    size={16}
+                                    color={COLORS.dark}
+                                />
+
                                 <Text style={styles.uploadBtnText}>
                                     {uploadedFile ?? 'Upload ID'}
                                 </Text>
                             </TouchableOpacity>
+
                         </View>
 
                         {/* Date & Time */}
                         <View style={styles.dateTimeRow}>
+
                             <View style={styles.dateTimeField}>
-                                <Text style={styles.dateTimeLabel}>Date of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput}>
-                                    <Text style={styles.dateTimeText}>{dateOfVisit}</Text>
-                                    <MaterialIcons name="calendar-today" size={16} color={COLORS.muted} />
+                                <Text style={styles.dateTimeLabel}>
+                                    Date of Visit
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={styles.dateTimeInput}
+                                >
+                                    <Text style={styles.dateTimeText}>
+                                        {dateOfVisit}
+                                    </Text>
+
+                                    <MaterialIcons
+                                        name="calendar-today"
+                                        size={16}
+                                        color={COLORS.muted}
+                                    />
                                 </TouchableOpacity>
                             </View>
+
                             <View style={styles.dateTimeField}>
-                                <Text style={styles.dateTimeLabel}>Time of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput}>
-                                    <Text style={styles.dateTimeText}>{timeOfVisit}</Text>
-                                    <MaterialIcons name="access-time" size={16} color={COLORS.muted} />
+                                <Text style={styles.dateTimeLabel}>
+                                    Time of Visit
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={styles.dateTimeInput}
+                                >
+                                    <Text style={styles.dateTimeText}>
+                                        {timeOfVisit}
+                                    </Text>
+
+                                    <MaterialIcons
+                                        name="access-time"
+                                        size={16}
+                                        color={COLORS.muted}
+                                    />
                                 </TouchableOpacity>
                             </View>
+
                         </View>
 
                         {/* Submit */}
@@ -302,20 +449,56 @@ export default function VisitorsScreen() {
                             activeOpacity={0.85}
                             onPress={handleSubmit}
                         >
-                            <Text style={styles.submitBtnText}>Submit</Text>
+                            <Text style={styles.submitBtnText}>
+                                Submit
+                            </Text>
                         </TouchableOpacity>
+
                     </View>
+
                 </ScrollView>
             )}
 
-            {/* ── Bottom Nav ───────────────────────────────────────────── */}
+            {/* ── Bottom Navigation ───────────────────────────────────── */}
             <View style={styles.bottomNav}>
-                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor" isActive={true} onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning" label="Emergency" isCenter />
-                <NavItem iconName="water-drop" label="Water Bill" isActive={false} />
-                <NavItem iconName="account-circle" label="Profile" isActive={false} />
+
+                <NavItem
+                    iconName="home"
+                    label="Home"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/dashboard')}
+                />
+
+                <NavItem
+                    iconName="person-outline"
+                    label="Visitor"
+                    isActive={true}
+                    onPress={() => router.push('/tenant/visitors')}
+                />
+
+                <NavItem
+                    iconName="warning"
+                    label="Emergency"
+                    isCenter
+                    onPress={() => router.push('/tenant/emergency')}
+                />
+
+                <NavItem
+                    iconName="water-drop"
+                    label="Water Bill"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/water-bill')}
+                />
+
+                <NavItem
+                    iconName="account-circle"
+                    label="Profile"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/profile')}
+                />
+
             </View>
+
         </SafeAreaView>
     );
 }
