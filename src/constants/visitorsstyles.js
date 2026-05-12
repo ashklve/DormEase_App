@@ -342,6 +342,8 @@ export default StyleSheet.create({
     paddingVertical: verticalScale(13),
     alignItems: 'center',
     marginTop: verticalScale(4),
+    width: '70%',
+    alignSelf: 'center',
   },
   submitBtnText: {
     color: '#FFFFFF',
