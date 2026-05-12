@@ -285,7 +285,7 @@ const Dashboard = () => {
                         iconName="person-add"
                         title="Register Visitor"
                         description="Log your guest for smooth entry"
-                        onPress={() => router.push('/tenant/visitor')}
+                        onPress={() => router.push('/tenant/visitors')}
                     />
                 </View>
 
@@ -334,7 +334,7 @@ const Dashboard = () => {
                     iconName="person-outline"
                     label="Visitor"
                     isActive={activeTab === 'visitor'}
-                    onPress={() => tabNavigate('visitor', '/tenant/visitor')}
+                    onPress={() => tabNavigate('visitor', '/tenant/visitors')}
                 />
                 <NavItem
                     iconName="warning"
@@ -449,7 +449,7 @@ const Dashboard = () => {
                 <DrawerItem
                     iconName="people-outline"
                     label="Visitor"
-                    onPress={() => drawerNavigate('/tenant/visitor')}
+                    onPress={() => drawerNavigate('/tenant/visitors')}
                 />
 
                 {/* billing */}
