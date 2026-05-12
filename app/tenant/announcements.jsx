@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import client from '../../api/client';
+import * as WebBrowser from 'expo-web-browser';
+import { scale, verticalScale, moderateScale, H } from '../../src/utils/scale';
 
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 
@@ -39,10 +41,35 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
 
   const getFileName = (path) => path.split('/').pop();
 
-  const openFile = (path) => {
+const openFile = async (path) => {
     const url = `${client.defaults.baseURL.replace('/api', '')}/storage/${path}`;
-    Linking.openURL(url);
-  };
+    const ext = path.split('.').pop().toLowerCase();
+    
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    if (imageExtensions.includes(ext)) {
+        // open image in browser
+        await WebBrowser.openBrowserAsync(url);
+    } else if (ext === 'pdf') {
+        // open PDF in browser (renders natively on iOS/Android)
+        await WebBrowser.openBrowserAsync(url);
+    } else {
+        // open any other file type (docx, xlsx, etc.)
+        await WebBrowser.openBrowserAsync(url);
+    }
+};
+const getFileIcon = (path) => {
+    const ext = path.split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) 
+        return { name: 'image-outline', color: '#4CAF50' };
+    if (ext === 'pdf') 
+        return { name: 'document-text-outline', color: '#F44336' };
+    if (['doc', 'docx'].includes(ext)) 
+        return { name: 'document-outline', color: '#2196F3' };
+    if (['xls', 'xlsx'].includes(ext)) 
+        return { name: 'grid-outline', color: '#4CAF50' };
+    return { name: 'attach-outline', color: '#CA5D86' };
+};
 
   return (
     <Modal
@@ -104,21 +131,29 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
               <Text style={detailStyles.attachTitle}>
                 📎 Attachments ({attachments.length})
               </Text>
-              {attachments.map((path, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={detailStyles.attachItem}
-                  onPress={() => openFile(path)}
-                >
-                  <View style={detailStyles.attachIcon}>
-                    <Ionicons name="document-outline" size={18} color={COLORS.primary} />
-                  </View>
-                  <Text style={detailStyles.attachName} numberOfLines={1}>
+              {attachments.map((path, i) => {
+    const icon = getFileIcon(path);
+    return (
+        <TouchableOpacity
+            key={i}
+            style={detailStyles.attachItem}
+            onPress={() => openFile(path)}
+        >
+            <View style={[detailStyles.attachIcon, { backgroundColor: icon.color + '20' }]}>
+                <Ionicons name={icon.name} size={18} color={icon.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={detailStyles.attachName} numberOfLines={1}>
                     {getFileName(path)}
-                  </Text>
-                  <Ionicons name="download-outline" size={18} color={COLORS.muted} />
-                </TouchableOpacity>
-              ))}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#B5B7C0', marginTop: 2 }}>
+                    {path.split('.').pop().toUpperCase()} file · tap to open
+                </Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color="#B5B7C0" />
+        </TouchableOpacity>
+    );
+})}
             </View>
           )}
         </ScrollView>
@@ -131,6 +166,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
 const AnnouncementCard = ({ item, onPress }) => {
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
   const [imageError, setImageError] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(4 / 3); // default 4:3
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
@@ -148,13 +184,25 @@ const AnnouncementCard = ({ item, onPress }) => {
       {/* preview — truncated to 2 lines on card */}
       <Text style={styles.cardPreview} numberOfLines={2}>{item.preview}</Text>
 
-      {item.image && !imageError ? (
+       {item.image && !imageError ? (
         <View style={styles.cardImageWrapper}>
           <Image
             source={{ uri: item.image }}
-            style={styles.cardImage}
+            style={[styles.cardImage, { aspectRatio }]}
             resizeMode="cover"
             onError={() => setImageError(true)}
+            onLoad={(e) => {
+              const { width, height } = e.nativeEvent.source;
+              const ratio = width / height;
+              // snap to nearest standard ratio
+              if (ratio >= 0.9 && ratio <= 1.1) {
+                setAspectRatio(1);        // square 1:1
+              } else if (ratio >= 1.2) {
+                setAspectRatio(4 / 3);   // landscape 4:3
+              } else {
+                setAspectRatio(ratio);   // use actual ratio
+              }
+            }}
           />
           <Text style={styles.cardImageCaption}>{item.title}</Text>
         </View>
@@ -162,10 +210,6 @@ const AnnouncementCard = ({ item, onPress }) => {
 
       <View style={styles.cardFooter}>
         <Text style={styles.cardDate}>{item.date}</Text>
-        <View style={styles.filesRow}>
-          <Ionicons name="folder-outline" size={14} color={COLORS.muted} />
-          <Text style={styles.filesText}>{item.files} files</Text>
-        </View>
       </View>
 
       {/* tap to read hint */}
@@ -257,7 +301,7 @@ export default function AnnouncementsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       {/* header */}
@@ -414,17 +458,17 @@ const detailStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
     backgroundColor: '#fff',
   },
   backBtn: {
-    padding: 4,
+    padding: scale(20),
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
     color: '#2D1B2E',
   },
@@ -444,7 +488,7 @@ const detailStyles = {
     fontWeight: '600',
   },
   title: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: '700',
     color: '#2D1B2E',
     lineHeight: 28,
@@ -457,7 +501,7 @@ const detailStyles = {
     marginBottom: 16,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: '#B5B7C0',
   },
   divider: {
@@ -466,7 +510,7 @@ const detailStyles = {
     marginBottom: 16,
   },
   content: {
-    fontSize: 15,
+    fontSize: moderateScale(15),
     color: '#2D1B2E',
     lineHeight: 24,
     marginBottom: 20,
@@ -480,7 +524,7 @@ const detailStyles = {
   },
   image: {
     width: '100%',
-    height: 220,
+    height: verticalScale(200),
   },
   attachSection: {
     backgroundColor: '#F8F8F8',
@@ -489,7 +533,7 @@ const detailStyles = {
     gap: 10,
   },
   attachTitle: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: '700',
     color: '#2D1B2E',
     marginBottom: 4,
@@ -505,9 +549,9 @@ const detailStyles = {
     gap: 10,
   },
   attachIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(8),
     backgroundColor: '#FFF0F3',
     justifyContent: 'center',
     alignItems: 'center',

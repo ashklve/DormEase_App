@@ -1,25 +1,25 @@
-import { StyleSheet } from 'react-native';
-import { Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform, StatusBar } from 'react-native';
 import { COLORS } from './colors';
+import { scale, verticalScale, moderateScale, W, H } from '../utils/scale';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default StyleSheet.create({
 
-  container: {
+  container: {  
     flex: 1,
     backgroundColor: COLORS.bg,
   },
 
   // top row
-  topRow: {
+topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    paddingtop: 6,
-  },
+    paddingHorizontal: scale(16),
+    paddingTop: Platform.OS === 'ios' ? verticalScale(54) : StatusBar.currentHeight + verticalScale(8),
+    paddingBottom: verticalScale(8),
+},
   backBtn: {
     padding: 4,
   },
@@ -47,19 +47,19 @@ export default StyleSheet.create({
   },
 
   // header
-  headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 14,
-  },
+headerSection: {
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(4),
+    paddingBottom: verticalScale(10),
+},
   headerTitle: {
-    fontSize: 24,
+    fontSize: moderateScale(24),
     fontWeight: '700',
     color: COLORS.dark,
     marginBottom: 2,
   },
   headerSub: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: COLORS.primary,
   },
@@ -159,7 +159,7 @@ export default StyleSheet.create({
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 14,
-    padding: 14,
+    padding: scale(14),
   },
   cardHeader: {
     flexDirection: 'row',
@@ -180,14 +180,14 @@ export default StyleSheet.create({
     padding: 4,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: '700',
     color: COLORS.dark,
     marginBottom: 4,
     lineHeight: 21,
   },
   cardPreview: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: COLORS.dark,
     lineHeight: 19,
     marginBottom: 10,
@@ -203,7 +203,6 @@ export default StyleSheet.create({
   },
   cardImage: {
     width: '100%',
-    height: 180,
   },
   cardImageCaption: {
     fontSize: 12,
@@ -233,18 +232,18 @@ export default StyleSheet.create({
   },
 
   // bottom nav
-   bottomNav: {
-  flexDirection: 'row',
-  backgroundColor: '#FFFFFF',
-  paddingBottom: 34,
-  paddingTop: 10,
-  paddingHorizontal: 10,
-  borderTopWidth: 1,
-  borderTopColor: '#F0F0F0',
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
+bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingBottom: Platform.OS === 'ios' ? verticalScale(20) : verticalScale(10),
+    paddingTop: verticalScale(10),
+    paddingHorizontal: scale(10),
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
 },
 navItem: {
   flex: 1,
@@ -260,9 +259,9 @@ navCenter: {
   marginTop: -22,
 },
 navCenterCircle: {
-  width: 56,
-  height: 56,
-  borderRadius: 28,
+  width: scale(56),
+  height: scale(56),
+  borderRadius: scale(28),
   backgroundColor: COLORS.primary,
   justifyContent: 'center',
   alignItems: 'center',
@@ -279,8 +278,8 @@ navCenterCircle: {
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
-    paddingTop: 180,
-    paddingLeft: 100,
+    paddingTop: H * 0.22,
+    paddingLeft: W * 0.27,
   },
   dropdownBox: {
     backgroundColor: COLORS.white,
