@@ -15,6 +15,7 @@ export default function RootLayout() {
             <Stack.Screen name="tenant/documents" />
             <Stack.Screen name="tenant/notifications" />
             <Stack.Screen name="tenant/profile" />
+            <Stack.Screen name="auth/change-password" />
         </Stack>
     );
 }
