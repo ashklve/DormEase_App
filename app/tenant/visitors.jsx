@@ -11,26 +11,19 @@ import {
     RefreshControl,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import DatePickerModal from '../../src/components/DatePickerModal';
 import TimePickerInput from '../../src/components/TimePickerInput';
 import * as ImagePicker from 'expo-image-picker';
+import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
-
-const MOCK_VISITORS = [
-    {
-        id: '1',
-        name: 'Marie Ling || Tenant Visit',
-        date: 'Feb 19, 2026 - 4:30 PM',
-        status: 'Approved',
-    },
-];
 
 const ID_TYPES = ['Government ID', 'Passport', "Driver's License", 'SSS / GSIS', 'PhilHealth', 'School ID'];
 
@@ -45,6 +38,14 @@ const PURPOSE_OPTIONS = [
     'Overnight Stay',
     'Others',
 ];
+
+// ── status badge color map ────────────────────────────────────────────────────
+const STATUS_STYLE = {
+    approved: { bg: '#D4EDDA', text: '#28A745' },
+    pending: { bg: '#FFF3CD', text: '#D4A017' },
+    inside: { bg: '#CCE5FF', text: '#004085' },
+    rejected: { bg: '#F8D7DA', text: '#721C24' },
+};
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -72,88 +73,225 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 );
 
 // ── Visitor Card ──────────────────────────────────────────────────────────────
-const VisitorCard = ({ item }) => (
-    <View style={styles.visitorCard}>
-        <View style={styles.visitorCardTop}>
-            <View style={styles.approvedBadge}>
-                <Text style={styles.approvedBadgeText}>{item.status}</Text>
+const VisitorCard = ({ item, onCheckout }) => {
+    const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
+    const canCheckout = item.status === 'inside' ||
+        (item.status === 'pending' && !item.departure_time);
+
+    return (
+        <View style={styles.visitorCard}>
+            <View style={styles.visitorCardTop}>
+                <View style={[styles.approvedBadge, { backgroundColor: s.bg }]}>
+                    <Text style={[styles.approvedBadgeText, { color: s.text }]}>
+                        {item.status
+                            ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
+                            : 'Pending'}
+                    </Text>
+                </View>
+                {canCheckout && onCheckout && (
+                    <TouchableOpacity
+                        style={styles.checkoutBtn}
+                        onPress={() => onCheckout(item.id)}
+                    >
+                        <Text style={styles.checkoutBtnText}>Check Out</Text>
+                    </TouchableOpacity>
+                )}
             </View>
-            <TouchableOpacity style={styles.eyeBtn}>
-                <Ionicons name="eye-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
+            <Text style={styles.visitorName}>{item.visitor_name}</Text>
+            {item.purpose ? (
+                <Text style={styles.visitorPurpose}>{item.purpose}</Text>
+            ) : null}
+            <View style={styles.visitorDateRow}>
+                <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
+                <Text style={styles.visitorDate}>
+                    {item.date_of_visit}
+                    {item.time_of_visit ? `  ·  ${item.time_of_visit}` : ''}
+                </Text>
+            </View>
         </View>
-        <Text style={styles.visitorName}>{item.name}</Text>
-        <View style={styles.visitorDateRow}>
-            <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
-            <Text style={styles.visitorDate}>{item.date}</Text>
-        </View>
-    </View>
-);
+    );
+};
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function VisitorsScreen() {
     const router = useRouter();
     const drawerRef = useRef(null);
 
-    const [visitors, setVisitors] = useState(MOCK_VISITORS);
-    const [loading, setLoading] = useState(false);
+    // ── API data ──────────────────────────────────────────────────────────────
+    const [visitors, setVisitors] = useState([]);
+    const [visitorsToday, setVisitorsToday] = useState(0);
+    const [activePasses, setActivePasses] = useState(0);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // ── form state ────────────────────────────────────────────────────────────
     const [fullName, setFullName] = useState('');
     const [contactNo, setContactNo] = useState('');
     const [purpose, setPurpose] = useState('');
     const [purposeOpen, setPurposeOpen] = useState(false);
     const [idType, setIdType] = useState('');
     const [idTypeOpen, setIdTypeOpen] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [dateOfVisit, setDateOfVisit] = useState('03/17/2026');
-    const [timeOfVisit, setTimeOfVisit] = useState('13:00 PM');
+    const [uploadedFile, setUploadedFile] = useState(null); // local uri
+    const [dateOfVisit, setDateOfVisit] = useState(
+        new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+    );
+    const [timeOfVisit, setTimeOfVisit] = useState(
+        new Date().toTimeString().slice(0, 5)
+    );
     const [dateModalVisible, setDateModalVisible] = useState(false);
 
-    const onRefresh = useCallback(async () => {
-        setRefreshing(true);
+    // ── fetch visitors ────────────────────────────────────────────────────────
+    const fetchVisitors = async () => {
         try {
-            // TODO: const res = await client.get('/visitors');
-            // setVisitors(res.data);
+            const res = await client.get('/visitors');
+            setVisitors(res.data.logs ?? []);
+            setVisitorsToday(res.data.visitors_today ?? 0);
+            setActivePasses(res.data.active_passes ?? 0);
         } catch (err) {
-            console.error('refresh failed:', err);
+            console.error('fetch visitors error:', err.message);
+            Alert.alert('Error', 'Failed to load visitor logs.');
         } finally {
+            setLoading(false);
             setRefreshing(false);
         }
-    }, []);
-
-    const handleSubmit = () => {
-        console.log({ fullName, contactNo, purpose, idType, dateOfVisit, timeOfVisit });
     };
 
+    // reload every time the screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            fetchVisitors();
+        }, [])
+    );
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchVisitors();
+    }, []);
+
+    // ── image picker ──────────────────────────────────────────────────────────
     const handleUpload = async () => {
         try {
-            // Request gallery permission
             const permissionResult =
                 await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (!permissionResult.granted) {
-                alert('Permission to access gallery is required!');
+                Alert.alert('Permission Required', 'Permission to access gallery is required!');
                 return;
             }
 
-            // Open gallery only
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 1,
+                quality: 0.8,
             });
 
             if (!result.canceled) {
-                const selectedImage = result.assets[0];
-
-                setUploadedFile(selectedImage.uri);
+                setUploadedFile(result.assets[0].uri);
             }
         } catch (error) {
-            console.log('Image upload error:', error);
+            console.error('Image upload error:', error);
         }
     };
 
+    // ── submit new visitor ────────────────────────────────────────────────────
+    const handleSubmit = async () => {
+        if (!fullName.trim()) {
+            Alert.alert('Validation', 'Full name is required.');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            // use FormData so we can attach the id_photo file
+            // convert MM/DD/YYYY display format → YYYY-MM-DD for MySQL
+            const [month, day, year] = dateOfVisit.split('/');
+            const sqlDate = `${year}-${month}-${day}`;
+
+            const formData = new FormData();
+            formData.append('visitor_name', fullName.trim());
+            formData.append('contact_no', contactNo.trim());
+            formData.append('purpose', purpose);
+            formData.append('id_type', idType);
+            formData.append('date_of_visit', sqlDate);
+            formData.append('time_of_visit', timeOfVisit);
+
+            if (uploadedFile) {
+                const filename = uploadedFile.split('/').pop();
+                const extension = filename.split('.').pop().toLowerCase();
+                const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
+                formData.append('id_photo', {
+                    uri: uploadedFile,
+                    name: filename,
+                    type: mimeType,
+                });
+            }
+
+            const res = await client.post('/visitors', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            // prepend to list and bump today's counter
+            setVisitors((prev) => [res.data.visitor, ...prev]);
+            setVisitorsToday((prev) => prev + 1);
+
+            // reset form
+            setFullName('');
+            setContactNo('');
+            setPurpose('');
+            setIdType('');
+            setUploadedFile(null);
+
+            Alert.alert('Success', 'Visitor registered successfully.');
+        } catch (err) {
+            console.error('submit error:', err.response?.data ?? err.message);
+            const errors = err.response?.data?.errors;
+            const msg = errors
+                ? Object.values(errors).flat().join('\n')
+                : (err.response?.data?.message ?? 'Failed to register visitor.');
+            Alert.alert('Error', msg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // ── checkout ──────────────────────────────────────────────────────────────
+    const handleCheckout = (visitorId) => {
+        Alert.alert(
+            'Check Out Visitor',
+            'Mark this visitor as checked out?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Check Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const res = await client.patch(`/visitors/${visitorId}/checkout`);
+                            setVisitors((prev) =>
+                                prev.map((v) =>
+                                    v.id === visitorId
+                                        ? {
+                                            ...v,
+                                            status: res.data.visitor.status,
+                                            departure_time: res.data.visitor.departure_time,
+                                        }
+                                        : v
+                                )
+                            );
+                        } catch (err) {
+                            console.error('checkout error:', err.response?.data ?? err.message);
+                            Alert.alert('Error', 'Failed to check out visitor.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -210,26 +348,30 @@ export default function VisitorsScreen() {
                             />
                         }
                     >
-                        {/* Stats */}
+                        {/* Stats — now live from API */}
                         <View style={styles.statsRow}>
                             <View style={styles.statCard}>
                                 <Text style={styles.statLabel}>Visitors Today</Text>
-                                <Text style={styles.statValue}>{visitors.length}</Text>
+                                <Text style={styles.statValue}>{visitorsToday}</Text>
                             </View>
                             <View style={styles.statCard}>
                                 <Text style={styles.statLabel}>Active Passes</Text>
-                                <Text style={styles.statValue}>
-                                    {visitors.filter((v) => v.status === 'Approved').length}
-                                </Text>
+                                <Text style={styles.statValue}>{activePasses}</Text>
                             </View>
                         </View>
 
-                        {/* Registered Visitors */}
+                        {/* Registered Visitors — live from API */}
                         <Text style={styles.sectionTitle}>Registered Visitors</Text>
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
                         ) : (
-                            visitors.map((item) => <VisitorCard key={item.id} item={item} />)
+                            visitors.map((item) => (
+                                <VisitorCard
+                                    key={item.id}
+                                    item={item}
+                                    onCheckout={handleCheckout}
+                                />
+                            ))
                         )}
 
                         {/* Register New Visitor Form */}
@@ -261,7 +403,6 @@ export default function VisitorsScreen() {
                                 <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
                                     {purpose || 'Purpose of Visit'}
                                 </Text>
-
                                 <MaterialIcons
                                     name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                                     size={20}
@@ -271,11 +412,7 @@ export default function VisitorsScreen() {
 
                             {purposeOpen && (
                                 <View style={styles.dropdownList}>
-                                    <ScrollView
-                                        nestedScrollEnabled
-                                        showsVerticalScrollIndicator={false}
-                                    >
-
+                                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                                         {PURPOSE_OPTIONS.map((item) => (
                                             <TouchableOpacity
                                                 key={item}
@@ -283,26 +420,16 @@ export default function VisitorsScreen() {
                                                     styles.dropdownListItem,
                                                     purpose === item && styles.dropdownListItemActive,
                                                 ]}
-                                                onPress={() => {
-                                                    setPurpose(item);
-                                                    setPurposeOpen(false);
-                                                }}
+                                                onPress={() => { setPurpose(item); setPurposeOpen(false); }}
                                             >
-                                                <Text
-                                                    style={[
-                                                        styles.dropdownListItemText,
-                                                        purpose === item && styles.dropdownListItemTextActive,
-                                                    ]}
-                                                >
+                                                <Text style={[
+                                                    styles.dropdownListItemText,
+                                                    purpose === item && styles.dropdownListItemTextActive,
+                                                ]}>
                                                     {item}
                                                 </Text>
-
                                                 {purpose === item && (
-                                                    <MaterialIcons
-                                                        name="check"
-                                                        size={16}
-                                                        color={COLORS.primary}
-                                                    />
+                                                    <MaterialIcons name="check" size={16} color={COLORS.primary} />
                                                 )}
                                             </TouchableOpacity>
                                         ))}
@@ -328,11 +455,7 @@ export default function VisitorsScreen() {
 
                             {idTypeOpen && (
                                 <View style={styles.dropdownList}>
-                                    <ScrollView
-                                        nestedScrollEnabled
-                                        showsVerticalScrollIndicator={false}
-                                    >
-
+                                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                                         {ID_TYPES.map((item) => (
                                             <TouchableOpacity
                                                 key={item}
@@ -374,7 +497,7 @@ export default function VisitorsScreen() {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Date & Time */}
+                            {/* Date of Visit */}
                             <View style={styles.dateTimeRow}>
                                 <View style={styles.dateTimeField}>
                                     <Text style={styles.dateTimeLabel}>Date of Visit</Text>
@@ -389,12 +512,25 @@ export default function VisitorsScreen() {
                                 </View>
                             </View>
 
-                            {/* Time of Visit - Inline */}
+                            {/* Time of Visit */}
                             <TimePickerInput
                                 value={timeOfVisit}
                                 onChangeTime={setTimeOfVisit}
                                 label="Time of Visit"
                             />
+
+                            {/* Submit */}
+                            <TouchableOpacity
+                                style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                                activeOpacity={0.85}
+                                onPress={handleSubmit}
+                                disabled={submitting}
+                            >
+                                {submitting
+                                    ? <ActivityIndicator size="small" color="#fff" />
+                                    : <Text style={styles.submitBtnText}>Submit</Text>
+                                }
+                            </TouchableOpacity>
                         </View>
                     </ScrollView>
                 )}
@@ -409,10 +545,10 @@ export default function VisitorsScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* ── Drawer — always last so it renders on top ─────────────── */}
+            {/* ── Drawer ───────────────────────────────────────────────── */}
             <DrawerMenu ref={drawerRef} />
 
-            {/* ── Date Picker Modal ──────────────────────────────────── */}
+            {/* ── Date Picker Modal ─────────────────────────────────────── */}
             <DatePickerModal
                 visible={dateModalVisible}
                 onClose={() => setDateModalVisible(false)}
