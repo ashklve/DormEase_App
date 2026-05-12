@@ -15,6 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import DatePickerModal from '../../src/components/DatePickerModal';
+import TimePickerInput from '../../src/components/TimePickerInput';
+import * as ImagePicker from 'expo-image-picker';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -27,7 +30,19 @@ const MOCK_VISITORS = [
     },
 ];
 
-const ID_TYPES = ['Government ID', 'Passport', "Driver's License", 'SSS / GSIS', 'PhilHealth'];
+const ID_TYPES = ['Government ID', 'Passport', "Driver's License", 'SSS / GSIS', 'PhilHealth', 'School ID'];
+
+const PURPOSE_OPTIONS = [
+    'Family Visit',
+    'Friend Visit',
+    'Tenant Assistance',
+    'Delivery',
+    'Maintenance',
+    'Business Meeting',
+    'Study Group',
+    'Overnight Stay',
+    'Others',
+];
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -84,11 +99,13 @@ export default function VisitorsScreen() {
     const [fullName, setFullName] = useState('');
     const [contactNo, setContactNo] = useState('');
     const [purpose, setPurpose] = useState('');
+    const [purposeOpen, setPurposeOpen] = useState(false);
     const [idType, setIdType] = useState('');
     const [idTypeOpen, setIdTypeOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [dateOfVisit, setDateOfVisit] = useState('03/17/2026');
-    const [timeOfVisit, setTimeOfVisit] = useState('13:00');
+    const [timeOfVisit, setTimeOfVisit] = useState('13:00 PM');
+    const [dateModalVisible, setDateModalVisible] = useState(false);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -106,9 +123,33 @@ export default function VisitorsScreen() {
         console.log({ fullName, contactNo, purpose, idType, dateOfVisit, timeOfVisit });
     };
 
-    const handleUpload = () => {
-        // TODO: expo-document-picker or expo-image-picker
-        console.log('Upload ID pressed');
+    const handleUpload = async () => {
+        try {
+            // Request gallery permission
+            const permissionResult =
+                await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (!permissionResult.granted) {
+                alert('Permission to access gallery is required!');
+                return;
+            }
+
+            // Open gallery only
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 1,
+            });
+
+            if (!result.canceled) {
+                const selectedImage = result.assets[0];
+
+                setUploadedFile(selectedImage.uri);
+            }
+        } catch (error) {
+            console.log('Image upload error:', error);
+        }
     };
 
     return (
@@ -200,13 +241,64 @@ export default function VisitorsScreen() {
                             onChangeText={setContactNo}
                             keyboardType="phone-pad"
                         />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Purpose of Visit"
-                            placeholderTextColor={COLORS.muted}
-                            value={purpose}
-                            onChangeText={setPurpose}
-                        />
+
+                        {/* Purpose of Visit */}
+                        <TouchableOpacity
+                            style={styles.pickerWrapper}
+                            activeOpacity={0.8}
+                            onPress={() => setPurposeOpen(!purposeOpen)}
+                        >
+                            <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
+                                {purpose || 'Purpose of Visit'}
+                            </Text>
+
+                            <MaterialIcons
+                                name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                size={20}
+                                color={COLORS.muted}
+                            />
+                        </TouchableOpacity>
+
+                        {purposeOpen && (
+                            <View style={styles.dropdownList}>
+                                <ScrollView
+                                    nestedScrollEnabled
+                                    showsVerticalScrollIndicator={false}
+                                >
+
+                                    {PURPOSE_OPTIONS.map((item) => (
+                                        <TouchableOpacity
+                                            key={item}
+                                            style={[
+                                                styles.dropdownListItem,
+                                                purpose === item && styles.dropdownListItemActive,
+                                            ]}
+                                            onPress={() => {
+                                                setPurpose(item);
+                                                setPurposeOpen(false);
+                                            }}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.dropdownListItemText,
+                                                    purpose === item && styles.dropdownListItemTextActive,
+                                                ]}
+                                            >
+                                                {item}
+                                            </Text>
+
+                                            {purpose === item && (
+                                                <MaterialIcons
+                                                    name="check"
+                                                    size={16}
+                                                    color={COLORS.primary}
+                                                />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
 
                         {/* ID Type */}
                         <TouchableOpacity
@@ -226,26 +318,32 @@ export default function VisitorsScreen() {
 
                         {idTypeOpen && (
                             <View style={styles.dropdownList}>
-                                {ID_TYPES.map((item) => (
-                                    <TouchableOpacity
-                                        key={item}
-                                        style={[
-                                            styles.dropdownListItem,
-                                            idType === item && styles.dropdownListItemActive,
-                                        ]}
-                                        onPress={() => { setIdType(item); setIdTypeOpen(false); }}
-                                    >
-                                        <Text style={[
-                                            styles.dropdownListItemText,
-                                            idType === item && styles.dropdownListItemTextActive,
-                                        ]}>
-                                            {item}
-                                        </Text>
-                                        {idType === item && (
-                                            <MaterialIcons name="check" size={16} color={COLORS.primary} />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
+                                <ScrollView
+                                    nestedScrollEnabled
+                                    showsVerticalScrollIndicator={false}
+                                >
+
+                                    {ID_TYPES.map((item) => (
+                                        <TouchableOpacity
+                                            key={item}
+                                            style={[
+                                                styles.dropdownListItem,
+                                                idType === item && styles.dropdownListItemActive,
+                                            ]}
+                                            onPress={() => { setIdType(item); setIdTypeOpen(false); }}
+                                        >
+                                            <Text style={[
+                                                styles.dropdownListItemText,
+                                                idType === item && styles.dropdownListItemTextActive,
+                                            ]}>
+                                                {item}
+                                            </Text>
+                                            {idType === item && (
+                                                <MaterialIcons name="check" size={16} color={COLORS.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
                             </View>
                         )}
 
@@ -254,7 +352,15 @@ export default function VisitorsScreen() {
                             <Text style={styles.uploadHint}>10 MB Maximum file size (.png)</Text>
                             <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
                                 <MaterialIcons name="upload" size={16} color={COLORS.dark} />
-                                <Text style={styles.uploadBtnText}>{uploadedFile ?? 'Upload ID'}</Text>
+                                <Text
+                                    style={styles.uploadBtnText}
+                                    numberOfLines={1}
+                                    ellipsizeMode="middle"
+                                >
+                                    {uploadedFile
+                                        ? uploadedFile.split('/').pop()
+                                        : 'Upload ID'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
 
@@ -262,23 +368,23 @@ export default function VisitorsScreen() {
                         <View style={styles.dateTimeRow}>
                             <View style={styles.dateTimeField}>
                                 <Text style={styles.dateTimeLabel}>Date of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput}>
+                                <TouchableOpacity
+                                    style={styles.dateTimeInput}
+                                    onPress={() => setDateModalVisible(true)}
+                                    activeOpacity={0.7}
+                                >
                                     <Text style={styles.dateTimeText}>{dateOfVisit}</Text>
-                                    <MaterialIcons name="calendar-today" size={16} color={COLORS.muted} />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.dateTimeField}>
-                                <Text style={styles.dateTimeLabel}>Time of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput}>
-                                    <Text style={styles.dateTimeText}>{timeOfVisit}</Text>
-                                    <MaterialIcons name="access-time" size={16} color={COLORS.muted} />
+                                    <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
                                 </TouchableOpacity>
                             </View>
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} activeOpacity={0.85} onPress={handleSubmit}>
-                            <Text style={styles.submitBtnText}>Submit</Text>
-                        </TouchableOpacity>
+                        {/* Time of Visit - Inline */}
+                        <TimePickerInput
+                            value={timeOfVisit}
+                            onChangeTime={setTimeOfVisit}
+                            label="Time of Visit"
+                        />
                     </View>
                 </ScrollView>
             )}
@@ -294,6 +400,14 @@ export default function VisitorsScreen() {
 
             {/* ── Drawer — always last so it renders on top ─────────────── */}
             <DrawerMenu ref={drawerRef} />
+
+            {/* ── Date Picker Modal ──────────────────────────────────── */}
+            <DatePickerModal
+                visible={dateModalVisible}
+                onClose={() => setDateModalVisible(false)}
+                onDateSelect={setDateOfVisit}
+                currentDate={dateOfVisit}
+            />
 
         </SafeAreaView>
     );
