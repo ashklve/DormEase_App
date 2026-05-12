@@ -11,7 +11,7 @@ export default function RootLayout() {
             <Stack.Screen name="tenant/maintenance" />
             <Stack.Screen name="tenant/emergency" />
             <Stack.Screen name="tenant/water-bill" />
-            <Stack.Screen name="tenant/visitor" />
+            <Stack.Screen name="tenant/visitors" />
             <Stack.Screen name="tenant/documents" />
             <Stack.Screen name="tenant/notifications" />
             <Stack.Screen name="tenant/profile" />
