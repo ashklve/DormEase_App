@@ -8,6 +8,7 @@ import Checkbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { loginTenant, saveSession } from '../../api/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const PINK_PRIMARY = '#CA5D86';
@@ -48,7 +49,10 @@ export default function LoginScreen() {
         try {
             const res = await loginTenant(accountId, password);
 
-            // ── Save session if "Keep me logged in" is checked ────────────────────
+            
+            await AsyncStorage.setItem('auth_token', res.token);
+
+            // Save full session only if "Keep me logged in" is checked
             if (rememberMe) {
                 await saveSession(res.token, res.user);
             }
