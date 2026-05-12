@@ -39,7 +39,6 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
   const [imageRatio, setImageRatio] = useState(4 / 3);
 
-  // only show non-image files as attachments
   const attachments = item.attachments
     ? item.attachments
         .split(',')
@@ -90,21 +89,20 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
         backgroundColor: '#fff',
         paddingTop: Platform.OS === 'ios' ? 54 : StatusBar.currentHeight,
       }}>
-
-        {/* ── Header ── */}
-        <View style={detailStyles.header}>
-          <TouchableOpacity onPress={onClose} style={detailStyles.backBtn}>
-            <MaterialIcons name="arrow-back" size={24} color="#2D1B2E" />
-          </TouchableOpacity>
-          <Text style={detailStyles.headerTitle}>Announcement</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
-          {/* ── Post Header (Facebook-style) ── */}
+          {/* ── Header INSIDE ScrollView ── */}
+          <View style={detailStyles.header}>
+            <TouchableOpacity onPress={onClose} style={detailStyles.backBtn}>
+              <MaterialIcons name="arrow-back" size={24} color="#2D1B2E" />
+            </TouchableOpacity>
+            <Text style={detailStyles.headerTitle}>Announcement</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* ── Post Header ── */}
           <View style={detailStyles.postHeader}>
             <View style={detailStyles.adminAvatar}>
               <MaterialIcons name="campaign" size={22} color="#fff" />
@@ -133,7 +131,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
             <Text style={detailStyles.content}>{item.preview}</Text>
           </View>
 
-          {/* ── Image (full width, dynamic ratio) ── */}
+          {/* ── Image ── */}
           {item.image ? (
             <View style={detailStyles.imageWrapper}>
               <Image
@@ -153,11 +151,9 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
           ) : null}
 
           {/* ── Divider ── */}
-          {attachments.length > 0 && (
-            <View style={detailStyles.divider} />
-          )}
+          {attachments.length > 0 && <View style={detailStyles.divider} />}
 
-          {/* ── Non-image Attachments only ── */}
+          {/* ── Attachments ── */}
           {attachments.length > 0 && (
             <View style={detailStyles.attachSection}>
               <Text style={detailStyles.attachTitle}>
@@ -328,65 +324,14 @@ export default function AnnouncementsScreen() {
     <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-      {/* header */}
-      <View style={styles.topRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
-        </TouchableOpacity>
-        <View style={styles.topRowRight}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => router.push('/tenant/notifications')}
-          >
-            <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-            <View style={styles.notifDot} />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Image source={require('../../assets/def_icon.png')} style={styles.avatar} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Announcements 📢</Text>
-        <Text style={styles.headerSub}>View notices and announcements</Text>
-      </View>
-
-      <View style={styles.filterRow}>
-        <TouchableOpacity style={styles.filterBtn}>
-          <Ionicons name="options-outline" size={16} color="#fff" />
-          <Text style={styles.filterBtnText}>Filter</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.weekBtn} onPress={() => setShowDropdown(true)}>
-          <Ionicons name="calendar-outline" size={16} color={COLORS.dark} />
-          <Text style={styles.weekBtnText}>{selectedFilter}</Text>
-          <Ionicons name="chevron-down" size={14} color={COLORS.dark} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.tabRow}>
-        {['All', 'Unread', 'Pinned'].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={styles.tab}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab}{tab === 'All' ? ` ${announcements.length}` : ''}
-            </Text>
-            {activeTab === tab && <View style={styles.tabUnderline} />}
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -396,21 +341,78 @@ export default function AnnouncementsScreen() {
             />
           }
         >
-          {filteredAnnouncements().length === 0 ? (
-            <Text style={styles.emptyText}>No announcements here.</Text>
-          ) : (
-            filteredAnnouncements().map((item) => (
-              <AnnouncementCard
-                key={item.id}
-                item={item}
-                onPress={() => openDetail(item)}
-              />
-            ))
-          )}
+          {/* ── Top Row ── */}
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+            </TouchableOpacity>
+            <View style={styles.topRowRight}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => router.push('/tenant/notifications')}
+              >
+                <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
+                <View style={styles.notifDot} />
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Image source={require('../../assets/def_icon.png')} style={styles.avatar} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ── Header Section ── */}
+          <View style={styles.headerSection}>
+            <Text style={styles.headerTitle}>Announcements 📢</Text>
+            <Text style={styles.headerSub}>View notices and announcements</Text>
+          </View>
+
+          {/* ── Filter Row ── */}
+          <View style={styles.filterRow}>
+            <TouchableOpacity style={styles.filterBtn}>
+              <Ionicons name="options-outline" size={16} color="#fff" />
+              <Text style={styles.filterBtnText}>Filter</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.weekBtn} onPress={() => setShowDropdown(true)}>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.dark} />
+              <Text style={styles.weekBtnText}>{selectedFilter}</Text>
+              <Ionicons name="chevron-down" size={14} color={COLORS.dark} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Tabs ── */}
+          <View style={styles.tabRow}>
+            {['All', 'Unread', 'Pinned'].map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={styles.tab}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                  {tab}{tab === 'All' ? ` ${announcements.length}` : ''}
+                </Text>
+                {activeTab === tab && <View style={styles.tabUnderline} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── Cards ── */}
+          <View style={{ paddingHorizontal: 16, gap: 12 }}>
+            {filteredAnnouncements().length === 0 ? (
+              <Text style={styles.emptyText}>No announcements here.</Text>
+            ) : (
+              filteredAnnouncements().map((item) => (
+                <AnnouncementCard
+                  key={item.id}
+                  item={item}
+                  onPress={() => openDetail(item)}
+                />
+              ))
+            )}
+          </View>
         </ScrollView>
       )}
 
-      {/* bottom nav */}
+      {/* ── Bottom Nav ── */}
       <View style={styles.bottomNav}>
         <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
         <NavItem iconName="person-outline" label="Visitor"    isActive={false} />
@@ -419,7 +421,7 @@ export default function AnnouncementsScreen() {
         <NavItem iconName="account-circle" label="Profile"    isActive={false} />
       </View>
 
-      {/* period filter dropdown */}
+      {/* ── Dropdown Modal ── */}
       <Modal
         visible={showDropdown}
         transparent
@@ -451,7 +453,7 @@ export default function AnnouncementsScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* announcement detail */}
+      {/* ── Detail Modal ── */}
       <AnnouncementDetail
         item={selectedItem}
         visible={showDetail}
@@ -471,12 +473,10 @@ const detailStyles = {
     paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFB6C1',
   },
   backBtn: {
     padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
   },
   headerTitle: {
     fontSize: moderateScale(16),
