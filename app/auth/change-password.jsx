@@ -95,6 +95,14 @@ export default function ChangePasswordScreen() {
             >
                 {/* top section */}
                 <View style={styles.topSection}>
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => router.replace('/auth/login')}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialIcons name="arrow-back-ios" size={18} color="#fff" />
+                    </TouchableOpacity>
+
                     <View style={styles.iconCircle}>
                         <MaterialIcons name="lock-reset" size={36} color="#fff" />
                     </View>
@@ -369,5 +377,17 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#fff',
         letterSpacing: 0.5,
+    },
+    backBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 4,
+        marginBottom: 20,
+    },
+    backText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#fff',
     },
 });
