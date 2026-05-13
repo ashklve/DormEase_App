@@ -83,20 +83,20 @@ const Toast = ({ visible, type, message }) => {
 
 // ── Password Input — real-time match indicator ────────────────────────────────
 const PwInput = ({ label, value, onChangeText, first = false, matchStatus = null }) => {
-  const [show,    setShow]    = useState(false);
+  const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
 
   const borderColor =
-    matchStatus === 'match'    ? COLORS.success :
-    matchStatus === 'mismatch' ? COLORS.danger  :
-    focused                    ? COLORS.primary :
-                                 COLORS.border;
+    matchStatus === 'match' ? COLORS.success :
+      matchStatus === 'mismatch' ? COLORS.danger :
+        focused ? COLORS.primary :
+          COLORS.border;
 
   const bgColor =
-    matchStatus === 'match'    ? '#F0FBF4' :
-    matchStatus === 'mismatch' ? '#FEF2F2' :
-    focused                    ? '#FBF0F4' :
-                                 COLORS.inputBg;
+    matchStatus === 'match' ? '#F0FBF4' :
+      matchStatus === 'mismatch' ? '#FEF2F2' :
+        focused ? '#FBF0F4' :
+          COLORS.inputBg;
 
   return (
     <View>
@@ -171,8 +171,8 @@ const EditableInfoRow = ({
   value,
   onChangeText,
   keyboardType = 'default',
-  error        = null,
-  last         = false,
+  error = null,
+  last = false,
 }) => {
   const [focused, setFocused] = useState(false);
   const hasError = !!error;
@@ -205,8 +205,8 @@ const EditableInfoRow = ({
                 borderBottomColor: hasError
                   ? COLORS.danger
                   : focused
-                  ? COLORS.primary
-                  : COLORS.border,
+                    ? COLORS.primary
+                    : COLORS.border,
                 paddingBottom: 2,
               },
             ]}
@@ -242,14 +242,14 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
   >
     {isCenter ? (
       <View style={styles.navCenterCircle}>
-        <MaterialIcons name={iconName} size={26} color={COLORS.white} />
+        <MaterialIcons name={iconName} size={26} color="#FFFFFF" />
       </View>
     ) : (
       <>
         <MaterialIcons
           name={iconName}
           size={24}
-          color={isActive ? COLORS.primary : COLORS.muted}
+          color={isActive ? COLORS.primary : '#9E9E9E'}
         />
         <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
           {label}
@@ -263,24 +263,24 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function ProfileScreen() {
   const router = useRouter();
 
-  const [user,     setUser]     = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
 
   // ── Contact edit state
-  const [email,         setEmail]         = useState('');
+  const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
-  const [emailError,    setEmailError]    = useState('');
-  const [phoneError,    setPhoneError]    = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   // ── Password state
   const [currentPw, setCurrentPw] = useState('');
-  const [newPw,     setNewPw]     = useState('');
+  const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
 
-  const [toast,    setToast]    = useState({ visible: false, type: 'success', message: '' });
-  const toastTimer              = useRef(null);
+  const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
+  const toastTimer = useRef(null);
 
   useEffect(() => {
     fetchProfile();
@@ -338,13 +338,13 @@ export default function ProfileScreen() {
     const eErr = !email
       ? 'Email cannot be empty.'
       : !isValidEmail(email)
-      ? 'Enter a valid email address (must include @).'
-      : '';
+        ? 'Enter a valid email address (must include @).'
+        : '';
     const pErr = !contactNumber
       ? 'Contact number cannot be empty.'
       : contactNumber.length !== 11
-      ? 'Contact number must be exactly 11 digits.'
-      : '';
+        ? 'Contact number must be exactly 11 digits.'
+        : '';
 
     setEmailError(eErr);
     setPhoneError(pErr);
@@ -368,7 +368,7 @@ export default function ProfileScreen() {
   // ── Password match indicator (only on confirm field)
   const pwMatchStatus =
     confirmPw.length === 0 ? null :
-    confirmPw === newPw    ? 'match' : 'mismatch';
+      confirmPw === newPw ? 'match' : 'mismatch';
 
   // ── Change password
   const handleChangePassword = async () => {
@@ -452,12 +452,12 @@ export default function ProfileScreen() {
     );
   }
 
-  const avatarUri    = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
-  const statusKey    = user?.status || 'inactive';
-  const sc           = statusColors[statusKey] || statusColors.inactive;
-  const isTemp       = user?.is_temp_password === 1 || user?.is_temp_password === true;
+  const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
+  const statusKey = user?.status || 'inactive';
+  const sc = statusColors[statusKey] || statusColors.inactive;
+  const isTemp = user?.is_temp_password === 1 || user?.is_temp_password === true;
   const contactDirty =
-    email         !== (user?.email          || '') ||
+    email !== (user?.email || '') ||
     contactNumber !== (user?.contact_number || '');
 
   return (

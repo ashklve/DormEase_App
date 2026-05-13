@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { clearSession, loadSession } from '../../api/auth';
 import client from '../../api/client';
+import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -19,7 +20,6 @@ const defaultUser = {
     roomCode: '',
     currentBill: '0.00',
     pendingRequests: 0,
-    profilePhoto: null,
 };
 
 // shows good morning / afternoon / evening based on current time
@@ -104,6 +104,8 @@ const Dashboard = () => {
     const router = useRouter();
     const greeting = getGreeting();
 
+    const { user, avatarUri } = useUser();
+
     // ── load real user data from AsyncStorage ─────────────────────────────────
     const [userData, setUserData] = useState(defaultUser);
 
@@ -122,7 +124,6 @@ const Dashboard = () => {
                 roomCode: u.room ? `R${u.room}-01` : '',
                 currentBill: '0.00',
                 pendingRequests: 0,
-                profilePhoto: u.profile_photo ?? null,
             });
         };
         loadUser();
@@ -147,6 +148,11 @@ const Dashboard = () => {
 
     // controls which bottom tab is active
     const [activeTab, setActiveTab] = useState('home');
+    useFocusEffect(
+        useCallback(() => {
+            setActiveTab('home');
+        }, [])
+    );
 
     // controls if the drawer is open or closed
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -158,9 +164,7 @@ const Dashboard = () => {
     const drawerAnim = useRef(new Animated.Value(-400)).current;
 
     // if user has a photo from the database use it, otherwise use the default
-    const photoSource = userData.profilePhoto
-        ? { uri: userData.profilePhoto }
-        : defaultPhoto;
+    const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
     // slides the drawer in from the left
     const openDrawer = () => {
