@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   TextInput,
   Animated,
-  Platform,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,9 +26,13 @@ const buildAvatarUrl = (path) => {
 
 const fmt = (d) => {
   if (!d) return 'N/A';
-  const dt = new Date(d);
-  return dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(d).toLocaleDateString('en-PH', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  });
 };
+
+const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+const isValidPhone = (v) => /^[0-9]{11}$/.test(v.trim());
 
 const statusColors = {
   active: { bg: '#E8F8EF', text: '#1A6E3C' },
@@ -60,31 +63,45 @@ const Toast = ({ visible, type, message }) => {
   }, [visible]);
 
   if (!visible) return null;
-  const isSuccess = type === 'success';
+  const ok = type === 'success';
 
   return (
-    <Animated.View style={[styles.toast, isSuccess ? styles.toastSuccess : styles.toastError, { opacity }]}>
+    <Animated.View
+      style={[styles.toast, ok ? styles.toastSuccess : styles.toastError, { opacity }]}
+    >
       <Ionicons
-        name={isSuccess ? 'checkmark-circle' : 'alert-circle'}
+        name={ok ? 'checkmark-circle' : 'alert-circle'}
         size={18}
-        color={isSuccess ? COLORS.success : COLORS.danger}
+        color={ok ? COLORS.success : COLORS.danger}
       />
-      <Text style={[styles.toastText, isSuccess ? styles.toastTextSuccess : styles.toastTextError]}>
+      <Text style={[styles.toastText, ok ? styles.toastTextSuccess : styles.toastTextError]}>
         {message}
       </Text>
     </Animated.View>
   );
 };
 
-// ── Password Input ────────────────────────────────────────────────────────────
-const PwInput = ({ label, value, onChangeText, first = false }) => {
-  const [show, setShow] = useState(false);
+// ── Password Input — real-time match indicator ────────────────────────────────
+const PwInput = ({ label, value, onChangeText, first = false, matchStatus = null }) => {
+  const [show,    setShow]    = useState(false);
   const [focused, setFocused] = useState(false);
+
+  const borderColor =
+    matchStatus === 'match'    ? COLORS.success :
+    matchStatus === 'mismatch' ? COLORS.danger  :
+    focused                    ? COLORS.primary :
+                                 COLORS.border;
+
+  const bgColor =
+    matchStatus === 'match'    ? '#F0FBF4' :
+    matchStatus === 'mismatch' ? '#FEF2F2' :
+    focused                    ? '#FBF0F4' :
+                                 COLORS.inputBg;
 
   return (
     <View>
       <Text style={first ? styles.inputLabel_first : styles.inputLabel}>{label}</Text>
-      <View style={[styles.inputWrapper, focused && styles.inputWrapperFocused]}>
+      <View style={[styles.inputWrapper, { borderColor, backgroundColor: bgColor }]}>
         <TextInput
           style={styles.textInput}
           value={value}
@@ -96,15 +113,45 @@ const PwInput = ({ label, value, onChangeText, first = false }) => {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
+        {matchStatus === 'match' && (
+          <Ionicons
+            name="checkmark-circle"
+            size={18}
+            color={COLORS.success}
+            style={{ marginRight: 6 }}
+          />
+        )}
+        {matchStatus === 'mismatch' && (
+          <Ionicons
+            name="close-circle"
+            size={18}
+            color={COLORS.danger}
+            style={{ marginRight: 6 }}
+          />
+        )}
         <TouchableOpacity style={styles.eyeBtn} onPress={() => setShow((p) => !p)}>
-          <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={18} color={COLORS.muted} />
+          <Ionicons
+            name={show ? 'eye-off-outline' : 'eye-outline'}
+            size={18}
+            color={COLORS.muted}
+          />
         </TouchableOpacity>
       </View>
+      {matchStatus === 'match' && (
+        <Text style={{ fontSize: 11, color: COLORS.success, marginTop: 3, marginLeft: 2 }}>
+          ✓ Passwords match
+        </Text>
+      )}
+      {matchStatus === 'mismatch' && (
+        <Text style={{ fontSize: 11, color: COLORS.danger, marginTop: 3, marginLeft: 2 }}>
+          Passwords do not match
+        </Text>
+      )}
     </View>
   );
 };
 
-// ── Info Row ──────────────────────────────────────────────────────────────────
+// ── Read-only Info Row ────────────────────────────────────────────────────────
 const InfoRow = ({ icon, label, value, last = false }) => (
   <View style={[styles.infoRow, last && styles.infoRowLast]}>
     <View style={styles.infoIconWrapper}>
@@ -117,32 +164,72 @@ const InfoRow = ({ icon, label, value, last = false }) => (
   </View>
 );
 
-// ── Editable Info Row ─────────────────────────────────────────────────────────
-const EditableInfoRow = ({ icon, label, value, onChangeText, keyboardType = 'default', last = false }) => {
+// ── Editable Info Row — inline validation, NO auto-save on blur ───────────────
+const EditableInfoRow = ({
+  icon,
+  label,
+  value,
+  onChangeText,
+  keyboardType = 'default',
+  error        = null,
+  last         = false,
+}) => {
   const [focused, setFocused] = useState(false);
+  const hasError = !!error;
 
   return (
-    <View style={[styles.infoRow, last && styles.infoRowLast]}>
-      <View style={styles.infoIconWrapper}>
-        <Ionicons name={icon} size={18} color={COLORS.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <TextInput
-          style={[
-            styles.infoValue,
-            focused && { borderBottomWidth: 1, borderBottomColor: COLORS.primary },
-          ]}
-          value={value}
-          onChangeText={onChangeText}
-          keyboardType={keyboardType}
-          autoCapitalize="none"
-          placeholderTextColor={COLORS.muted}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+    <View
+      style={[
+        styles.infoRow,
+        last && styles.infoRowLast,
+        { flexDirection: 'column', alignItems: 'stretch', paddingBottom: hasError ? 6 : 14 },
+      ]}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={styles.infoIconWrapper}>
+          <Ionicons
+            name={icon}
+            size={18}
+            color={hasError ? COLORS.danger : COLORS.primary}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.infoLabel, hasError && { color: COLORS.danger }]}>
+            {label}
+          </Text>
+          <TextInput
+            style={[
+              styles.infoValue,
+              {
+                borderBottomWidth: 1,
+                borderBottomColor: hasError
+                  ? COLORS.danger
+                  : focused
+                  ? COLORS.primary
+                  : COLORS.border,
+                paddingBottom: 2,
+              },
+            ]}
+            value={value}
+            onChangeText={onChangeText}
+            keyboardType={keyboardType}
+            autoCapitalize="none"
+            placeholderTextColor={COLORS.muted}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+          />
+        </View>
+        <Ionicons
+          name={hasError ? 'alert-circle-outline' : 'pencil-outline'}
+          size={15}
+          color={hasError ? COLORS.danger : COLORS.muted}
         />
       </View>
-      <Ionicons name="pencil-outline" size={15} color={COLORS.muted} />
+      {hasError && (
+        <Text style={{ fontSize: 11, color: COLORS.danger, marginTop: 4, marginLeft: 48 }}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 };
@@ -176,19 +263,24 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function ProfileScreen() {
   const router = useRouter();
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [user,     setUser]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
 
-  const [email, setEmail] = useState('');
+  // ── Contact edit state
+  const [email,         setEmail]         = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [emailError,    setEmailError]    = useState('');
+  const [phoneError,    setPhoneError]    = useState('');
 
+  // ── Password state
   const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
+  const [newPw,     setNewPw]     = useState('');
   const [confirmPw, setConfirmPw] = useState('');
 
-  const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
-  const toastTimer = useRef(null);
+  const [toast,    setToast]    = useState({ visible: false, type: 'success', message: '' });
+  const toastTimer              = useRef(null);
 
   useEffect(() => {
     fetchProfile();
@@ -198,9 +290,13 @@ export default function ProfileScreen() {
   const showToast = (type, message) => {
     setToast({ visible: true, type, message });
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
+    toastTimer.current = setTimeout(
+      () => setToast((t) => ({ ...t, visible: false })),
+      3500,
+    );
   };
 
+  // ── Fetch profile
   const fetchProfile = async () => {
     try {
       setLoading(true);
@@ -215,11 +311,45 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdateContact = async () => {
-    if (!email) {
-      showToast('error', 'Email cannot be empty.');
+  // ── Live validation — contact fields
+  const handleEmailChange = (v) => {
+    setEmail(v);
+    if (!v) {
+      setEmailError('Email cannot be empty.');
       return;
     }
+    setEmailError(
+      isValidEmail(v) ? '' : 'Enter a valid email address (must include @).',
+    );
+  };
+
+  const handlePhoneChange = (v) => {
+    const digits = v.replace(/[^0-9]/g, ''); // digits only
+    setContactNumber(digits);
+    if (!digits) {
+      setPhoneError('Contact number cannot be empty.');
+      return;
+    }
+    setPhoneError(digits.length === 11 ? '' : 'Contact number must be exactly 11 digits.');
+  };
+
+  // ── Save contact info — only on explicit button press
+  const handleUpdateContact = async () => {
+    const eErr = !email
+      ? 'Email cannot be empty.'
+      : !isValidEmail(email)
+      ? 'Enter a valid email address (must include @).'
+      : '';
+    const pErr = !contactNumber
+      ? 'Contact number cannot be empty.'
+      : contactNumber.length !== 11
+      ? 'Contact number must be exactly 11 digits.'
+      : '';
+
+    setEmailError(eErr);
+    setPhoneError(pErr);
+    if (eErr || pErr) return;
+
     try {
       setSaving(true);
       await client.post('/profile/update', {
@@ -229,13 +359,18 @@ export default function ProfileScreen() {
       setUser((prev) => ({ ...prev, email, contact_number: contactNumber }));
       showToast('success', 'Contact info updated successfully!');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to update contact info.';
-      showToast('error', msg);
+      showToast('error', err.response?.data?.message || 'Failed to update contact info.');
     } finally {
       setSaving(false);
     }
   };
 
+  // ── Password match indicator (only on confirm field)
+  const pwMatchStatus =
+    confirmPw.length === 0 ? null :
+    confirmPw === newPw    ? 'match' : 'mismatch';
+
+  // ── Change password
   const handleChangePassword = async () => {
     if (!currentPw || !newPw || !confirmPw) {
       showToast('error', 'Please fill in all password fields.');
@@ -246,42 +381,40 @@ export default function ProfileScreen() {
       return;
     }
     if (newPw !== confirmPw) {
-      showToast('error', 'New passwords do not match.');
+      showToast('error', 'Passwords do not match. Please check and try again.');
       return;
     }
     try {
-      setSaving(true);
+      setSavingPw(true);
       await client.post('/change-password', {
         current_password: currentPw,
         new_password: newPw,
         new_password_confirmation: confirmPw,
       });
-      showToast('success', 'Password updated successfully!');
+      showToast('success', 'Password changed successfully! 🎉');
       setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to update password.';
-      showToast('error', msg);
+      showToast('error', err.response?.data?.message || 'Failed to update password.');
     } finally {
-      setSaving(false);
+      setSavingPw(false);
     }
   };
 
+  // ── Pick & upload profile photo
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       showToast('error', 'Permission to access camera roll is required.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
     });
-
     if (result.canceled) return;
 
     const asset = result.assets[0];
@@ -295,21 +428,19 @@ export default function ProfileScreen() {
     try {
       setSaving(true);
       const res = await client.post('/profile/photo', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Accept': 'application/json',
-        },
+        headers: { 'Content-Type': 'multipart/form-data', Accept: 'application/json' },
         transformRequest: (data) => data,
       });
       setUser((prev) => ({ ...prev, profile_photo: res.data.profile_photo }));
       showToast('success', 'Profile photo updated!');
-    } catch (err) {
+    } catch {
       showToast('error', 'Failed to upload photo.');
     } finally {
       setSaving(false);
     }
   };
 
+  // ── Loading screen
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
@@ -321,10 +452,13 @@ export default function ProfileScreen() {
     );
   }
 
-  const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
-  const statusKey = user?.status || 'inactive';
-  const sc = statusColors[statusKey] || statusColors.inactive;
-  const isTemp = user?.is_temp_password === 1 || user?.is_temp_password === true;
+  const avatarUri    = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
+  const statusKey    = user?.status || 'inactive';
+  const sc           = statusColors[statusKey] || statusColors.inactive;
+  const isTemp       = user?.is_temp_password === 1 || user?.is_temp_password === true;
+  const contactDirty =
+    email         !== (user?.email          || '') ||
+    contactNumber !== (user?.contact_number || '');
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -333,6 +467,7 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ── Top Row ── */}
         <View style={styles.topRow}>
@@ -368,7 +503,7 @@ export default function ProfileScreen() {
           <Text style={styles.heroName}>
             {user?.first_name} {user?.last_name}
           </Text>
-          <Text style={styles.heroEmail}>{email}</Text>
+          <Text style={styles.heroEmail}>{user?.email}</Text>
           <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
             <Text style={[styles.statusText, { color: sc.text }]}>
               {statusLabels[statusKey]}
@@ -376,7 +511,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── Temp password warning banner ── */}
+        {/* ── Temporary password warning banner ── */}
         {isTemp && (
           <View style={styles.tempBanner}>
             <Ionicons name="warning-outline" size={20} color="#D4A017" />
@@ -389,48 +524,77 @@ export default function ProfileScreen() {
         {/* ── Toast ── */}
         <Toast visible={toast.visible} type={toast.type} message={toast.message} />
 
-        {/* ── Residence Info ── */}
+        {/* ── Residence Info (read-only) ── */}
         <Text style={styles.sectionLabel}>Residence</Text>
         <View style={styles.infoCard}>
-          <InfoRow icon="bed-outline" label="Room number" value={user?.room_number} />
-          <InfoRow icon="business-outline" label="Floor" value={user?.floor != null ? `Floor ${user.floor}` : null} />
-          <InfoRow icon="home-outline" label="Stay type" value={user?.stay_type} />
-          <InfoRow icon="calendar-outline" label="Move-in date" value={fmt(user?.move_in_date)} />
-          <InfoRow icon="calendar-clear-outline" label="Move-out date" value={fmt(user?.move_out_date)} last />
+          <InfoRow
+            icon="bed-outline"
+            label="Room number"
+            value={user?.room_number}
+          />
+          <InfoRow
+            icon="business-outline"
+            label="Floor"
+            value={user?.floor != null ? `Floor ${user.floor}` : null}
+          />
+          <InfoRow
+            icon="home-outline"
+            label="Stay type"
+            value={user?.stay_type}
+          />
+          <InfoRow
+            icon="calendar-outline"
+            label="Move-in date"
+            value={fmt(user?.move_in_date)}
+          />
+          <InfoRow
+            icon="calendar-clear-outline"
+            label="Move-out date"
+            value={fmt(user?.move_out_date)}
+            last
+          />
         </View>
 
-        {/* ── Contact Info ── */}
+        {/* ── Contact Info (editable — saved only when button pressed) ── */}
         <Text style={styles.sectionLabel}>Contact</Text>
         <View style={styles.infoCard}>
           <EditableInfoRow
             icon="call-outline"
             label="Contact number"
             value={contactNumber}
-            onChangeText={setContactNumber}
+            onChangeText={handlePhoneChange}
             keyboardType="phone-pad"
+            error={phoneError}
           />
           <EditableInfoRow
             icon="mail-outline"
             label="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
             keyboardType="email-address"
+            error={emailError}
             last
           />
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-          onPress={handleUpdateContact}
-          disabled={saving}
-          activeOpacity={0.85}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={COLORS.white} />
-          ) : (
-            <Text style={styles.saveBtnText}>Save Contact Info</Text>
-          )}
-        </TouchableOpacity>
+        {/* Save Contact button — only visible when something changed */}
+        {contactDirty && (
+          <TouchableOpacity
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            onPress={handleUpdateContact}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="save-outline" size={18} color={COLORS.white} />
+                <Text style={styles.saveBtnText}>Save Contact Info</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* ── Change Password ── */}
         <Text style={styles.sectionLabel}>Change password</Text>
@@ -446,34 +610,69 @@ export default function ProfileScreen() {
             value={newPw}
             onChangeText={setNewPw}
           />
+          {/* Confirm field shows live match / mismatch indicator */}
           <PwInput
             label="Confirm new password"
             value={confirmPw}
             onChangeText={setConfirmPw}
+            matchStatus={pwMatchStatus}
           />
         </View>
 
+        {/* Update Password button — disabled while passwords mismatch */}
         <TouchableOpacity
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          style={[
+            styles.saveBtn,
+            (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled,
+          ]}
           onPress={handleChangePassword}
-          disabled={saving}
+          disabled={savingPw || pwMatchStatus === 'mismatch'}
           activeOpacity={0.85}
         >
-          {saving ? (
+          {savingPw ? (
             <ActivityIndicator size="small" color={COLORS.white} />
           ) : (
-            <Text style={styles.saveBtnText}>Update Password</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
+              <Text style={styles.saveBtnText}>Update Password</Text>
+            </View>
           )}
         </TouchableOpacity>
+
       </ScrollView>
 
       {/* ── Bottom Nav ── */}
       <View style={styles.bottomNav}>
-        <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-        <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
-        <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
-        <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-        <NavItem iconName="account-circle" label="Profile" isActive={true} onPress={() => router.push('/tenant/profile')} />
+        <NavItem
+          iconName="home"
+          label="Home"
+          isActive={false}
+          onPress={() => router.push('/tenant/dashboard')}
+        />
+        <NavItem
+          iconName="person-outline"
+          label="Visitor"
+          isActive={false}
+          onPress={() => router.push('/tenant/visitors')}
+        />
+        <NavItem
+          iconName="warning"
+          label="Emergency"
+          isCenter
+          onPress={() => router.push('/tenant/emergency')}
+        />
+        <NavItem
+          iconName="water-drop"
+          label="Water Bill"
+          isActive={false}
+          onPress={() => router.push('/tenant/water-bill')}
+        />
+        <NavItem
+          iconName="account-circle"
+          label="Profile"
+          isActive
+          onPress={() => router.push('/tenant/profile')}
+        />
       </View>
     </SafeAreaView>
   );
