@@ -10,6 +10,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { clearSession, loadSession } from '../../api/auth';
 import styles, { COLORS } from '../constants/announcementsstyles';
+import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -47,6 +48,7 @@ const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron
 // ─────────────────────────────────────────────────────────────────────────────
 const DrawerMenu = React.forwardRef((_props, ref) => {
     const router = useRouter();
+    const { user, avatarUri } = useUser();
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [documentsExpanded, setDocumentsExpanded] = useState(false);
@@ -72,9 +74,7 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
         loadUser();
     }, []);
 
-    const photoSource = userData.profilePhoto
-        ? { uri: userData.profilePhoto }
-        : defaultPhoto;
+    const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
     const open = () => {
         setDrawerOpen(true);

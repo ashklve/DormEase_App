@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import client from '../../api/client';
+import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -48,10 +49,10 @@ const PURPOSE_OPTIONS = [
 
 // ── Status badge color map ────────────────────────────────────────────────────
 const STATUS_STYLE = {
-    approved:  { bg: '#D4EDDA', text: '#28A745' },
-    pending:   { bg: '#FFF3CD', text: '#D4A017' },
-    inside:    { bg: '#CCE5FF', text: '#004085' },
-    rejected:  { bg: '#F8D7DA', text: '#721C24' },
+    approved: { bg: '#D4EDDA', text: '#28A745' },
+    pending: { bg: '#FFF3CD', text: '#D4A017' },
+    inside: { bg: '#CCE5FF', text: '#004085' },
+    rejected: { bg: '#F8D7DA', text: '#721C24' },
     completed: { bg: '#E2E3E5', text: '#383D41' },
 };
 
@@ -203,39 +204,40 @@ const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function VisitorsScreen() {
-    const router    = useRouter();
+    const router = useRouter();
+    const { user, avatarUri } = useUser();
     const drawerRef = useRef(null);
 
     // ── API data
-    const [visitors,      setVisitors]      = useState([]);
+    const [visitors, setVisitors] = useState([]);
     const [visitorsToday, setVisitorsToday] = useState(0);
-    const [activePasses,  setActivePasses]  = useState(0);
-    const [loading,       setLoading]       = useState(true);
-    const [refreshing,    setRefreshing]    = useState(false);
-    const [submitting,    setSubmitting]    = useState(false);
+    const [activePasses, setActivePasses] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     // ── Form state
-    const [fullName,     setFullName]     = useState('');
-    const [contactNo,    setContactNo]    = useState('');
-    const [purpose,      setPurpose]      = useState('');
-    const [purposeOpen,  setPurposeOpen]  = useState(false);
-    const [idType,       setIdType]       = useState('');
-    const [idTypeOpen,   setIdTypeOpen]   = useState(false);
+    const [fullName, setFullName] = useState('');
+    const [contactNo, setContactNo] = useState('');
+    const [purpose, setPurpose] = useState('');
+    const [purposeOpen, setPurposeOpen] = useState(false);
+    const [idType, setIdType] = useState('');
+    const [idTypeOpen, setIdTypeOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
 
     // ── Date & Time
     const [selectedDateTime, setSelectedDateTime] = useState(new Date());
-    const [showDatePicker,   setShowDatePicker]   = useState(false);
-    const [showTimePicker,   setShowTimePicker]   = useState(false);
-    const [tempDateTime,     setTempDateTime]     = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [tempDateTime, setTempDateTime] = useState(new Date());
 
     // ── Fetch visitors ────────────────────────────────────────────────────────
     const fetchVisitors = async () => {
         try {
             const res = await client.get('/visitors');
-            setVisitors(res.data.logs            ?? []);
+            setVisitors(res.data.logs ?? []);
             setVisitorsToday(res.data.visitors_today ?? 0);
-            setActivePasses(res.data.active_passes   ?? 0);
+            setActivePasses(res.data.active_passes ?? 0);
         } catch (err) {
             console.error('fetch visitors error:', err.message);
             Alert.alert('Error', 'Failed to load visitor logs.');
@@ -339,17 +341,17 @@ export default function VisitorsScreen() {
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('visitor_name',  fullName.trim());
-            formData.append('contact_no',    contactNo.trim());
-            formData.append('purpose',       purpose);
-            formData.append('id_type',       idType);
+            formData.append('visitor_name', fullName.trim());
+            formData.append('contact_no', contactNo.trim());
+            formData.append('purpose', purpose);
+            formData.append('id_type', idType);
             formData.append('date_of_visit', formatSQLDate(selectedDateTime));
             formData.append('time_of_visit', formatSQLTime(selectedDateTime));
 
             if (uploadedFile) {
-                const filename  = uploadedFile.split('/').pop();
+                const filename = uploadedFile.split('/').pop();
                 const extension = filename.split('.').pop().toLowerCase();
-                const mimeType  = extension === 'png' ? 'image/png' : 'image/jpeg';
+                const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
                 formData.append('id_photo', { uri: uploadedFile, name: filename, type: mimeType });
             }
 
@@ -408,7 +410,10 @@ export default function VisitorsScreen() {
                             <View style={styles.notifDot} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                            <Image source={defaultPhoto} style={styles.avatar} />
+                            <Image
+                                source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                style={styles.avatar}
+                            />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -658,11 +663,11 @@ export default function VisitorsScreen() {
 
             {/* ── Bottom Nav ── */}
             <View style={styles.bottomNav}>
-                <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor"    isActive={true}  onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning"        label="Emergency"  isCenter         onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop"     label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile"    isActive={false} onPress={() => router.push('/tenant/profile')} />
+                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+                <NavItem iconName="person-outline" label="Visitor" isActive={true} onPress={() => router.push('/tenant/visitors')} />
+                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
+                <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
             {/* ── Drawer ── */}
