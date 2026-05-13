@@ -12,20 +12,27 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    Modal,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
-import DatePickerModal from '../../src/components/DatePickerModal';
-import TimePickerInput from '../../src/components/TimePickerInput';
-import * as ImagePicker from 'expo-image-picker';
 import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-const ID_TYPES = ['Government ID', 'Passport', "Driver's License", 'SSS / GSIS', 'PhilHealth', 'School ID'];
+const ID_TYPES = [
+    'Government ID',
+    'Passport',
+    "Driver's License",
+    'SSS / GSIS',
+    'PhilHealth',
+    'School ID',
+];
 
 const PURPOSE_OPTIONS = [
     'Family Visit',
@@ -39,13 +46,26 @@ const PURPOSE_OPTIONS = [
     'Others',
 ];
 
-// ── status badge color map ────────────────────────────────────────────────────
+// ── Status badge color map ────────────────────────────────────────────────────
 const STATUS_STYLE = {
     approved: { bg: '#D4EDDA', text: '#28A745' },
-    pending: { bg: '#FFF3CD', text: '#D4A017' },
-    inside: { bg: '#CCE5FF', text: '#004085' },
+    pending:  { bg: '#FFF3CD', text: '#D4A017' },
+    inside:   { bg: '#CCE5FF', text: '#004085' },
     rejected: { bg: '#F8D7DA', text: '#721C24' },
 };
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+const formatDisplayDate = (d) =>
+    d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+
+const formatSQLDate = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const formatDisplayTime = (d) =>
+    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+const formatSQLTime = (d) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -75,7 +95,8 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 // ── Visitor Card ──────────────────────────────────────────────────────────────
 const VisitorCard = ({ item, onCheckout }) => {
     const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
-    const canCheckout = item.status === 'inside' ||
+    const canCheckout =
+        item.status === 'inside' ||
         (item.status === 'pending' && !item.departure_time);
 
     return (
@@ -112,42 +133,77 @@ const VisitorCard = ({ item, onCheckout }) => {
     );
 };
 
+// ── iOS DateTime Modal (spinner stays open until Done) ────────────────────────
+const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
+    <Modal transparent animationType="slide" visible={visible}>
+        <View style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0,0,0,0.3)',
+        }}>
+            <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                {/* Toolbar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'flex-end',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#eee',
+                }}>
+                    <TouchableOpacity onPress={onDone}>
+                        <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done</Text>
+                    </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                    value={value}
+                    mode={mode}
+                    display="spinner"
+                    onChange={onChange}
+                    style={{ height: 200 }}
+                    textColor="#000"
+                />
+            </View>
+        </View>
+    </Modal>
+);
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function VisitorsScreen() {
-    const router = useRouter();
+    const router    = useRouter();
     const drawerRef = useRef(null);
 
-    // ── API data ──────────────────────────────────────────────────────────────
-    const [visitors, setVisitors] = useState([]);
+    // ── API data
+    const [visitors,      setVisitors]      = useState([]);
     const [visitorsToday, setVisitorsToday] = useState(0);
-    const [activePasses, setActivePasses] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+    const [activePasses,  setActivePasses]  = useState(0);
+    const [loading,       setLoading]       = useState(true);
+    const [refreshing,    setRefreshing]    = useState(false);
+    const [submitting,    setSubmitting]    = useState(false);
 
-    // ── form state ────────────────────────────────────────────────────────────
-    const [fullName, setFullName] = useState('');
-    const [contactNo, setContactNo] = useState('');
-    const [purpose, setPurpose] = useState('');
-    const [purposeOpen, setPurposeOpen] = useState(false);
-    const [idType, setIdType] = useState('');
-    const [idTypeOpen, setIdTypeOpen] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState(null); // local uri
-    const [dateOfVisit, setDateOfVisit] = useState(
-        new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
-    );
-    const [timeOfVisit, setTimeOfVisit] = useState(
-        new Date().toTimeString().slice(0, 5)
-    );
-    const [dateModalVisible, setDateModalVisible] = useState(false);
+    // ── Form state
+    const [fullName,     setFullName]     = useState('');
+    const [contactNo,    setContactNo]    = useState('');
+    const [purpose,      setPurpose]      = useState('');
+    const [purposeOpen,  setPurposeOpen]  = useState(false);
+    const [idType,       setIdType]       = useState('');
+    const [idTypeOpen,   setIdTypeOpen]   = useState(false);
+    const [uploadedFile, setUploadedFile] = useState(null);
 
-    // ── fetch visitors ────────────────────────────────────────────────────────
+    // ── Date & Time — single Date object for both ─────────────────────────────
+    const [selectedDateTime,  setSelectedDateTime]  = useState(new Date());
+    const [showDatePicker,    setShowDatePicker]    = useState(false);
+    const [showTimePicker,    setShowTimePicker]    = useState(false);
+    // iOS: hold temp value until "Done"
+    const [tempDateTime,      setTempDateTime]      = useState(new Date());
+
+    // ── Fetch visitors ────────────────────────────────────────────────────────
     const fetchVisitors = async () => {
         try {
             const res = await client.get('/visitors');
-            setVisitors(res.data.logs ?? []);
+            setVisitors(res.data.logs           ?? []);
             setVisitorsToday(res.data.visitors_today ?? 0);
-            setActivePasses(res.data.active_passes ?? 0);
+            setActivePasses(res.data.active_passes   ?? 0);
         } catch (err) {
             console.error('fetch visitors error:', err.message);
             Alert.alert('Error', 'Failed to load visitor logs.');
@@ -157,7 +213,6 @@ export default function VisitorsScreen() {
         }
     };
 
-    // reload every time the screen comes into focus
     useFocusEffect(
         useCallback(() => {
             setLoading(true);
@@ -170,24 +225,75 @@ export default function VisitorsScreen() {
         fetchVisitors();
     }, []);
 
-    // ── image picker ──────────────────────────────────────────────────────────
+    // ── Android date/time onChange ────────────────────────────────────────────
+    const onAndroidDateChange = (event, date) => {
+        setShowDatePicker(false);
+        if (event.type === 'dismissed' || !date) return;
+        setSelectedDateTime((prev) => {
+            const next = new Date(prev);
+            next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+            return next;
+        });
+    };
+
+    const onAndroidTimeChange = (event, date) => {
+        setShowTimePicker(false);
+        if (event.type === 'dismissed' || !date) return;
+        setSelectedDateTime((prev) => {
+            const next = new Date(prev);
+            next.setHours(date.getHours(), date.getMinutes(), 0);
+            return next;
+        });
+    };
+
+    // ── iOS onChange (spinner, no confirm yet) ────────────────────────────────
+    const onIOSChange = (event, date) => {
+        if (date) setTempDateTime(date);
+    };
+
+    const openDatePicker = () => {
+        setTempDateTime(new Date(selectedDateTime));
+        setShowDatePicker(true);
+    };
+
+    const openTimePicker = () => {
+        setTempDateTime(new Date(selectedDateTime));
+        setShowTimePicker(true);
+    };
+
+    const confirmIOSDate = () => {
+        setSelectedDateTime((prev) => {
+            const next = new Date(prev);
+            next.setFullYear(tempDateTime.getFullYear(), tempDateTime.getMonth(), tempDateTime.getDate());
+            return next;
+        });
+        setShowDatePicker(false);
+    };
+
+    const confirmIOSTime = () => {
+        setSelectedDateTime((prev) => {
+            const next = new Date(prev);
+            next.setHours(tempDateTime.getHours(), tempDateTime.getMinutes(), 0);
+            return next;
+        });
+        setShowTimePicker(false);
+    };
+
+    // ── Image picker ──────────────────────────────────────────────────────────
     const handleUpload = async () => {
         try {
             const permissionResult =
                 await ImagePicker.requestMediaLibraryPermissionsAsync();
-
             if (!permissionResult.granted) {
                 Alert.alert('Permission Required', 'Permission to access gallery is required!');
                 return;
             }
-
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 0.8,
             });
-
             if (!result.canceled) {
                 setUploadedFile(result.assets[0].uri);
             }
@@ -196,7 +302,7 @@ export default function VisitorsScreen() {
         }
     };
 
-    // ── submit new visitor ────────────────────────────────────────────────────
+    // ── Submit new visitor ────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!fullName.trim()) {
             Alert.alert('Validation', 'Full name is required.');
@@ -205,25 +311,23 @@ export default function VisitorsScreen() {
 
         setSubmitting(true);
         try {
-            // use FormData so we can attach the id_photo file
-            // convert MM/DD/YYYY display format → YYYY-MM-DD for MySQL
-            const [month, day, year] = dateOfVisit.split('/');
-            const sqlDate = `${year}-${month}-${day}`;
+            const sqlDate = formatSQLDate(selectedDateTime);
+            const sqlTime = formatSQLTime(selectedDateTime);
 
             const formData = new FormData();
-            formData.append('visitor_name', fullName.trim());
-            formData.append('contact_no', contactNo.trim());
-            formData.append('purpose', purpose);
-            formData.append('id_type', idType);
+            formData.append('visitor_name',  fullName.trim());
+            formData.append('contact_no',    contactNo.trim());
+            formData.append('purpose',       purpose);
+            formData.append('id_type',       idType);
             formData.append('date_of_visit', sqlDate);
-            formData.append('time_of_visit', timeOfVisit);
+            formData.append('time_of_visit', sqlTime);
 
             if (uploadedFile) {
-                const filename = uploadedFile.split('/').pop();
+                const filename  = uploadedFile.split('/').pop();
                 const extension = filename.split('.').pop().toLowerCase();
-                const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
+                const mimeType  = extension === 'png' ? 'image/png' : 'image/jpeg';
                 formData.append('id_photo', {
-                    uri: uploadedFile,
+                    uri:  uploadedFile,
                     name: filename,
                     type: mimeType,
                 });
@@ -233,16 +337,16 @@ export default function VisitorsScreen() {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            // prepend to list and bump today's counter
             setVisitors((prev) => [res.data.visitor, ...prev]);
             setVisitorsToday((prev) => prev + 1);
 
-            // reset form
+            // Reset form
             setFullName('');
             setContactNo('');
             setPurpose('');
             setIdType('');
             setUploadedFile(null);
+            setSelectedDateTime(new Date());
 
             Alert.alert('Success', 'Visitor registered successfully.');
         } catch (err) {
@@ -257,7 +361,7 @@ export default function VisitorsScreen() {
         }
     };
 
-    // ── checkout ──────────────────────────────────────────────────────────────
+    // ── Checkout ──────────────────────────────────────────────────────────────
     const handleCheckout = (visitorId) => {
         Alert.alert(
             'Check Out Visitor',
@@ -275,9 +379,9 @@ export default function VisitorsScreen() {
                                     v.id === visitorId
                                         ? {
                                             ...v,
-                                            status: res.data.visitor.status,
+                                            status:         res.data.visitor.status,
                                             departure_time: res.data.visitor.departure_time,
-                                        }
+                                          }
                                         : v
                                 )
                             );
@@ -301,10 +405,12 @@ export default function VisitorsScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={20}
             >
-
-                {/* ── Top Row ──────────────────────────────────────────────── */}
+                {/* ── Top Row ── */}
                 <View style={styles.topRow}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => drawerRef.current?.open()}
+                    >
                         <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                     </TouchableOpacity>
                     <View style={styles.topRowRight}>
@@ -321,13 +427,13 @@ export default function VisitorsScreen() {
                     </View>
                 </View>
 
-                {/* ── Header ───────────────────────────────────────────────── */}
+                {/* ── Header ── */}
                 <View style={styles.headerSection}>
                     <Text style={styles.headerTitle}>Visitor Registration 👥</Text>
                     <Text style={styles.headerSub}>Stay updated on important updates</Text>
                 </View>
 
-                {/* ── Content ──────────────────────────────────────────────── */}
+                {/* ── Content ── */}
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -348,7 +454,7 @@ export default function VisitorsScreen() {
                             />
                         }
                     >
-                        {/* Stats — now live from API */}
+                        {/* ── Stats ── */}
                         <View style={styles.statsRow}>
                             <View style={styles.statCard}>
                                 <Text style={styles.statLabel}>Visitors Today</Text>
@@ -360,7 +466,7 @@ export default function VisitorsScreen() {
                             </View>
                         </View>
 
-                        {/* Registered Visitors — live from API */}
+                        {/* ── Registered Visitors ── */}
                         <Text style={styles.sectionTitle}>Registered Visitors</Text>
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
@@ -374,7 +480,7 @@ export default function VisitorsScreen() {
                             ))
                         )}
 
-                        {/* Register New Visitor Form */}
+                        {/* ── Register New Visitor Form ── */}
                         <View style={styles.formSection}>
                             <Text style={styles.formSectionTitle}>Register New Visitor</Text>
 
@@ -398,7 +504,7 @@ export default function VisitorsScreen() {
                             <TouchableOpacity
                                 style={styles.pickerWrapper}
                                 activeOpacity={0.8}
-                                onPress={() => setPurposeOpen(!purposeOpen)}
+                                onPress={() => { setPurposeOpen(!purposeOpen); setIdTypeOpen(false); }}
                             >
                                 <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
                                     {purpose || 'Purpose of Visit'}
@@ -441,7 +547,7 @@ export default function VisitorsScreen() {
                             <TouchableOpacity
                                 style={styles.pickerWrapper}
                                 activeOpacity={0.8}
-                                onPress={() => setIdTypeOpen(!idTypeOpen)}
+                                onPress={() => { setIdTypeOpen(!idTypeOpen); setPurposeOpen(false); }}
                             >
                                 <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
                                     {idType || 'ID Type'}
@@ -482,7 +588,7 @@ export default function VisitorsScreen() {
 
                             {/* Upload ID */}
                             <View style={styles.uploadBox}>
-                                <Text style={styles.uploadHint}>10 MB Maximum file size (.png)</Text>
+                                <Text style={styles.uploadHint}>10 MB Maximum file size (.png / .jpg)</Text>
                                 <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
                                     <MaterialIcons name="upload" size={16} color={COLORS.dark} />
                                     <Text
@@ -497,27 +603,60 @@ export default function VisitorsScreen() {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Date of Visit */}
+                            {/* ── Date & Time Row ── */}
                             <View style={styles.dateTimeRow}>
-                                <View style={styles.dateTimeField}>
+
+                                {/* Date of Visit */}
+                                <View style={[styles.dateTimeField, { flex: 1, marginRight: 8 }]}>
                                     <Text style={styles.dateTimeLabel}>Date of Visit</Text>
                                     <TouchableOpacity
                                         style={styles.dateTimeInput}
-                                        onPress={() => setDateModalVisible(true)}
+                                        onPress={openDatePicker}
                                         activeOpacity={0.7}
                                     >
-                                        <Text style={styles.dateTimeText}>{dateOfVisit}</Text>
+                                        <Text style={styles.dateTimeText}>
+                                            {formatDisplayDate(selectedDateTime)}
+                                        </Text>
                                         <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
                                     </TouchableOpacity>
                                 </View>
+
+                                {/* Time of Visit */}
+                                <View style={[styles.dateTimeField, { flex: 1 }]}>
+                                    <Text style={styles.dateTimeLabel}>Time of Visit</Text>
+                                    <TouchableOpacity
+                                        style={styles.dateTimeInput}
+                                        onPress={openTimePicker}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.dateTimeText}>
+                                            {formatDisplayTime(selectedDateTime)}
+                                        </Text>
+                                        <MaterialIcons name="access-time" size={16} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                </View>
+
                             </View>
 
-                            {/* Time of Visit */}
-                            <TimePickerInput
-                                value={timeOfVisit}
-                                onChangeTime={setTimeOfVisit}
-                                label="Time of Visit"
-                            />
+                            {/* ── Android inline pickers (render below the row) ── */}
+                            {Platform.OS === 'android' && showDatePicker && (
+                                <DateTimePicker
+                                    value={selectedDateTime}
+                                    mode="date"
+                                    display="default"
+                                    minimumDate={new Date()}
+                                    onChange={onAndroidDateChange}
+                                />
+                            )}
+                            {Platform.OS === 'android' && showTimePicker && (
+                                <DateTimePicker
+                                    value={selectedDateTime}
+                                    mode="time"
+                                    display="default"
+                                    is24Hour={false}
+                                    onChange={onAndroidTimeChange}
+                                />
+                            )}
 
                             {/* Submit */}
                             <TouchableOpacity
@@ -536,25 +675,40 @@ export default function VisitorsScreen() {
                 )}
             </KeyboardAvoidingView>
 
-            {/* ── Bottom Nav ───────────────────────────────────────────── */}
+            {/* ── Bottom Nav ── */}
             <View style={styles.bottomNav}>
-                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor" isActive={true} onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
+                <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+                <NavItem iconName="person-outline" label="Visitor"    isActive={true}  onPress={() => router.push('/tenant/visitors')} />
+                <NavItem iconName="warning"        label="Emergency"  isCenter         onPress={() => router.push('/tenant/emergency')} />
+                <NavItem iconName="water-drop"     label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+                <NavItem iconName="account-circle" label="Profile"    isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* ── Drawer ───────────────────────────────────────────────── */}
+            {/* ── Drawer ── */}
             <DrawerMenu ref={drawerRef} />
 
-            {/* ── Date Picker Modal ─────────────────────────────────────── */}
-            <DatePickerModal
-                visible={dateModalVisible}
-                onClose={() => setDateModalVisible(false)}
-                onDateSelect={setDateOfVisit}
-                currentDate={dateOfVisit}
-            />
+            {/* ── iOS Date Picker Modal ── */}
+            {Platform.OS === 'ios' && (
+                <IOSPickerModal
+                    visible={showDatePicker}
+                    mode="date"
+                    value={tempDateTime}
+                    onChange={onIOSChange}
+                    onDone={confirmIOSDate}
+                />
+            )}
+
+            {/* ── iOS Time Picker Modal ── */}
+            {Platform.OS === 'ios' && (
+                <IOSPickerModal
+                    visible={showTimePicker}
+                    mode="time"
+                    value={tempDateTime}
+                    onChange={onIOSChange}
+                    onDone={confirmIOSTime}
+                />
+            )}
+
         </SafeAreaView>
     );
 }
