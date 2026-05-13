@@ -12,6 +12,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
+import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -136,6 +137,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 // main notifications screen
 export default function NotificationsScreen() {
     const router = useRouter();
+    const { user, avatarUri } = useUser();
     const [activeTab, setActiveTab] = useState('notifications');
     const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
 
@@ -189,8 +191,11 @@ export default function NotificationsScreen() {
                         <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
                         <View style={styles.notifDot} />
                     </TouchableOpacity>
-                    <TouchableOpacity>
-                        <Image source={defaultPhoto} style={styles.avatar} />
+                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                        <Image
+                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                            style={styles.avatar}
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
