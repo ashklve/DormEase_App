@@ -1,9 +1,10 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform, StatusBar } from 'react-native';
+import { scale, verticalScale, moderateScale } from '../utils/scale';
 
 const { width } = Dimensions.get('window');
 
 export const COLORS = {
-  primary:   '#CA5D86',
+  primary:   '#D63375',
   bg:        '#F9F9F9',
   white:     '#FFFFFF',
   dark:      '#2D1B2E',
@@ -32,13 +33,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
 
-  // ── Top Row ─────────────────────────────────────────────────────────────────
+  // ── Top Row — increased paddingTop to match dashboard ────────────────────────
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 60,
     paddingBottom: 8,
   },
   topRowRight: {
@@ -307,55 +308,45 @@ const styles = StyleSheet.create({
   toastTextSuccess: { color: '#1A6E3C' },
   toastTextError:   { color: '#922B21' },
 
-  // ── Bottom Nav ───────────────────────────────────────────────────────────────
+  // ── Bottom Nav — matches visitorsstyles exactly ──────────────────────────────
   bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingTop: verticalScale(10),
+    paddingHorizontal: scale(10),
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 70,
-    backgroundColor: COLORS.white,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingBottom: 8,
-    borderTopWidth: 0.5,
-    borderTopColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 8,
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
   },
   navCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: -22,             // ← lifts the center emergency button up
   },
   navCenterCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    elevation: 6,
     shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
   navLabel: {
     fontSize: 10,
-    color: COLORS.muted,
-    fontWeight: '500',
+    color: '#9E9E9E',           // ← matches visitors inactive label color
+    marginTop: 2,
   },
 
   // ── Skeleton ─────────────────────────────────────────────────────────────────
