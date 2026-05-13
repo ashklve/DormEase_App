@@ -9,13 +9,15 @@ export default StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
 
-  // ── top row (matches announcements) ──────────────────────────────────────
+  // ── top row ───────────────────────────────────────────────────────────────
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingTop: Platform.OS === 'ios' ? verticalScale(54) : StatusBar.currentHeight + verticalScale(8),
+    paddingTop: Platform.OS === 'ios'
+      ? verticalScale(54)
+      : StatusBar.currentHeight + verticalScale(8),
     paddingBottom: verticalScale(8),
   },
   backBtn: {
@@ -44,7 +46,7 @@ export default StyleSheet.create({
     borderRadius: 18,
   },
 
-  // ── header ───────────────────────────────────────────────────────────────
+  // ── header ────────────────────────────────────────────────────────────────
   headerSection: {
     paddingHorizontal: scale(20),
     paddingTop: verticalScale(4),
@@ -143,12 +145,34 @@ export default StyleSheet.create({
   eyeBtn: {
     padding: 4,
   },
+
+  // check out button inside visitor card
+  checkoutBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: verticalScale(4),
+    paddingHorizontal: scale(12),
+  },
+  checkoutBtnText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(11),
+    fontWeight: '600',
+  },
+
   visitorName: {
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: COLORS.dark,
+    marginBottom: verticalScale(2),
+  },
+
+  // purpose line shown under visitor name
+  visitorPurpose: {
+    fontSize: moderateScale(12),
+    color: COLORS.muted,
     marginBottom: verticalScale(4),
   },
+
   visitorDateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -177,12 +201,12 @@ export default StyleSheet.create({
     marginBottom: verticalScale(12),
   },
 
-  // ── inputs ────────────────────────────────────────────────────────────────
+  // ── text inputs — pink border ─────────────────────────────────────────────
   input: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     paddingVertical: verticalScale(10),
     paddingHorizontal: scale(14),
     fontSize: moderateScale(13),
@@ -190,12 +214,12 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── id type dropdown trigger ──────────────────────────────────────────────
+  // ── dropdown trigger — pink border ────────────────────────────────────────
   pickerWrapper: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     paddingVertical: verticalScale(10),
     paddingHorizontal: scale(14),
     flexDirection: 'row',
@@ -211,14 +235,18 @@ export default StyleSheet.create({
     color: COLORS.dark,
   },
 
-  // ── id type dropdown list ─────────────────────────────────────────────────
+  // ── dropdown list
+  // NOTE: overflow is NOT set to 'hidden' here — that kills nestedScrollEnabled
+  // on Android. The maxHeight + borderRadius give the rounded clipped look
+  // without breaking the inner ScrollView.
+  // ─────────────────────────────────────────────────────────────────────────
   dropdownList: {
     backgroundColor: COLORS.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: verticalScale(10),
-    overflow: 'hidden',
+    maxHeight: verticalScale(180),
   },
   dropdownListItem: {
     flexDirection: 'row',
@@ -259,21 +287,23 @@ export default StyleSheet.create({
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     backgroundColor: COLORS.card,
     borderRadius: 8,
-    paddingVertical: verticalScale(7),
-    paddingHorizontal: scale(18),
+    paddingVertical: verticalScale(10),
+    paddingHorizontal: scale(14),
     borderWidth: 1,
     borderColor: COLORS.border,
+    width: '90%',
   },
   uploadBtnText: {
     fontSize: moderateScale(13),
     color: COLORS.dark,
     fontWeight: '500',
+    flex: 1,
+    marginLeft: 8,
   },
 
-  // ── date & time row ───────────────────────────────────────────────────────
+  // ── date & time ───────────────────────────────────────────────────────────
   dateTimeRow: {
     flexDirection: 'row',
     gap: scale(10),
@@ -289,19 +319,20 @@ export default StyleSheet.create({
     fontWeight: '500',
   },
   dateTimeInput: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.card,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: verticalScale(10),
-    paddingHorizontal: scale(10),
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    paddingVertical: verticalScale(11),
+    paddingHorizontal: scale(12),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   dateTimeText: {
-    fontSize: moderateScale(13),
-    color: COLORS.dark,
+    fontSize: moderateScale(14),
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 
   // ── submit button ─────────────────────────────────────────────────────────
@@ -311,6 +342,8 @@ export default StyleSheet.create({
     paddingVertical: verticalScale(13),
     alignItems: 'center',
     marginTop: verticalScale(4),
+    width: '70%',
+    alignSelf: 'center',
   },
   submitBtnText: {
     color: '#FFFFFF',
@@ -319,7 +352,7 @@ export default StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── bottom nav (identical to announcementsstyles) ─────────────────────────
+  // ── bottom nav ────────────────────────────────────────────────────────────
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',

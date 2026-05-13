@@ -35,15 +35,15 @@ const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isValidPhone = (v) => /^[0-9]{11}$/.test(v.trim());
 
 const statusColors = {
-  active:   { bg: '#E8F8EF', text: '#1A6E3C' },
-  pending:  { bg: '#FFF3CD', text: '#7D5A00' },
+  active: { bg: '#E8F8EF', text: '#1A6E3C' },
+  pending: { bg: '#FFF3CD', text: '#7D5A00' },
   move_out: { bg: '#FDECEA', text: '#922B21' },
   inactive: { bg: '#F1EFE8', text: '#5F5E5A' },
 };
 
 const statusLabels = {
-  active:   'Active',
-  pending:  'Pending',
+  active: 'Active',
+  pending: 'Pending',
   move_out: 'Move Out',
   inactive: 'Inactive',
 };
@@ -387,8 +387,8 @@ export default function ProfileScreen() {
     try {
       setSavingPw(true);
       await client.post('/change-password', {
-        current_password:          currentPw,
-        new_password:              newPw,
+        current_password: currentPw,
+        new_password: newPw,
         new_password_confirmation: confirmPw,
       });
       showToast('success', 'Password changed successfully! 🎉');
@@ -420,7 +420,7 @@ export default function ProfileScreen() {
     const asset = result.assets[0];
     const formData = new FormData();
     formData.append('profile_photo', {
-      uri:  asset.uri,
+      uri: asset.uri,
       name: 'profile.jpg',
       type: 'image/jpeg',
     });
