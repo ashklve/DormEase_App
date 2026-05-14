@@ -5,22 +5,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
-import { clearSession, loadSession } from '../../api/auth';
+import { clearSession } from '../../api/auth';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-const defaultUser = {
-    firstName: '',
-    fullName: '',
-    username: '',
-    floor: '',
-    roomNumber: '',
-    roomCode: '',
-    currentBill: '0.00',
-    pendingRequests: 0,
-};
 
 // shows good morning / afternoon / evening based on current time
 const getGreeting = () => {
@@ -104,36 +94,28 @@ const Dashboard = () => {
     const router = useRouter();
     const greeting = getGreeting();
 
-    const { user, avatarUri } = useUser();
+    const { user, avatarUri, fetchUser } = useUser();
 
-    // ── load real user data from AsyncStorage ─────────────────────────────────
-    const [userData, setUserData] = useState(defaultUser);
+    // ✅ ADD THIS — derive all display values from live context user
+    const userData = {
+        firstName: user?.first_name ?? '',
+        fullName: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() : '',
+        username: user ? '@' + `${user.first_name ?? ''}${user.last_name ?? ''}`.replace(/\s+/g, '').toLowerCase() : '',
+        floor: user?.floor ?? '',
+        roomNumber: user?.room_number ?? '',
+        roomCode: user?.room_number ? `R${user.room_number}-01` : '',
+        currentBill: '0.00',
+        pendingRequests: 0,
+    };
 
-    useEffect(() => {
-        const loadUser = async () => {
-            const session = await loadSession();
-            if (!session) return;
-
-            const u = session.user;
-            setUserData({
-                firstName: u.name?.split(' ')[0] ?? '',
-                fullName: u.name ?? '',
-                username: '@' + (u.name?.replace(/\s+/g, '').toLowerCase() ?? ''),
-                floor: u.floor ?? '',
-                roomNumber: u.room ?? '',
-                roomCode: u.room ? `R${u.room}-01` : '',
-                currentBill: '0.00',
-                pendingRequests: 0,
-            });
-        };
-        loadUser();
-    }, []);
 
     // ── load latest announcements from API ────────────────────────────────────
     const [announcements, setAnnouncements] = useState([]);
 
     useFocusEffect(
         useCallback(() => {
+            fetchUser();
+
             const fetchAnnouncements = async () => {
                 try {
                     const res = await client.get('/announcements', { timeout: 15000 });
