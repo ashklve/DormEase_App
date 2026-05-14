@@ -105,7 +105,6 @@ export default function WaterBillScreen() {
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [paying, setPaying] = useState(false);
 
     // Billing data state
     const [billing, setBilling] = useState(null);
@@ -147,33 +146,16 @@ export default function WaterBillScreen() {
         fetchWaterBill();
     }, []);
 
-    // ── Pay Bill ──────────────────────────────────────────────────────────────
-    const handlePayBill = async () => {
-        if (!billing || billing.status?.toLowerCase() === 'paid') return;
-
-        Alert.alert(
-            'Confirm Payment',
-            `Pay ₱${billing.amount_due} for ${billing.billing_period}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Pay Now',
-                    onPress: async () => {
-                        setPaying(true);
-                        try {
-                            await client.post('/water-bill/pay', { billing_id: billing.id });
-                            Alert.alert('Success', 'Payment submitted successfully.');
-                            fetchWaterBill();
-                        } catch (err) {
-                            console.error('pay bill error:', err.message);
-                            Alert.alert('Error', 'Failed to process payment.');
-                        } finally {
-                            setPaying(false);
-                        }
-                    },
-                },
-            ]
-        );
+    // ── Pay Bill — navigate to bills-payment screen ──────────────────────────
+    const handlePayBill = () => {
+        if (!billing || !isUnpaid) return;
+        router.push({
+            pathname: '/tenant/bills-payment',
+            params: {
+                billing: JSON.stringify(billing),
+                breakdown: JSON.stringify(breakdown),
+            },
+        });
     };
 
     // API returns capitalized status e.g. 'Unpaid', 'Paid', 'Overdue'
@@ -340,20 +322,16 @@ export default function WaterBillScreen() {
                             <TouchableOpacity
                                 style={[
                                     styles.payBtn,
-                                    (!isUnpaid || paying) && styles.payBtnDisabled,
-                                    { alignSelf: 'center', width: '50%' },
+                                    !isUnpaid && styles.payBtnDisabled,
+                                    { alignSelf: 'center', width: '70%' },
                                 ]}
                                 onPress={handlePayBill}
-                                disabled={!isUnpaid || paying}
+                                disabled={!isUnpaid}
                                 activeOpacity={0.85}
                             >
-                                {paying ? (
-                                    <ActivityIndicator size="small" color={COLORS.white} />
-                                ) : (
-                                    <Text style={styles.payBtnText}>
-                                        {isUnpaid ? 'Pay Bill' : 'Already Paid'}
-                                    </Text>
-                                )}
+                                <Text style={styles.payBtnText}>
+                                    {isUnpaid ? 'Pay Bill' : 'Already Paid'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     ) : null}
