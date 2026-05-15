@@ -125,7 +125,7 @@ export default function PaymentDetailScreen() {
             const formData = new FormData();
             formData.append('billing_id', billing?.id);
             formData.append('payment_method', paymentMethod);
-            formData.append('reference_number', refNumber.trim());
+            formData.append('reference_code', refNumber.trim());
 
             if (proofUri) {
                 const filename = proofUri.split('/').pop();
