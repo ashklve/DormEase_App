@@ -67,7 +67,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function PaymentDetailScreen() {
     const router = useRouter();
-    const { avatarUri } = useUser();
+    const { user, avatarUri } = useUser();
     const drawerRef = useRef(null);
 
     // Params from bills-payment screen
@@ -75,6 +75,7 @@ export default function PaymentDetailScreen() {
     const billing = params.billing ? JSON.parse(params.billing) : null;
     const breakdown = params.breakdown ? JSON.parse(params.breakdown) : null;
     const paymentMethod = params.method ?? 'gcash';
+    const roomNumber = breakdown?.room_number ?? billing?.room_number ?? user?.room_number;
 
     const isCash = paymentMethod === 'cash';
     const methodLabel = {
@@ -220,10 +221,10 @@ export default function PaymentDetailScreen() {
                                 <Text style={styles.summaryLabel}>Billing Month:</Text>
                                 <Text style={styles.summaryValue}>{billing.billing_period}</Text>
                             </View>
-                            {breakdown?.room_number ? (
+                            {roomNumber ? (
                                 <View style={styles.summaryRow}>
                                     <Text style={styles.summaryLabel}>Room:</Text>
-                                    <Text style={styles.summaryValue}>{breakdown.room_number}</Text>
+                                    <Text style={styles.summaryValue}>{roomNumber}</Text>
                                 </View>
                             ) : null}
                         </View>
