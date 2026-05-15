@@ -6,8 +6,6 @@ import {
     ScrollView,
     StatusBar,
     Image,
-    ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +13,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import styles from '../../src/constants/bills-paymentstyles';
 import { COLORS } from '../../src/constants/colors';
 import DrawerMenu from '../../src/components/DrawerMenu';
-import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -85,47 +82,22 @@ export default function BillsPaymentScreen() {
     const breakdown = params.breakdown ? JSON.parse(params.breakdown) : null;
 
     const [selectedMethod, setSelectedMethod] = useState('gcash');
-    const [submitting, setSubmitting] = useState(false);
 
     // ── Status badge ──────────────────────────────────────────────────────────
     const statusKey = billing?.status?.toLowerCase() ?? 'unpaid';
     const statusColors = STATUS_COLORS[statusKey] ?? STATUS_COLORS.unpaid;
 
-    // ── Handle proceed ────────────────────────────────────────────────────────
-    const handleProceed = async () => {
+    // ── Handle proceed — navigate to payment detail screen ──────────────────
+    const handleProceed = () => {
         if (!billing) return;
-
-        Alert.alert(
-            'Confirm Payment',
-            `Pay ₱${billing.amount_due} via ${PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label
-            }?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Confirm',
-                    onPress: async () => {
-                        setSubmitting(true);
-                        try {
-                            await client.post('/water-bill/pay', {
-                                billing_id: billing.id,
-                                payment_method: selectedMethod,
-                            });
-                            Alert.alert(
-                                'Payment Submitted',
-                                'Your payment has been recorded. Please wait for admin confirmation.',
-                                [{ text: 'OK', onPress: () => router.back() }]
-                            );
-                        } catch (err) {
-                            const msg = err.response?.data?.message
-                                ?? 'Failed to submit payment. Please try again.';
-                            Alert.alert('Error', msg);
-                        } finally {
-                            setSubmitting(false);
-                        }
-                    },
-                },
-            ]
-        );
+        router.push({
+            pathname: '/tenant/payment-detail',
+            params: {
+                billing: JSON.stringify(billing),
+                breakdown: JSON.stringify(breakdown),
+                method: selectedMethod,
+            },
+        });
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -277,17 +249,13 @@ export default function BillsPaymentScreen() {
                         style={[
                             styles.proceedBtn,
                             { alignSelf: 'center', width: '70%' },
-                            (!billing || submitting) && styles.proceedBtnDisabled,
+                            !billing && styles.proceedBtnDisabled,
                         ]}
                         onPress={handleProceed}
-                        disabled={!billing || submitting}
+                        disabled={!billing}
                         activeOpacity={0.85}
                     >
-                        {submitting ? (
-                            <ActivityIndicator size="small" color={COLORS.white} />
-                        ) : (
-                            <Text style={styles.proceedBtnText}>Proceed</Text>
-                        )}
+                        <Text style={styles.proceedBtnText}>Proceed</Text>
                     </TouchableOpacity>
                 </View>
 
