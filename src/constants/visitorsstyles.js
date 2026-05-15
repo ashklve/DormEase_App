@@ -337,7 +337,7 @@ export default StyleSheet.create({
 
   // ── submit button ─────────────────────────────────────────────────────────
   submitBtn: {
-    backgroundColor: '#8B1A4A',
+    backgroundColor: '#D63375',
     borderRadius: 10,
     paddingVertical: verticalScale(13),
     alignItems: 'center',
