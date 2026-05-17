@@ -80,7 +80,7 @@ export default function HotlinesScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={[]}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             <View style={styles.topRow}>
