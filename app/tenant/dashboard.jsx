@@ -20,6 +20,44 @@ const getGreeting = () => {
     return 'Good Evening';
 };
 
+// hotlines banner component
+const HotlinesBanner = ({ onPress }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.85}
+        style={{
+            backgroundColor: COLORS.primary,
+            marginHorizontal: 20,
+            borderRadius: 14,
+            padding: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 20,
+        }}
+    >
+        <View style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+        }}>
+            <MaterialIcons name="phone-in-talk" size={22} color={COLORS.white} />
+        </View>
+        <View style={{ flex: 1 }}>
+            <Text style={{ color: COLORS.white, fontWeight: 'bold', fontSize: 14 }}>
+                Emergency Hotlines
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 1 }}>
+                911 · PNP · BFP · Red Cross · Manila Rescue
+            </Text>
+        </View>
+        <MaterialIcons name="chevron-right" size={22} color={COLORS.white} />
+    </TouchableOpacity>
+);
+
 // quick action card component
 const QuickActionCard = ({ iconName, title, description, onPress }) => (
     <TouchableOpacity style={styles.actionCard} onPress={onPress}>
@@ -96,7 +134,6 @@ const Dashboard = () => {
 
     const { user, avatarUri, fetchUser } = useUser();
 
-    // ✅ ADD THIS — derive all display values from live context user
     const userData = {
         firstName: user?.first_name ?? '',
         fullName: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() : '',
@@ -107,7 +144,6 @@ const Dashboard = () => {
         currentBill: '0.00',
         pendingRequests: 0,
     };
-
 
     // ── load latest announcements from API ────────────────────────────────────
     const [announcements, setAnnouncements] = useState([]);
@@ -243,6 +279,9 @@ const Dashboard = () => {
                         </View>
                     </View>
                 </TouchableOpacity>
+
+                {/* hotlines banner */}
+                <HotlinesBanner onPress={() => router.push('/tenant/hotlines')} />
 
                 {/* quick actions */}
                 <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 12 }]}>
