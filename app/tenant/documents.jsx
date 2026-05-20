@@ -11,71 +11,108 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
-    Modal,
+    Linking,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-// ── Request type options ──────────────────────────────────────────────────────
-const REQUEST_TYPES = [
-    'Room Transfer Request',
-    'Lease Contract Copy',
-    'Certificate of Residency',
-    'Official Receipt Copy',
-    'Clearance Certificate',
-    'Good Conduct Certificate',
-    'Others',
+// ── Base URL ──────────────────────────────────────────────────────────────────
+// Change this one line whenever your ngrok URL changes.
+// When you deploy for real, swap this to your production domain.
+const BASE_URL = 'https://xxxx-xxx-xxx.ngrok-free.app';
+
+// ── Auth token helper — replace with however you store the token ──────────────
+// e.g. from AsyncStorage, context, zustand, etc.
+// import { getToken } from '../../src/utils/auth';
+
+// ── Categories ────────────────────────────────────────────────────────────────
+// FORM        → tenant downloads blank template, fills it, uploads PDF back
+// CERTIFICATE → admin generates the doc; tenant just picks delivery method
+const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
+
+// ── 9 Downloadable Form Templates ─────────────────────────────────────────────
+// Files live at:  <laravel-root>/public/forms/<filename>
+const DOWNLOADABLE_FORMS = [
+    {
+        id: 'after_curfew_arrivals',
+        label: 'After Curfew Arrivals',
+        icon: 'nights-stay',
+        url: `${BASE_URL}/forms/after_curfew_arrivals.pdf`,
+    },
+    {
+        id: 'approval_to_leave_after_curfew',
+        label: 'Approval to Leave After Curfew',
+        icon: 'verified',
+        url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf`,
+    },
+    {
+        id: 'guards_form',
+        label: 'Guards Form',
+        icon: 'security',
+        url: `${BASE_URL}/forms/guards_form.pdf`,
+    },
+    {
+        id: 'letter_for_renewal_of_tenants',
+        label: 'Letter for Renewal of Tenants',
+        icon: 'mail',
+        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf`,
+    },
+    {
+        id: 'list_of_things',
+        label: 'List of Things',
+        icon: 'checklist',
+        url: `${BASE_URL}/forms/list_of_things.pdf`,
+    },
+    {
+        id: 'sleepover_of_non_tenant',
+        label: 'Sleepover of Non-Tenant',
+        icon: 'hotel',
+        url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf`,
+    },
+    {
+        id: 'tenants_info_sheet',
+        label: 'Tenants Info Sheet',
+        icon: 'person',
+        url: `${BASE_URL}/forms/tenants_info_sheet.pdf`,
+    },
+    {
+        id: 'turnover_sheet',
+        label: 'Turnover Sheet',
+        icon: 'swap-horiz',
+        url: `${BASE_URL}/forms/turnover_sheet.pdf`,
+    },
+    {
+        id: 'voucher',
+        label: 'Voucher',
+        icon: 'receipt',
+        url: `${BASE_URL}/forms/voucher.pdf`,
+    },
 ];
 
-// ── Notice content per request type ──────────────────────────────────────────
-const NOTICE_CONTENT = {
-    'Room Transfer Request': {
-        title: 'Room Transfer Request – Required Documents',
+// ── Dropdown sections ─────────────────────────────────────────────────────────
+const DROPDOWN_SECTIONS = [
+    {
+        sectionLabel: 'Upload a Filled Form',
+        items: DOWNLOADABLE_FORMS.map((f) => ({ ...f, category: CATEGORY.FORM })),
+    },
+    {
+        sectionLabel: 'Request a Certificate / Document',
         items: [
-            'Room Transfer - Request Form – Form with reason for transfer, current room, and preferred room number.',
-            'Endorsement from Current Roommates – Signed acknowledgement from roommates of the preferred room (if applicable).',
-            'Room Inspection Clearance (Current Room) – Clearance confirming no damage or violations in your current room.',
+            { id: 'cert_residency', label: 'Certificate of Residency',  category: CATEGORY.CERTIFICATE },
+            { id: 'receipt_copy',   label: 'Official Receipt Copy',      category: CATEGORY.CERTIFICATE },
+            { id: 'lease_copy',     label: 'Lease Contract Copy',        category: CATEGORY.CERTIFICATE },
+            { id: 'clearance',      label: 'Clearance Certificate',      category: CATEGORY.CERTIFICATE },
+            { id: 'good_conduct',   label: 'Good Conduct Certificate',   category: CATEGORY.CERTIFICATE },
         ],
     },
-    'Lease Contract Copy': {
-        title: 'Lease Contract Copy – Required Documents',
-        items: [
-            'Valid government-issued ID for identity verification.',
-            'Proof of current tenancy (room number and move-in date).',
-        ],
-    },
-    'Certificate of Residency': {
-        title: 'Certificate of Residency – Requirements',
-        items: [
-            'Valid ID for identity verification.',
-            'Purpose of the certificate (employment, school, etc.).',
-            'Processing fee may apply – see admin office.',
-        ],
-    },
-    default: {
-        title: 'Document Request – General Requirements',
-        items: [
-            'Valid government-issued ID for identity verification.',
-            'Complete and accurate request form submission.',
-            'Processing may take 3–5 business days.',
-        ],
-    },
-};
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-const formatDisplayDate = (d) =>
-    d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-
-const formatSQLDate = (d) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+];
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -102,139 +139,128 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── iOS Date Picker Modal ─────────────────────────────────────────────────────
-const IOSPickerModal = ({ visible, value, onChange, onDone }) => (
-    <Modal transparent animationType="slide" visible={visible}>
-        <View style={styles.iosModalOverlay}>
-            <View style={styles.iosModalSheet}>
-                <View style={styles.iosModalHeader}>
-                    <TouchableOpacity onPress={onDone}>
-                        <Text style={styles.iosModalDoneText}>Done</Text>
-                    </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                    value={value}
-                    mode="date"
-                    display="spinner"
-                    onChange={onChange}
-                    style={{ height: 200 }}
-                    textColor="#000"
-                />
-            </View>
-        </View>
-    </Modal>
-);
-
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
-    const router = useRouter();
+    const router        = useRouter();
     const { avatarUri } = useUser();
-    const drawerRef = useRef(null);
+    const drawerRef     = useRef(null);
 
-    // ── Form state
-    const [fullName, setFullName] = useState('');
-    const [contactNo, setContactNo] = useState('');
-    const [roomNo, setRoomNo] = useState('');
-    const [requestType, setRequestType] = useState('');
-    const [requestTypeOpen, setRequestTypeOpen] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [purpose, setPurpose] = useState('');
-    const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [submitting, setSubmitting] = useState(false);
+    // ── Section 1 expand / collapse
+    const [formsExpanded, setFormsExpanded] = useState(true);
 
-    // ── Date needed
-    const [dateNeeded, setDateNeeded] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [tempDate, setTempDate] = useState(new Date());
+    // ── Submit-request form state
+    const [selectedOption,  setSelectedOption]  = useState(null);
+    const [dropdownOpen,    setDropdownOpen]     = useState(false);
+    const [fullName,        setFullName]         = useState('');
+    const [contactNo,       setContactNo]        = useState('');
+    const [roomNo,          setRoomNo]           = useState('');
+    const [purpose,         setPurpose]          = useState('');        // CERTIFICATE only
+    const [deliveryMethod,  setDeliveryMethod]   = useState('digital'); // CERTIFICATE only
+    const [uploadedFile,    setUploadedFile]     = useState(null);      // FORM only
+    const [submitting,      setSubmitting]       = useState(false);
 
-    // ── Dynamic notice based on selected request type
-    const notice = requestType
-        ? (NOTICE_CONTENT[requestType] ?? NOTICE_CONTENT.default)
-        : NOTICE_CONTENT['Room Transfer Request'];
+    const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
+    const isForm        = selectedOption?.category === CATEGORY.FORM;
 
-    // ── Android date change
-    const onAndroidDateChange = (event, date) => {
-        setShowDatePicker(false);
-        if (event.type === 'dismissed' || !date) return;
-        setDateNeeded(date);
+    // ── Open the file in the device's browser / PDF viewer
+    const handleDownload = (url, label) => {
+        Linking.openURL(url).catch(() =>
+            Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
+        );
     };
 
-    // ── iOS date
-    const onIOSChange = (event, date) => { if (date) setTempDate(date); };
-    const confirmIOSDate = () => {
-        setDateNeeded(tempDate);
-        setShowDatePicker(false);
-    };
-
-    // ── Image picker
-    const handleUpload = async () => {
+    // ── Pick a filled PDF from the device
+    const handlePickDocument = async () => {
         try {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-                Alert.alert('Permission Required', 'Permission to access gallery is required!');
-                return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf'],
+                copyToCacheDirectory: true,
             });
-            if (!result.canceled) setUploadedFile(result.assets[0].uri);
-        } catch (error) {
-            console.error('Image upload error:', error);
+            if (!result.canceled && result.assets?.length > 0) {
+                setUploadedFile(result.assets[0]);
+            }
+        } catch {
+            Alert.alert('Error', 'Failed to open file picker. Please try again.');
         }
     };
 
-    // ── Submit
+    // ── Select a type from the dropdown
+    const handleSelectOption = (item) => {
+        setSelectedOption(item);
+        setDropdownOpen(false);
+        setUploadedFile(null);
+        setPurpose('');
+        setDeliveryMethod('digital');
+    };
+
+    // ── Validate + submit
     const handleSubmit = async () => {
         if (!fullName.trim()) {
-            Alert.alert('Validation', 'Full name is required.');
+            Alert.alert('Missing Field', 'Please enter your full name.');
             return;
         }
-        if (!requestType) {
-            Alert.alert('Validation', 'Please select a request type.');
+        if (!selectedOption) {
+            Alert.alert('Missing Field', 'Please select a request type.');
+            return;
+        }
+        if (isForm && !uploadedFile) {
+            Alert.alert('Missing File', 'Please upload your completed form before submitting.');
             return;
         }
 
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('full_name', fullName.trim());
-            formData.append('contact_no', contactNo.trim());
-            formData.append('room_no', roomNo.trim());
-            formData.append('request_type', requestType);
-            formData.append('purpose', purpose.trim());
-            formData.append('date_needed', formatSQLDate(dateNeeded));
-            formData.append('delivery_method', deliveryMethod);
+            formData.append('full_name',     fullName.trim());
+            formData.append('contact_no',    contactNo.trim());
+            formData.append('room_no',       roomNo.trim());
+            formData.append('request_type',  selectedOption.id);
+            formData.append('request_label', selectedOption.label);
+            formData.append('category',      selectedOption.category);
 
-            if (uploadedFile) {
-                const filename = uploadedFile.split('/').pop();
-                const ext = filename.split('.').pop().toLowerCase();
-                const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-                formData.append('attachment', { uri: uploadedFile, name: filename, type: mimeType });
+            if (isCertificate) {
+                formData.append('purpose',          purpose.trim());
+                formData.append('delivery_method',  deliveryMethod);
             }
 
-            // await client.post('/documents', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            if (isForm && uploadedFile) {
+                formData.append('attachment', {
+                    uri:  uploadedFile.uri,
+                    name: uploadedFile.name,
+                    type: uploadedFile.mimeType ?? 'application/pdf',
+                });
+            }
+
+            // ── POST to Laravel API ──────────────────────────────────────────
+            // Replace YOUR_TOKEN with however you retrieve the Sanctum token
+            // e.g. from AsyncStorage: const token = await AsyncStorage.getItem('token');
+            const response = await fetch(`${BASE_URL}/api/document-requests`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    // 'Authorization': `Bearer ${YOUR_TOKEN}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.message ?? 'Server error');
+            }
+            // ────────────────────────────────────────────────────────────────
 
             // Reset form
             setFullName('');
             setContactNo('');
             setRoomNo('');
-            setRequestType('');
+            setSelectedOption(null);
             setUploadedFile(null);
             setPurpose('');
             setDeliveryMethod('digital');
-            setDateNeeded(new Date());
 
-            Alert.alert('Success', 'Document request submitted successfully.');
+            Alert.alert('Submitted!', 'Your request has been sent successfully.');
         } catch (err) {
-            console.error('submit error:', err.response?.data ?? err.message);
-            const errors = err.response?.data?.errors;
-            const msg = errors
-                ? Object.values(errors).flat().join('\n')
-                : (err.response?.data?.message ?? 'Failed to submit request.');
-            Alert.alert('Error', msg);
+            Alert.alert('Error', err.message ?? 'Failed to submit. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -252,9 +278,13 @@ export default function DocumentsScreen() {
             >
                 {/* ── Top Row ── */}
                 <View style={styles.topRow}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => drawerRef.current?.open()}
+                    >
                         <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                     </TouchableOpacity>
+
                     <View style={styles.topRowRight}>
                         <TouchableOpacity
                             style={styles.iconBtn}
@@ -272,45 +302,116 @@ export default function DocumentsScreen() {
                     </View>
                 </View>
 
-                {/* ── Header ── */}
+                {/* ── Page Header ── */}
                 <View style={styles.headerSection}>
                     <Text style={styles.headerTitle}>Document Request 📋</Text>
-                    <Text style={styles.headerSub}>Submit a request for permits or official copies</Text>
+                    <Text style={styles.headerSub}>
+                        Download forms or request official documents
+                    </Text>
                 </View>
 
-                {/* ── Scrollable Content ── */}
+                {/* ── Body ── */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
-                    automaticallyAdjustKeyboardInsets={true}
+                    automaticallyAdjustKeyboardInsets
                 >
 
-                    {/* ── Additional Document Notice Card ── */}
-                    <View style={styles.noticeCard}>
-                        <View style={styles.sectionHeaderRow}>
-                            <Ionicons name="document-text-outline" size={15} color={COLORS.primary} />
-                            <Text style={styles.sectionHeaderText}>Additional Document Notice</Text>
-                        </View>
+                    {/* ═══════════════════════════════════════════════════════
+                        SECTION 1 — Downloadable Form Templates
+                    ═══════════════════════════════════════════════════════ */}
+                    <View style={styles.sectionCard}>
 
-                        <Text style={styles.noticeTitle}>{notice.title}</Text>
-
-                        {notice.items.map((item, index) => (
-                            <View key={index} style={styles.noticeItemRow}>
-                                <View style={styles.noticeBullet} />
-                                <Text style={styles.noticeItemText}>{item}</Text>
+                        {/* Collapsible header */}
+                        <TouchableOpacity
+                            style={styles.sectionHeaderRow}
+                            activeOpacity={0.7}
+                            onPress={() => setFormsExpanded((v) => !v)}
+                        >
+                            <View style={styles.sectionHeaderLeft}>
+                                <View style={styles.sectionIconBadge}>
+                                    <MaterialIcons name="download" size={14} color={COLORS.white} />
+                                </View>
+                                <View>
+                                    <Text style={styles.sectionHeaderText}>Downloadable Forms</Text>
+                                    <Text style={styles.sectionHeaderCount}>
+                                        {DOWNLOADABLE_FORMS.length} forms available
+                                    </Text>
+                                </View>
                             </View>
-                        ))}
+                            <MaterialIcons
+                                name={formsExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                size={22}
+                                color={COLORS.muted}
+                            />
+                        </TouchableOpacity>
+
+                        {formsExpanded && (
+                            <>
+                                <View style={styles.hintBox}>
+                                    <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
+                                    <Text style={styles.hintBoxText}>
+                                        Download a blank form, fill it out, then submit it in the section below.
+                                    </Text>
+                                </View>
+
+                                {DOWNLOADABLE_FORMS.map((form, index) => (
+                                    <View
+                                        key={form.id}
+                                        style={[
+                                            styles.formRow,
+                                            index < DOWNLOADABLE_FORMS.length - 1 && styles.formRowBorder,
+                                        ]}
+                                    >
+                                        <View style={styles.formRowLeft}>
+                                            <View style={styles.formIconCircle}>
+                                                <MaterialIcons
+                                                    name={form.icon}
+                                                    size={15}
+                                                    color={COLORS.primary}
+                                                />
+                                            </View>
+                                            <Text style={styles.formLabel} numberOfLines={2}>
+                                                {form.label}
+                                            </Text>
+                                        </View>
+
+                                        <TouchableOpacity
+                                            style={styles.downloadBtn}
+                                            activeOpacity={0.75}
+                                            onPress={() => handleDownload(form.url, form.label)}
+                                        >
+                                            <MaterialIcons name="download" size={13} color={COLORS.primary} />
+                                            <Text style={styles.downloadBtnText}>Download</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </>
+                        )}
                     </View>
 
-                    {/* ── Tenant Info Section ── */}
+                    {/* ═══════════════════════════════════════════════════════
+                        SECTION 2 — Submit a Request
+                    ═══════════════════════════════════════════════════════ */}
                     <View style={styles.sectionCard}>
+
                         <View style={styles.sectionHeaderRow}>
-                            <Ionicons name="person-outline" size={15} color={COLORS.primary} />
-                            <Text style={styles.sectionHeaderText}>Tenant Info</Text>
+                            <View style={styles.sectionHeaderLeft}>
+                                <View style={styles.sectionIconBadge}>
+                                    <MaterialIcons name="send" size={14} color={COLORS.white} />
+                                </View>
+                                <View>
+                                    <Text style={styles.sectionHeaderText}>Submit a Request</Text>
+                                    <Text style={styles.sectionHeaderCount}>
+                                        Fill in your details below
+                                    </Text>
+                                </View>
+                            </View>
                         </View>
 
+                        {/* ── Tenant Info ── */}
                         <TextInput
                             style={styles.input}
                             placeholder="Full Name"
@@ -344,173 +445,221 @@ export default function DocumentsScreen() {
                                 onChangeText={setRoomNo}
                             />
                         </View>
-                    </View>
 
-                    {/* ── Request Details Section ── */}
-                    <View style={styles.sectionCard}>
-                        <View style={styles.sectionHeaderRow}>
-                            <Ionicons name="document-attach-outline" size={15} color={COLORS.primary} />
-                            <Text style={styles.sectionHeaderText}>Request Details</Text>
-                        </View>
+                        <View style={styles.divider} />
 
-                        {/* Request Type Dropdown */}
+                        {/* ── Request Type Dropdown ── */}
+                        <Text style={styles.fieldLabel}>What would you like to submit?</Text>
+
                         <TouchableOpacity
                             style={styles.pickerWrapper}
                             activeOpacity={0.8}
-                            onPress={() => setRequestTypeOpen(!requestTypeOpen)}
+                            onPress={() => setDropdownOpen((v) => !v)}
                         >
-                            <Text style={[styles.pickerText, requestType && styles.pickerTextSelected]}>
-                                {requestType || 'Room Transfer Request'}
+                            <Text
+                                style={[
+                                    styles.pickerText,
+                                    selectedOption && styles.pickerTextSelected,
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {selectedOption?.label ?? 'Select a request type...'}
                             </Text>
                             <MaterialIcons
-                                name={requestTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                name={dropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                                 size={20}
                                 color={COLORS.muted}
                             />
                         </TouchableOpacity>
 
-                        {requestTypeOpen && (
+                        {/* Dropdown with section headers */}
+                        {dropdownOpen && (
                             <View style={styles.dropdownList}>
                                 <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                    {REQUEST_TYPES.map((item) => (
-                                        <TouchableOpacity
-                                            key={item}
-                                            style={[
-                                                styles.dropdownListItem,
-                                                requestType === item && styles.dropdownListItemActive,
-                                            ]}
-                                            onPress={() => {
-                                                setRequestType(item);
-                                                setRequestTypeOpen(false);
-                                            }}
-                                        >
-                                            <Text style={[
-                                                styles.dropdownListItemText,
-                                                requestType === item && styles.dropdownListItemTextActive,
-                                            ]}>
-                                                {item}
+                                    {DROPDOWN_SECTIONS.map((section) => (
+                                        <View key={section.sectionLabel}>
+                                            <Text style={styles.dropdownSectionLabel}>
+                                                {section.sectionLabel}
                                             </Text>
-                                            {requestType === item && (
-                                                <MaterialIcons name="check" size={16} color={COLORS.primary} />
-                                            )}
-                                        </TouchableOpacity>
+                                            {section.items.map((item) => {
+                                                const active = selectedOption?.id === item.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={item.id}
+                                                        style={[
+                                                            styles.dropdownListItem,
+                                                            active && styles.dropdownListItemActive,
+                                                        ]}
+                                                        onPress={() => handleSelectOption(item)}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.dropdownListItemText,
+                                                                active && styles.dropdownListItemTextActive,
+                                                            ]}
+                                                        >
+                                                            {item.label}
+                                                        </Text>
+                                                        {active && (
+                                                            <MaterialIcons
+                                                                name="check"
+                                                                size={16}
+                                                                color={COLORS.primary}
+                                                            />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
                                     ))}
                                 </ScrollView>
                             </View>
                         )}
 
-                        {/* Upload */}
-                        <View style={styles.uploadBox}>
-                            <Text style={styles.uploadHint}>10 MB Maximum file size (.png)</Text>
-                            <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
-                                <MaterialIcons name="upload" size={16} color={COLORS.dark} />
-                                <Text
-                                    style={styles.uploadBtnText}
-                                    numberOfLines={1}
-                                    ellipsizeMode="middle"
-                                >
-                                    {uploadedFile ? uploadedFile.split('/').pop() : 'Upload'}
+                        {/* ══ FORM flow: upload the completed PDF ══ */}
+                        {isForm && (
+                            <>
+                                <Text style={styles.fieldHint}>
+                                    Download the form above, fill it out, then upload it here as PDF.
                                 </Text>
-                            </TouchableOpacity>
-                        </View>
 
-                        {/* Purpose */}
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Purpose / Reason for Request"
-                            placeholderTextColor={COLORS.muted}
-                            value={purpose}
-                            onChangeText={setPurpose}
-                            multiline
-                            numberOfLines={2}
-                        />
-
-                        {/* Date Needed */}
-                        <TouchableOpacity
-                            style={styles.datePickerBtn}
-                            activeOpacity={0.7}
-                            onPress={() => {
-                                setTempDate(new Date(dateNeeded));
-                                setShowDatePicker(true);
-                            }}
-                        >
-                            <Text style={styles.datePickerText}>
-                                {formatDisplayDate(dateNeeded)}
-                            </Text>
-                            <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
-                        </TouchableOpacity>
-
-                        {/* Android inline date picker */}
-                        {Platform.OS === 'android' && showDatePicker && (
-                            <DateTimePicker
-                                value={dateNeeded}
-                                mode="date"
-                                display="default"
-                                minimumDate={new Date()}
-                                onChange={onAndroidDateChange}
-                            />
+                                <TouchableOpacity
+                                    style={[
+                                        styles.uploadBox,
+                                        uploadedFile && styles.uploadBoxFilled,
+                                    ]}
+                                    activeOpacity={0.75}
+                                    onPress={handlePickDocument}
+                                >
+                                    <MaterialIcons
+                                        name={uploadedFile ? 'insert-drive-file' : 'upload-file'}
+                                        size={32}
+                                        color={uploadedFile ? COLORS.primary : COLORS.muted}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.uploadBoxText,
+                                            uploadedFile && styles.uploadBoxTextFilled,
+                                        ]}
+                                        numberOfLines={1}
+                                        ellipsizeMode="middle"
+                                    >
+                                        {uploadedFile
+                                            ? uploadedFile.name
+                                            : 'Tap to upload PDF'}
+                                    </Text>
+                                    <Text style={styles.uploadBoxSub}>
+                                        {uploadedFile && uploadedFile.size
+                                            ? `${(uploadedFile.size / 1024).toFixed(1)} KB  ·  tap to change`
+                                            : 'Max 10 MB  ·  PDF only'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
                         )}
 
-                        {/* Delivery method radios */}
-                        <TouchableOpacity
-                            style={styles.radioRow}
-                            onPress={() => setDeliveryMethod('digital')}
-                        >
-                            <View style={styles.radioOuter}>
-                                {deliveryMethod === 'digital' && <View style={styles.radioInner} />}
-                            </View>
-                            <Text style={styles.radioLabel}>Digital Copy (PDF)</Text>
-                        </TouchableOpacity>
+                        {/* ══ CERTIFICATE flow: purpose + delivery method ══ */}
+                        {isCertificate && (
+                            <>
+                                <TextInput
+                                    style={[styles.input, { marginTop: 4, textAlignVertical: 'top' }]}
+                                    placeholder="Purpose / Reason for Request"
+                                    placeholderTextColor={COLORS.muted}
+                                    value={purpose}
+                                    onChangeText={setPurpose}
+                                    multiline
+                                    numberOfLines={3}
+                                />
 
-                        <TouchableOpacity
-                            style={styles.radioRowLast}
-                            onPress={() => setDeliveryMethod('printed')}
-                        >
-                            <View style={styles.radioOuter}>
-                                {deliveryMethod === 'printed' && <View style={styles.radioInner} />}
-                            </View>
-                            <Text style={styles.radioLabel}>Printed Copy (Pick up at admin office)</Text>
-                        </TouchableOpacity>
+                                <Text style={styles.fieldLabel}>Preferred delivery method</Text>
+
+                                <TouchableOpacity
+                                    style={styles.radioRow}
+                                    onPress={() => setDeliveryMethod('digital')}
+                                >
+                                    <View style={styles.radioOuter}>
+                                        {deliveryMethod === 'digital' && (
+                                            <View style={styles.radioInner} />
+                                        )}
+                                    </View>
+                                    <View>
+                                        <Text style={styles.radioLabel}>Digital Copy (PDF)</Text>
+                                        <Text style={styles.radioSub}>Sent to your tenant records</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.radioRowLast}
+                                    onPress={() => setDeliveryMethod('printed')}
+                                >
+                                    <View style={styles.radioOuter}>
+                                        {deliveryMethod === 'printed' && (
+                                            <View style={styles.radioInner} />
+                                        )}
+                                    </View>
+                                    <View>
+                                        <Text style={styles.radioLabel}>Printed Copy</Text>
+                                        <Text style={styles.radioSub}>Pick up at the admin office</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        {/* ── Submit button — appears only once a type is selected ── */}
+                        {selectedOption && (
+                            <TouchableOpacity
+                                style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                                activeOpacity={0.85}
+                                onPress={handleSubmit}
+                                disabled={submitting}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.submitBtnText}>Submit Request</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
-
-                    {/* ── Submit Button ── */}
-                    <TouchableOpacity
-                        style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-                        activeOpacity={0.85}
-                        onPress={handleSubmit}
-                        disabled={submitting}
-                    >
-                        {submitting
-                            ? <ActivityIndicator size="small" color="#fff" />
-                            : <Text style={styles.submitBtnText}>Submit</Text>
-                        }
-                    </TouchableOpacity>
 
                 </ScrollView>
             </KeyboardAvoidingView>
 
             {/* ── Bottom Nav ── */}
             <View style={styles.bottomNav}>
-                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
+                <NavItem
+                    iconName="home"
+                    label="Home"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/dashboard')}
+                />
+                <NavItem
+                    iconName="person-outline"
+                    label="Visitor"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/visitors')}
+                />
+                <NavItem
+                    iconName="warning"
+                    label="Emergency"
+                    isCenter
+                    onPress={() => router.push('/tenant/emergency')}
+                />
+                <NavItem
+                    iconName="water-drop"
+                    label="Water Bill"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/water-bill')}
+                />
+                <NavItem
+                    iconName="account-circle"
+                    label="Profile"
+                    isActive={false}
+                    onPress={() => router.push('/tenant/profile')}
+                />
             </View>
 
-            {/* ── Drawer ── */}
+            {/* ── Side Drawer ── */}
             <DrawerMenu ref={drawerRef} />
-
-            {/* ── iOS Date Modal ── */}
-            {Platform.OS === 'ios' && (
-                <IOSPickerModal
-                    visible={showDatePicker}
-                    value={tempDate}
-                    onChange={onIOSChange}
-                    onDone={confirmIOSDate}
-                />
-            )}
-
         </SafeAreaView>
     );
 }
