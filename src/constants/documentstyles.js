@@ -1,26 +1,27 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
-import { scale, verticalScale, moderateScale } from '../utils/scale';
+import { scale, verticalScale } from '../utils/scale';
 
 export const COLORS = {
-    primary: '#D63375',
-    bg: '#FFF5F8',
-    card: '#FFFFFF',
-    dark: '#1A1A2E',
-    muted: '#9E9E9E',
-    grayText: '#6B7280',
-    border: '#F0D6E0',
-    white: '#FFFFFF',
+    primary:      '#D63375',
+    primaryLight: '#FCE4EE',
+    bg:           '#FFF5F8',
+    card:         '#FFFFFF',
+    dark:         '#1A1A2E',
+    muted:        '#9E9E9E',
+    grayText:     '#6B7280',
+    border:       '#F0D6E0',
+    white:        '#FFFFFF',
 };
 
 export default StyleSheet.create({
 
-    // ── container ─────────────────────────────────────────────────────────────
+    // ── Container ─────────────────────────────────────────────────────────────
     container: {
         flex: 1,
         backgroundColor: COLORS.bg,
     },
 
-    // ── top row ───────────────────────────────────────────────────────────────
+    // ── Top Row ───────────────────────────────────────────────────────────────
     topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -57,7 +58,7 @@ export default StyleSheet.create({
         borderRadius: 18,
     },
 
-    // ── header ────────────────────────────────────────────────────────────────
+    // ── Page Header ───────────────────────────────────────────────────────────
     headerSection: {
         paddingHorizontal: 20,
         paddingTop: 4,
@@ -75,13 +76,14 @@ export default StyleSheet.create({
         color: COLORS.primary,
     },
 
-    // ── scroll content ────────────────────────────────────────────────────────
+    // ── Scroll Content ────────────────────────────────────────────────────────
     scrollContent: {
         paddingBottom: 100,
         paddingHorizontal: 20,
+        paddingTop: 4,
     },
 
-    // ── section card (notice / tenant info / request details) ─────────────────
+    // ── Section Card ──────────────────────────────────────────────────────────
     sectionCard: {
         backgroundColor: COLORS.card,
         borderRadius: 14,
@@ -90,57 +92,131 @@ export default StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.border,
     },
-    noticeCard: {
-        backgroundColor: COLORS.card,
-        borderRadius: 14,
-        padding: 14,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
 
-    // ── section header row (icon + title) ─────────────────────────────────────
+    // ── Section Header Row ────────────────────────────────────────────────────
     sectionHeaderRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 6,
         marginBottom: 12,
+    },
+    sectionHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    sectionIconBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     sectionHeaderText: {
         fontSize: 13,
         fontWeight: '700',
         color: COLORS.dark,
     },
+    sectionHeaderCount: {
+        fontSize: 10.5,
+        color: COLORS.muted,
+        marginTop: 1,
+    },
 
-    // ── notice card internals ─────────────────────────────────────────────────
-    noticeTitle: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: COLORS.primary,
-        marginBottom: 8,
-    },
-    noticeItemRow: {
+    // ── Hint Box (info strip inside downloadable forms) ───────────────────────
+    hintBox: {
         flexDirection: 'row',
-        gap: 8,
-        marginBottom: 6,
         alignItems: 'flex-start',
+        gap: 6,
+        backgroundColor: COLORS.primaryLight,
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        marginBottom: 12,
+        marginTop: -4,
     },
-    noticeBullet: {
-        width: 7,
-        height: 7,
-        borderRadius: 3.5,
-        backgroundColor: COLORS.primary,
-        marginTop: 4,
+    hintBoxText: {
+        fontSize: 11.5,
+        color: COLORS.primary,
+        flex: 1,
+        lineHeight: 16,
+        fontWeight: '500',
+    },
+
+    // ── Downloadable Form Row ─────────────────────────────────────────────────
+    formRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 11,
+    },
+    formRowBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    formRowLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        flex: 1,
+        marginRight: 10,
+    },
+    formIconCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 9,
+        backgroundColor: COLORS.primaryLight,
+        alignItems: 'center',
+        justifyContent: 'center',
         flexShrink: 0,
     },
-    noticeItemText: {
-        fontSize: 11.5,
-        color: COLORS.grayText,
+    formLabel: {
+        fontSize: 12.5,
+        color: COLORS.dark,
+        fontWeight: '500',
         flex: 1,
         lineHeight: 17,
     },
+    downloadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLORS.primaryLight,
+        borderRadius: 8,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
+        flexShrink: 0,
+    },
+    downloadBtnText: {
+        fontSize: 11.5,
+        color: COLORS.primary,
+        fontWeight: '700',
+    },
 
-    // ── text inputs ───────────────────────────────────────────────────────────
+    // ── Divider ───────────────────────────────────────────────────────────────
+    divider: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginVertical: 14,
+    },
+
+    // ── Field Label / Hint ────────────────────────────────────────────────────
+    fieldLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.dark,
+        marginBottom: 8,
+    },
+    fieldHint: {
+        fontSize: 11.5,
+        color: COLORS.muted,
+        marginBottom: 10,
+        marginTop: 4,
+        lineHeight: 16,
+    },
+
+    // ── Text Inputs ───────────────────────────────────────────────────────────
     input: {
         backgroundColor: COLORS.bg,
         borderRadius: 10,
@@ -153,11 +229,10 @@ export default StyleSheet.create({
         marginBottom: 10,
     },
 
-    // ── contact + room row ────────────────────────────────────────────────────
+    // ── Contact No + Room No row ──────────────────────────────────────────────
     inlineRow: {
         flexDirection: 'row',
         gap: 10,
-        marginBottom: 0,
     },
     contactWrapper: {
         flex: 1,
@@ -169,7 +244,7 @@ export default StyleSheet.create({
         top: 13,
     },
 
-    // ── dropdown trigger ──────────────────────────────────────────────────────
+    // ── Dropdown Trigger ──────────────────────────────────────────────────────
     pickerWrapper: {
         backgroundColor: COLORS.bg,
         borderRadius: 10,
@@ -185,19 +260,32 @@ export default StyleSheet.create({
     pickerText: {
         fontSize: 13,
         color: COLORS.muted,
+        flex: 1,
+        marginRight: 8,
     },
     pickerTextSelected: {
         color: COLORS.dark,
+        fontWeight: '500',
     },
 
-    // ── dropdown list ─────────────────────────────────────────────────────────
+    // ── Dropdown List ─────────────────────────────────────────────────────────
     dropdownList: {
         backgroundColor: COLORS.bg,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: COLORS.border,
         marginBottom: 10,
-        maxHeight: 200,
+        maxHeight: 300,
+    },
+    dropdownSectionLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: COLORS.primary,
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 4,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
     },
     dropdownListItem: {
         flexDirection: 'row',
@@ -213,75 +301,59 @@ export default StyleSheet.create({
         fontSize: 13,
         color: COLORS.dark,
         fontWeight: '500',
+        flex: 1,
     },
     dropdownListItemTextActive: {
         color: COLORS.primary,
         fontWeight: '700',
     },
 
-    // ── upload box ────────────────────────────────────────────────────────────
+    // ── Upload Box (FORM flow) ────────────────────────────────────────────────
     uploadBox: {
         borderWidth: 1.5,
         borderStyle: 'dashed',
-        borderColor: COLORS.primary,
-        borderRadius: 10,
-        paddingVertical: 14,
+        borderColor: COLORS.muted,
+        borderRadius: 12,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
         alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 10,
         backgroundColor: COLORS.bg,
+        gap: 6,
     },
-    uploadHint: {
+    // State when a file has been picked
+    uploadBoxFilled: {
+        borderColor: COLORS.primary,
+        borderStyle: 'solid',
+        backgroundColor: COLORS.primaryLight,
+    },
+    uploadBoxText: {
+        fontSize: 13,
+        color: COLORS.muted,
+        fontWeight: '500',
+        textAlign: 'center',
+        maxWidth: '88%',
+    },
+    uploadBoxTextFilled: {
+        color: COLORS.dark,
+    },
+    uploadBoxSub: {
         fontSize: 11,
         color: COLORS.muted,
-        marginBottom: 8,
-    },
-    uploadBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.card,
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        width: '90%',
-        gap: 8,
-    },
-    uploadBtnText: {
-        fontSize: 13,
-        color: COLORS.dark,
-        fontWeight: '500',
-        flex: 1,
+        textAlign: 'center',
     },
 
-    // ── date picker trigger ───────────────────────────────────────────────────
-    datePickerBtn: {
-        backgroundColor: COLORS.bg,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: COLORS.primary,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    datePickerText: {
-        fontSize: 13,
-        color: COLORS.dark,
-    },
-
-    // ── radio button row ──────────────────────────────────────────────────────
+    // ── Radio Buttons (CERTIFICATE flow) ─────────────────────────────────────
     radioRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 10,
-        marginBottom: 10,
+        marginBottom: 14,
     },
     radioRowLast: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 10,
     },
     radioOuter: {
@@ -292,6 +364,7 @@ export default StyleSheet.create({
         borderColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: 2,
     },
     radioInner: {
         width: 9,
@@ -304,8 +377,13 @@ export default StyleSheet.create({
         color: COLORS.dark,
         fontWeight: '500',
     },
+    radioSub: {
+        fontSize: 11,
+        color: COLORS.muted,
+        marginTop: 1,
+    },
 
-    // ── submit button ─────────────────────────────────────────────────────────
+    // ── Submit Button ─────────────────────────────────────────────────────────
     submitBtn: {
         backgroundColor: COLORS.primary,
         borderRadius: 10,
@@ -313,7 +391,7 @@ export default StyleSheet.create({
         alignItems: 'center',
         width: '70%',
         alignSelf: 'center',
-        marginTop: 4,
+        marginTop: 18,
     },
     submitBtnText: {
         color: '#FFFFFF',
@@ -322,7 +400,7 @@ export default StyleSheet.create({
         letterSpacing: 0.5,
     },
 
-    // ── bottom nav ────────────────────────────────────────────────────────────
+    // ── Bottom Nav ────────────────────────────────────────────────────────────
     bottomNav: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
@@ -362,30 +440,4 @@ export default StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 8,
     },
-
-    // ── iOS picker modal ──────────────────────────────────────────────────────
-    iosModalOverlay: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.3)',
-    },
-    iosModalSheet: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-    },
-    iosModalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    iosModalDoneText: {
-        color: COLORS.primary,
-        fontWeight: '600',
-        fontSize: 16,
-    },
-
 });
