@@ -20,6 +20,18 @@ const getGreeting = () => {
     return 'Good Evening';
 };
 
+const formatBillAmount = (amount) => {
+    if (amount === null || amount === undefined || amount === '') return '0.00';
+
+    const numericAmount = Number(String(amount).replace(/,/g, ''));
+    return Number.isFinite(numericAmount)
+        ? numericAmount.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })
+        : '0.00';
+};
+
 // hotlines banner component
 const HotlinesBanner = ({ onPress }) => (
     <TouchableOpacity
@@ -133,6 +145,7 @@ const Dashboard = () => {
     const greeting = getGreeting();
 
     const { user, avatarUri, fetchUser } = useUser();
+    const [currentBill, setCurrentBill] = useState('0.00');
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -141,7 +154,7 @@ const Dashboard = () => {
         floor: user?.floor ?? '',
         roomNumber: user?.room_number ?? '',
         roomCode: user?.room_number ? `R${user.room_number}-01` : '',
-        currentBill: '0.00',
+        currentBill,
         pendingRequests: 0,
     };
 
@@ -160,7 +173,21 @@ const Dashboard = () => {
                     console.error('failed to load announcements:', err);
                 }
             };
+
+            const fetchCurrentBill = async () => {
+                try {
+                    const res = await client.get('/water-bill', { timeout: 15000 });
+                    setCurrentBill(formatBillAmount(res.data.current_billing?.amount_due));
+                } catch (err) {
+                    if (err.response?.status !== 404) {
+                        console.error('failed to load current bill:', err);
+                    }
+                    setCurrentBill('0.00');
+                }
+            };
+
             fetchAnnouncements();
+            fetchCurrentBill();
         }, [])
     );
 
