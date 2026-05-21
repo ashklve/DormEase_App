@@ -20,83 +20,26 @@ import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-// ── Base URL ──────────────────────────────────────────────────────────────────
-// Change this one line whenever your ngrok URL changes.
-// When you deploy for real, swap this to your production domain.
-const BASE_URL = 'https://xxxx-xxx-xxx.ngrok-free.app';
+const BASE_URL = 'https://strongman-studio-stoke.ngrok-free.dev';
 
-// ── Auth token helper — replace with however you store the token ──────────────
-// e.g. from AsyncStorage, context, zustand, etc.
-// import { getToken } from '../../src/utils/auth';
-
-// ── Categories ────────────────────────────────────────────────────────────────
-// FORM        → tenant downloads blank template, fills it, uploads PDF back
-// CERTIFICATE → admin generates the doc; tenant just picks delivery method
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
-// ── 9 Downloadable Form Templates ─────────────────────────────────────────────
-// Files live at:  <laravel-root>/public/forms/<filename>
 const DOWNLOADABLE_FORMS = [
-    {
-        id: 'after_curfew_arrivals',
-        label: 'After Curfew Arrivals',
-        icon: 'nights-stay',
-        url: `${BASE_URL}/forms/after_curfew_arrivals.pdf`,
-    },
-    {
-        id: 'approval_to_leave_after_curfew',
-        label: 'Approval to Leave After Curfew',
-        icon: 'verified',
-        url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf`,
-    },
-    {
-        id: 'guards_form',
-        label: 'Guards Form',
-        icon: 'security',
-        url: `${BASE_URL}/forms/guards_form.pdf`,
-    },
-    {
-        id: 'letter_for_renewal_of_tenants',
-        label: 'Letter for Renewal of Tenants',
-        icon: 'mail',
-        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf`,
-    },
-    {
-        id: 'list_of_things',
-        label: 'List of Things',
-        icon: 'checklist',
-        url: `${BASE_URL}/forms/list_of_things.pdf`,
-    },
-    {
-        id: 'sleepover_of_non_tenant',
-        label: 'Sleepover of Non-Tenant',
-        icon: 'hotel',
-        url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf`,
-    },
-    {
-        id: 'tenants_info_sheet',
-        label: 'Tenants Info Sheet',
-        icon: 'person',
-        url: `${BASE_URL}/forms/tenants_info_sheet.pdf`,
-    },
-    {
-        id: 'turnover_sheet',
-        label: 'Turnover Sheet',
-        icon: 'swap-horiz',
-        url: `${BASE_URL}/forms/turnover_sheet.pdf`,
-    },
-    {
-        id: 'voucher',
-        label: 'Voucher',
-        icon: 'receipt',
-        url: `${BASE_URL}/forms/voucher.pdf`,
-    },
+    { id: 'after_curfew_arrivals',            label: 'After Curfew Arrivals',            icon: 'nights-stay', url: `${BASE_URL}/forms/after_curfew_arrivals.pdf` },
+    { id: 'approval_to_leave_after_curfew',   label: 'Approval to Leave After Curfew',   icon: 'verified',    url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf` },
+    { id: 'guards_form',                      label: 'Guards Form',                      icon: 'security',    url: `${BASE_URL}/forms/guards_form.pdf` },
+    { id: 'letter_for_renewal_of_tenants',    label: 'Letter for Renewal of Tenants',    icon: 'mail',        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf` },
+    { id: 'list_of_things',                   label: 'List of Things',                   icon: 'checklist',   url: `${BASE_URL}/forms/list_of_things.pdf` },
+    { id: 'sleepover_of_non_tenant',          label: 'Sleepover of Non-Tenant',          icon: 'hotel',       url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf` },
+    { id: 'tenants_info_sheet',               label: 'Tenants Info Sheet',               icon: 'person',      url: `${BASE_URL}/forms/tenants_info_sheet.pdf` },
+    { id: 'turnover_sheet',                   label: 'Turnover Sheet',                   icon: 'swap-horiz',  url: `${BASE_URL}/forms/turnover_sheet.pdf` },
+    { id: 'voucher',                          label: 'Voucher',                          icon: 'receipt',     url: `${BASE_URL}/forms/voucher.pdf` },
 ];
 
-// ── Dropdown sections ─────────────────────────────────────────────────────────
 const DROPDOWN_SECTIONS = [
     {
         sectionLabel: 'Upload a Filled Form',
@@ -105,16 +48,15 @@ const DROPDOWN_SECTIONS = [
     {
         sectionLabel: 'Request a Certificate / Document',
         items: [
-            { id: 'cert_residency', label: 'Certificate of Residency',  category: CATEGORY.CERTIFICATE },
-            { id: 'receipt_copy',   label: 'Official Receipt Copy',      category: CATEGORY.CERTIFICATE },
-            { id: 'lease_copy',     label: 'Lease Contract Copy',        category: CATEGORY.CERTIFICATE },
-            { id: 'clearance',      label: 'Clearance Certificate',      category: CATEGORY.CERTIFICATE },
-            { id: 'good_conduct',   label: 'Good Conduct Certificate',   category: CATEGORY.CERTIFICATE },
+            { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
+            { id: 'receipt_copy',   label: 'Official Receipt Copy',     category: CATEGORY.CERTIFICATE },
+            { id: 'lease_copy',     label: 'Lease Contract Copy',       category: CATEGORY.CERTIFICATE },
+            { id: 'clearance',      label: 'Clearance Certificate',     category: CATEGORY.CERTIFICATE },
+            { id: 'good_conduct',   label: 'Good Conduct Certificate',  category: CATEGORY.CERTIFICATE },
         ],
     },
 ];
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -139,37 +81,31 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
     const router        = useRouter();
     const { avatarUri } = useUser();
     const drawerRef     = useRef(null);
 
-    // ── Section 1 expand / collapse
-    const [formsExpanded, setFormsExpanded] = useState(true);
-
-    // ── Submit-request form state
+    const [formsExpanded,   setFormsExpanded]   = useState(true);
     const [selectedOption,  setSelectedOption]  = useState(null);
     const [dropdownOpen,    setDropdownOpen]     = useState(false);
     const [fullName,        setFullName]         = useState('');
     const [contactNo,       setContactNo]        = useState('');
     const [roomNo,          setRoomNo]           = useState('');
-    const [purpose,         setPurpose]          = useState('');        // CERTIFICATE only
-    const [deliveryMethod,  setDeliveryMethod]   = useState('digital'); // CERTIFICATE only
-    const [uploadedFile,    setUploadedFile]     = useState(null);      // FORM only
+    const [purpose,         setPurpose]          = useState('');
+    const [deliveryMethod,  setDeliveryMethod]   = useState('digital');
+    const [uploadedFile,    setUploadedFile]     = useState(null);
     const [submitting,      setSubmitting]       = useState(false);
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm        = selectedOption?.category === CATEGORY.FORM;
 
-    // ── Open the file in the device's browser / PDF viewer
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
             Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
         );
     };
 
-    // ── Pick a filled PDF from the device
     const handlePickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
@@ -184,7 +120,6 @@ export default function DocumentsScreen() {
         }
     };
 
-    // ── Select a type from the dropdown
     const handleSelectOption = (item) => {
         setSelectedOption(item);
         setDropdownOpen(false);
@@ -193,7 +128,6 @@ export default function DocumentsScreen() {
         setDeliveryMethod('digital');
     };
 
-    // ── Validate + submit
     const handleSubmit = async () => {
         if (!fullName.trim()) {
             Alert.alert('Missing Field', 'Please enter your full name.');
@@ -210,12 +144,15 @@ export default function DocumentsScreen() {
 
         setSubmitting(true);
         try {
+            const token = await AsyncStorage.getItem('auth_token');
+
             const formData = new FormData();
             formData.append('full_name',     fullName.trim());
             formData.append('contact_no',    contactNo.trim());
             formData.append('room_no',       roomNo.trim());
             formData.append('request_type',  selectedOption.id);
             formData.append('request_label', selectedOption.label);
+            formData.append('document_type', selectedOption.label);
             formData.append('category',      selectedOption.category);
 
             if (isCertificate) {
@@ -231,23 +168,25 @@ export default function DocumentsScreen() {
                 });
             }
 
-            // ── POST to Laravel API ──────────────────────────────────────────
-            // Replace YOUR_TOKEN with however you retrieve the Sanctum token
-            // e.g. from AsyncStorage: const token = await AsyncStorage.getItem('token');
             const response = await fetch(`${BASE_URL}/api/document-requests`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    // 'Authorization': `Bearer ${YOUR_TOKEN}`,
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: formData,
             });
 
+            const rawText = await response.text();
+
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message ?? 'Server error');
+                try {
+                    const err = JSON.parse(rawText);
+                    throw new Error(err.message ?? 'Server error');
+                } catch {
+                    throw new Error(rawText || `Server error (${response.status})`);
+                }
             }
-            // ────────────────────────────────────────────────────────────────
 
             // Reset form
             setFullName('');
@@ -264,9 +203,8 @@ export default function DocumentsScreen() {
         } finally {
             setSubmitting(false);
         }
-    };
+    }; // ← this closing brace was missing before
 
-    // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -324,7 +262,6 @@ export default function DocumentsScreen() {
                     ═══════════════════════════════════════════════════════ */}
                     <View style={styles.sectionCard}>
 
-                        {/* Collapsible header */}
                         <TouchableOpacity
                             style={styles.sectionHeaderRow}
                             activeOpacity={0.7}
@@ -472,7 +409,6 @@ export default function DocumentsScreen() {
                             />
                         </TouchableOpacity>
 
-                        {/* Dropdown with section headers */}
                         {dropdownOpen && (
                             <View style={styles.dropdownList}>
                                 <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
@@ -516,7 +452,7 @@ export default function DocumentsScreen() {
                             </View>
                         )}
 
-                        {/* ══ FORM flow: upload the completed PDF ══ */}
+                        {/* ══ FORM flow ══ */}
                         {isForm && (
                             <>
                                 <Text style={styles.fieldHint}>
@@ -524,10 +460,7 @@ export default function DocumentsScreen() {
                                 </Text>
 
                                 <TouchableOpacity
-                                    style={[
-                                        styles.uploadBox,
-                                        uploadedFile && styles.uploadBoxFilled,
-                                    ]}
+                                    style={[styles.uploadBox, uploadedFile && styles.uploadBoxFilled]}
                                     activeOpacity={0.75}
                                     onPress={handlePickDocument}
                                 >
@@ -537,16 +470,11 @@ export default function DocumentsScreen() {
                                         color={uploadedFile ? COLORS.primary : COLORS.muted}
                                     />
                                     <Text
-                                        style={[
-                                            styles.uploadBoxText,
-                                            uploadedFile && styles.uploadBoxTextFilled,
-                                        ]}
+                                        style={[styles.uploadBoxText, uploadedFile && styles.uploadBoxTextFilled]}
                                         numberOfLines={1}
                                         ellipsizeMode="middle"
                                     >
-                                        {uploadedFile
-                                            ? uploadedFile.name
-                                            : 'Tap to upload PDF'}
+                                        {uploadedFile ? uploadedFile.name : 'Tap to upload PDF'}
                                     </Text>
                                     <Text style={styles.uploadBoxSub}>
                                         {uploadedFile && uploadedFile.size
@@ -557,7 +485,7 @@ export default function DocumentsScreen() {
                             </>
                         )}
 
-                        {/* ══ CERTIFICATE flow: purpose + delivery method ══ */}
+                        {/* ══ CERTIFICATE flow ══ */}
                         {isCertificate && (
                             <>
                                 <TextInput
@@ -577,9 +505,7 @@ export default function DocumentsScreen() {
                                     onPress={() => setDeliveryMethod('digital')}
                                 >
                                     <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'digital' && (
-                                            <View style={styles.radioInner} />
-                                        )}
+                                        {deliveryMethod === 'digital' && <View style={styles.radioInner} />}
                                     </View>
                                     <View>
                                         <Text style={styles.radioLabel}>Digital Copy (PDF)</Text>
@@ -592,9 +518,7 @@ export default function DocumentsScreen() {
                                     onPress={() => setDeliveryMethod('printed')}
                                 >
                                     <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'printed' && (
-                                            <View style={styles.radioInner} />
-                                        )}
+                                        {deliveryMethod === 'printed' && <View style={styles.radioInner} />}
                                     </View>
                                     <View>
                                         <Text style={styles.radioLabel}>Printed Copy</Text>
@@ -604,7 +528,6 @@ export default function DocumentsScreen() {
                             </>
                         )}
 
-                        {/* ── Submit button — appears only once a type is selected ── */}
                         {selectedOption && (
                             <TouchableOpacity
                                 style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
