@@ -14,14 +14,23 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "DormEase uses your microphone to transcribe maintenance requests.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.dormease.app"
     },
     "android": {
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ninerzaaa.dormease"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,7 +38,22 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-vosk",
+        {
+          "models": [
+            "assets/model-en-us"
+          ],
+          "iOSMicrophonePermission": "DormEase uses your microphone to transcribe maintenance requests."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "46e84472-1a36-4a48-b4ed-e9f9413b5b06"
+      }
+    }
   }
 }
