@@ -27,6 +27,7 @@ import {
     stop,
     unload,
 } from 'react-native-vosk';
+import client from '../../api/client';
 import styles, { COLORS } from '../../src/constants/maintenancestyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
@@ -58,12 +59,24 @@ const PRIORITY_MAP = {
     Cleaning: 'Low',
     'Internet / Cable': 'Moderate',
     Others: 'Low',
+    plumbing: 'moderate',
+    electrical: 'urgent',
+    hvac: 'moderate',
+    appliance: 'low',
+    carpentry: 'low',
+    pest: 'urgent',
+    cleaning: 'low',
+    internet: 'moderate',
+    other: 'low',
 };
 
 const PRIORITY_STYLE = {
     High: { bg: '#F8D7DA', text: '#721C24' },
     Moderate: { bg: '#FFF3CD', text: '#856404' },
     Low: { bg: '#D4EDDA', text: '#155724' },
+    urgent: { bg: '#F8D7DA', text: '#721C24' },
+    moderate: { bg: '#FFF3CD', text: '#856404' },
+    low: { bg: '#D4EDDA', text: '#155724' },
 };
 
 const ISSUE_KEYWORDS = [
@@ -240,7 +253,6 @@ export default function MaintenanceScreen() {
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [categoryOpen, setCategoryOpen] = useState(false);
-    const [location, setLocation] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     // ── Voice recorder state
@@ -381,20 +393,38 @@ export default function MaintenanceScreen() {
             Alert.alert('Validation', 'Please describe the problem.');
             return;
         }
-        if (!location.trim()) {
-            Alert.alert('Validation', 'Please enter the location (e.g. Room number).');
-            return;
-        }
         setSubmitting(true);
-        setTimeout(() => {
-            setSubmitting(false);
-            Alert.alert('Success', 'Maintenance request submitted successfully.');
+        try {
+            const res = await client.post('/maintenance', {
+                description: description.trim(),
+                input_type: hasRecording ? 'voice' : 'text',
+            });
+
+            const savedRequest = res.data?.request;
+            const issueType = savedRequest?.issue_type ?? 'other';
+            const urgencyLevel = savedRequest?.urgency_level ?? 'low';
+
+            setCategory(issueType);
+            Alert.alert(
+                'Success',
+                `Maintenance request submitted successfully.\nIssue: ${issueType}\nPriority: ${urgencyLevel}`
+            );
+
             setDescription('');
             setCategory('');
-            setLocation('');
             setHasRecording(false);
             setElapsed(0);
-        }, 1500);
+        } catch (err) {
+            console.error('maintenance submit error:', err.response?.data ?? err.message);
+            const errors = err.response?.data?.errors;
+            const message = errors
+                ? Object.values(errors).flat().join('\n')
+                : (err.response?.data?.message ?? 'Failed to submit maintenance request.');
+
+            Alert.alert('Error', message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -553,20 +583,6 @@ export default function MaintenanceScreen() {
                                     </View>
                                 </View>
 
-                                {/* Location row */}
-                                <View style={[styles.detectedRow, { borderTopWidth: 1, borderTopColor: COLORS.border }]}>
-                                    <Text style={styles.detectedKey}>Location:</Text>
-                                    <View style={[styles.detectedValueRow, { flex: 1 }]}>
-                                        <TextInput
-                                            style={styles.locationInlineInput}
-                                            placeholder="e.g. Room 202"
-                                            placeholderTextColor={COLORS.muted}
-                                            value={location}
-                                            onChangeText={setLocation}
-                                        />
-                                        <MaterialIcons name="edit" size={15} color={COLORS.primary} />
-                                    </View>
-                                </View>
                             </View>
                         </View>
                     ) : (
@@ -588,15 +604,6 @@ export default function MaintenanceScreen() {
                                 />
                             </TouchableOpacity>
 
-                            {/* Location input */}
-                            <Text style={[styles.fieldLabel, { marginTop: 4 }]}>Location</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. Room 202, Kitchen, Bathroom"
-                                placeholderTextColor={COLORS.muted}
-                                value={location}
-                                onChangeText={setLocation}
-                            />
                         </View>
                     )}
 

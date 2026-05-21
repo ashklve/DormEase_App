@@ -351,7 +351,7 @@ export default StyleSheet.create({
         paddingVertical: 13,
         alignItems: 'center',
         marginTop: 4,
-        width: '70%',
+        width: '50%',
         alignSelf: 'center',
         marginBottom: 20,
     },

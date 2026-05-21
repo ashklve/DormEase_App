@@ -146,6 +146,7 @@ const Dashboard = () => {
 
     const { user, avatarUri, fetchUser } = useUser();
     const [currentBill, setCurrentBill] = useState('0.00');
+    const [pendingRequests, setPendingRequests] = useState(0);
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -155,7 +156,7 @@ const Dashboard = () => {
         roomNumber: user?.room_number ?? '',
         roomCode: user?.room_number ? `R${user.room_number}-01` : '',
         currentBill,
-        pendingRequests: 0,
+        pendingRequests,
     };
 
     // ── load latest announcements from API ────────────────────────────────────
@@ -186,8 +187,24 @@ const Dashboard = () => {
                 }
             };
 
+            const fetchPendingRequests = async () => {
+                try {
+                    const res = await client.get('/maintenance', { timeout: 15000 });
+                    const requests = Array.isArray(res.data?.requests) ? res.data.requests : [];
+                    const pendingCount = requests.filter((request) =>
+                        ['pending', 'in-progress'].includes(request.status)
+                    ).length;
+
+                    setPendingRequests(pendingCount);
+                } catch (err) {
+                    console.error('failed to load pending maintenance requests:', err);
+                    setPendingRequests(0);
+                }
+            };
+
             fetchAnnouncements();
             fetchCurrentBill();
+            fetchPendingRequests();
         }, [])
     );
 
