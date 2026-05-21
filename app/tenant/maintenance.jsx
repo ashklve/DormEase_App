@@ -481,7 +481,7 @@ export default function MaintenanceScreen() {
                             <Text style={styles.fieldLabel}>Describe the problem</Text>
                             <TouchableOpacity
                                 style={styles.historyBtn}
-                                onPress={() => setShowHistory(true)}
+                                onPress={() => router.push('/tenant/maintenancehistory')}
                             >
                                 <Ionicons name="time-outline" size={13} color={COLORS.primary} />
                                 <Text style={styles.historyBtnText}>History</Text>
