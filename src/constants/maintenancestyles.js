@@ -50,11 +50,25 @@ export default StyleSheet.create({
         paddingTop: verticalScale(4),
         paddingBottom: verticalScale(10),
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 4,
+    },
+    headerIconBadge: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.primary,
+    },
     headerTitle: {
         fontSize: moderateScale(24),
         fontWeight: '700',
         color: COLORS.dark,
-        marginBottom: 2,
+        marginBottom: 0,
     },
     headerSub: {
         fontSize: moderateScale(13),

@@ -193,7 +193,12 @@ export default function WaterBillScreen() {
 
             {/* ── Header ── */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>Water Billing 💧</Text>
+                <View style={styles.headerTitleRow}>
+                    <View style={styles.headerIconBadge}>
+                        <Ionicons name="receipt-outline" size={20} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.headerTitle}>Water Billing</Text>
+                </View>
                 <Text style={styles.headerSub}>View your current share and payment status</Text>
             </View>
 

@@ -463,7 +463,12 @@ export default function MaintenanceScreen() {
 
                 {/* ── Header ── */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.headerTitle}>Maintenance Request 🔧</Text>
+                    <View style={styles.headerTitleRow}>
+                        <View style={styles.headerIconBadge}>
+                            <Ionicons name="construct-outline" size={20} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.headerTitle}>Maintenance Request</Text>
+                    </View>
                     <Text style={styles.headerSub}>Describe the problem by speaking or typing.</Text>
                 </View>
 

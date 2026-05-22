@@ -362,7 +362,12 @@ export default function MaintenanceHistoryScreen() {
 
             {/* ── Header ── */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>Maintenance History 🔧</Text>
+                <View style={styles.headerTitleRow}>
+                    <View style={styles.headerIconBadge}>
+                        <Ionicons name="time-outline" size={20} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.headerTitle}>Maintenance History</Text>
+                </View>
                 <Text style={styles.headerSub}>Track your past maintenance requests</Text>
             </View>
 

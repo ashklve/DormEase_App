@@ -34,10 +34,11 @@ const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
 const AnnouncementDetail = ({ item, visible, onClose }) => {
+  const [imageRatio, setImageRatio] = useState(4 / 3);
+
   if (!item) return null;
 
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
-  const [imageRatio, setImageRatio] = useState(4 / 3);
 
   const attachments = item.attachments
     ? item.attachments
@@ -84,30 +85,32 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       transparent={false}
       onRequestClose={onClose}
     >
-      <View style={{
-        flex: 1,
-        backgroundColor: '#fff',
-        paddingTop: Platform.OS === 'ios' ? 54 : StatusBar.currentHeight,
-      }}>
+      <View style={detailStyles.modalRoot}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={detailStyles.scrollContent}
         >
           {/* ── Header INSIDE ScrollView ── */}
           <View style={detailStyles.header}>
             <TouchableOpacity onPress={onClose} style={detailStyles.backBtn}>
               <MaterialIcons name="arrow-back" size={24} color="#2D1B2E" />
             </TouchableOpacity>
-            <Text style={detailStyles.headerTitle}>Announcement</Text>
-            <View style={{ width: 40 }} />
+            <View style={detailStyles.headerTitleGroup}>
+              <View style={detailStyles.headerIconBadge}>
+                <Ionicons name="megaphone-outline" size={18} color={COLORS.white} />
+              </View>
+              <Text style={detailStyles.headerTitle}>Announcement</Text>
+            </View>
+            <View style={detailStyles.headerSpacer} />
           </View>
 
           {/* ── Post Header ── */}
+          <View style={detailStyles.detailBody}>
           <View style={detailStyles.postHeader}>
             <View style={detailStyles.adminAvatar}>
               <MaterialIcons name="campaign" size={22} color="#fff" />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={detailStyles.adminInfo}>
               <Text style={detailStyles.adminName}>DormEase Admin</Text>
               <View style={detailStyles.metaRow}>
                 <Ionicons name="time-outline" size={12} color="#B5B7C0" />
@@ -122,13 +125,15 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
           </View>
 
           {/* ── Title ── */}
-          <View style={detailStyles.titleSection}>
-            <Text style={detailStyles.title}>{item.title}</Text>
-          </View>
+          <View>
+            <View style={detailStyles.titleSection}>
+              <Text style={detailStyles.title}>{item.title}</Text>
+            </View>
 
           {/* ── Content ── */}
-          <View style={detailStyles.contentSection}>
-            <Text style={detailStyles.content}>{item.preview}</Text>
+            <View style={detailStyles.contentSection}>
+              <Text style={detailStyles.content}>{item.preview}</Text>
+            </View>
           </View>
 
           {/* ── Image ── */}
@@ -156,9 +161,12 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
           {/* ── Attachments ── */}
           {attachments.length > 0 && (
             <View style={detailStyles.attachSection}>
-              <Text style={detailStyles.attachTitle}>
-                📎 Attachments ({attachments.length})
-              </Text>
+              <View style={detailStyles.attachTitleRow}>
+                <Ionicons name="attach-outline" size={16} color={COLORS.primary} />
+                <Text style={detailStyles.attachTitle}>
+                  Attachments ({attachments.length})
+                </Text>
+              </View>
               {attachments.map((path, i) => {
                 const icon = getFileIcon(path);
                 return (
@@ -171,12 +179,12 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
                     <View style={[detailStyles.attachIcon, { backgroundColor: icon.color + '20' }]}>
                       <Ionicons name={icon.name} size={20} color={icon.color} />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={detailStyles.attachTextWrap}>
                       <Text style={detailStyles.attachName} numberOfLines={1}>
                         {getFileName(path)}
                       </Text>
                       <Text style={detailStyles.attachType}>
-                        {path.split('.').pop().toUpperCase()} · tap to open
+                        {path.split('.').pop().toUpperCase()} - tap to open
                       </Text>
                     </View>
                     <Ionicons name="open-outline" size={18} color="#B5B7C0" />
@@ -185,6 +193,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
               })}
             </View>
           )}
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -362,7 +371,12 @@ export default function AnnouncementsScreen() {
 
           {/* ── Header Section ── */}
           <View style={styles.headerSection}>
-            <Text style={styles.headerTitle}>Announcements 📢</Text>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.headerIconBadge}>
+                <Ionicons name="megaphone-outline" size={20} color={COLORS.white} />
+              </View>
+              <Text style={styles.headerTitle}>Announcements</Text>
+            </View>
             <Text style={styles.headerSub}>View notices and announcements</Text>
           </View>
 
@@ -465,36 +479,74 @@ export default function AnnouncementsScreen() {
 
 // ── Detail styles ─────────────────────────────────────────────────────────────
 const detailStyles = {
+  modalRoot: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    paddingTop: Platform.OS === 'ios' ? 54 : StatusBar.currentHeight,
+  },
+  scrollContent: {
+    paddingBottom: verticalScale(40),
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(10),
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFB6C1',
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
   backBtn: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.lightPink,
+  },
+  headerTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
   },
   headerTitle: {
     fontSize: moderateScale(16),
     fontWeight: '700',
-    color: '#2D1B2E',
+    color: COLORS.dark,
+  },
+  headerSpacer: {
+    width: 40,
   },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(14),
+    marginBottom: verticalScale(18),
     gap: 12,
+  },
+  detailBody: {
+    paddingHorizontal: scale(18),
+    paddingTop: verticalScale(18),
+    paddingBottom: verticalScale(22),
+    backgroundColor: COLORS.white,
+  },
+  adminInfo: {
+    flex: 1,
+    minWidth: 0,
   },
   adminAvatar: {
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: '#CA5D86',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -507,6 +559,7 @@ const detailStyles = {
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
   metaText: {
@@ -523,54 +576,60 @@ const detailStyles = {
     fontWeight: '600',
   },
   titleSection: {
-    paddingHorizontal: scale(16),
-    paddingBottom: verticalScale(6),
+    paddingBottom: verticalScale(8),
   },
   title: {
     fontSize: moderateScale(20),
     fontWeight: '800',
-    color: '#2D1B2E',
+    color: COLORS.dark,
     lineHeight: 28,
   },
   contentSection: {
-    paddingHorizontal: scale(16),
-    paddingBottom: verticalScale(14),
+    paddingBottom: 0,
   },
   content: {
     fontSize: moderateScale(15),
-    color: '#4A4A4A',
+    color: COLORS.grayText,
     lineHeight: 24,
   },
   imageWrapper: {
-    width: '100%',
+    marginTop: verticalScale(18),
+    borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORS.white,
   },
   divider: {
-    height: 8,
-    backgroundColor: '#F5F5F5',
-    marginVertical: verticalScale(12),
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: verticalScale(18),
   },
   attachSection: {
-    paddingHorizontal: scale(16),
     gap: 10,
+  },
+  attachTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: verticalScale(4),
   },
   attachTitle: {
     fontSize: moderateScale(13),
     fontWeight: '700',
-    color: '#2D1B2E',
-    marginBottom: verticalScale(6),
+    color: COLORS.dark,
   },
   attachItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F8F8',
+    backgroundColor: COLORS.bg,
     borderRadius: 12,
     padding: scale(12),
-    marginBottom: verticalScale(8),
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: COLORS.border,
     gap: 12,
+  },
+  attachTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   attachIcon: {
     width: scale(40),
@@ -593,6 +652,7 @@ const detailStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    flexWrap: 'wrap',
     marginTop: 8,
     gap: 2,
   },
@@ -600,5 +660,6 @@ const detailStyles = {
     fontSize: moderateScale(11),
     color: '#CA5D86',
     fontWeight: '500',
+    flexShrink: 1,
   },
 };
