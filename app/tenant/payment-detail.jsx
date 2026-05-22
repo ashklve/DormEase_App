@@ -197,7 +197,12 @@ export default function PaymentDetailScreen() {
 
                 {/* ── Header ── */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.headerTitle}>Bills Payment 💧</Text>
+                    <View style={styles.headerTitleRow}>
+                        <View style={styles.headerIconBadge}>
+                            <Ionicons name="card-outline" size={20} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.headerTitle}>Bills Payment</Text>
+                    </View>
                     <Text style={styles.headerSub}>
                         Choose to pay via QR code or settle in person
                     </Text>

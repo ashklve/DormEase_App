@@ -64,11 +64,25 @@ export default StyleSheet.create({
         paddingTop: 4,
         paddingBottom: 10,
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 4,
+    },
+    headerIconBadge: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.primary,
+    },
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
         color: COLORS.dark,
-        marginBottom: 2,
+        marginBottom: 0,
     },
     headerSub: {
         fontSize: 13,

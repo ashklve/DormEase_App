@@ -242,7 +242,12 @@ export default function DocumentsScreen() {
 
                 {/* ── Page Header ── */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.headerTitle}>Document Request 📋</Text>
+                    <View style={styles.headerTitleRow}>
+                        <View style={styles.headerIconBadge}>
+                            <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.headerTitle}>Document Request</Text>
+                    </View>
                     <Text style={styles.headerSub}>
                         Download forms or request official documents
                     </Text>

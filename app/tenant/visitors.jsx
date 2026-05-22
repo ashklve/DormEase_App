@@ -420,7 +420,12 @@ export default function VisitorsScreen() {
 
                 {/* ── Header ── */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.headerTitle}>Visitor Registration 👥</Text>
+                    <View style={styles.headerTitleRow}>
+                        <View style={styles.headerIconBadge}>
+                            <Ionicons name="people-outline" size={20} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.headerTitle}>Visitor Registration</Text>
+                    </View>
                     <Text style={styles.headerSub}>Register and track your visitors</Text>
                 </View>
 

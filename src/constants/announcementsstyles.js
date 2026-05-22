@@ -26,6 +26,7 @@ topRow: {
   topRowRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     gap: 12,
   },
   iconBtn: {
@@ -52,11 +53,26 @@ headerSection: {
     paddingTop: verticalScale(4),
     paddingBottom: verticalScale(10),
 },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
+  },
+  headerIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+  },
   headerTitle: {
     fontSize: moderateScale(24),
     fontWeight: '700',
     color: COLORS.dark,
-    marginBottom: 2,
+    marginBottom: 0,
+    flexShrink: 1,
   },
   headerSub: {
     fontSize: moderateScale(13),
@@ -70,6 +86,7 @@ headerSection: {
     paddingHorizontal: 20,
     gap: 10,
     marginBottom: 14,
+    flexWrap: 'wrap',
   },
   filterBtn: {
     flexDirection: 'row',
@@ -84,10 +101,12 @@ headerSection: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+    flexShrink: 1,
   },
   weekBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    maxWidth: '100%',
     backgroundColor: COLORS.card,
     borderRadius: 20,
     paddingVertical: 8,
@@ -100,6 +119,7 @@ headerSection: {
     color: COLORS.dark,
     fontSize: 13,
     fontWeight: '500',
+    flexShrink: 1,
   },
 
   // tabs
@@ -109,6 +129,7 @@ headerSection: {
     marginBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    flexWrap: 'wrap',
   },
   tab: {
     marginRight: 24,
@@ -166,6 +187,7 @@ headerSection: {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    gap: 8,
   },
   priorityBadge: {
     borderRadius: 6,
@@ -175,6 +197,7 @@ headerSection: {
   priorityText: {
     fontSize: 12,
     fontWeight: '600',
+    flexShrink: 1,
   },
   dotsBtn: {
     padding: 4,
@@ -216,10 +239,13 @@ headerSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   cardDate: {
     fontSize: 11,
     color: COLORS.muted,
+    flexShrink: 1,
   },
   filesRow: {
     flexDirection: 'row',
@@ -229,6 +255,7 @@ headerSection: {
   filesText: {
     fontSize: 11,
     color: COLORS.muted,
+    flexShrink: 1,
   },
 
   // bottom nav
@@ -279,7 +306,8 @@ navCenterCircle: {
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
     paddingTop: H * 0.22,
-    paddingLeft: W * 0.27,
+    paddingLeft: scale(20),
+    paddingRight: scale(20),
   },
   dropdownBox: {
     backgroundColor: COLORS.white,
@@ -287,6 +315,7 @@ navCenterCircle: {
     paddingVertical: 8,
     paddingHorizontal: 4,
     minWidth: 180,
+    maxWidth: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -346,6 +375,7 @@ navCenterCircle: {
   },
   notifContent: {
     flex: 1,
+    minWidth: 0,
     marginRight: 8,
   },
   notifTitle: {
@@ -486,6 +516,7 @@ navCenterCircle: {
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 12,
+    gap: 12,
   },
   badge: {
     backgroundColor: COLORS.primary,
@@ -510,6 +541,7 @@ navCenterCircle: {
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
+    gap: 12,
   },
   announceMegaphone: {
     width: 40,
@@ -523,6 +555,7 @@ navCenterCircle: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.dark,
+    flexShrink: 1,
   },
   announceDate: {
     fontSize: 11,
@@ -539,6 +572,7 @@ navCenterCircle: {
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 7,
+    flexShrink: 0,
   },
   viewBtnText: {
     color: COLORS.white,
@@ -624,12 +658,15 @@ navCenterCircle: {
   drawerItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
     gap: 14,
   },
   drawerItemText: {
     color: COLORS.white,
     fontSize: 15,
     fontWeight: '500',
+    flexShrink: 1,
   },
 
   // sub items shown when documents is expanded
