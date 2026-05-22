@@ -177,7 +177,7 @@ const Dashboard = () => {
 
             const fetchCurrentBill = async () => {
                 try {
-                    const res = await client.get('/water-bill', { timeout: 15000 });
+                    const res = await client.get('/water-bill', { timeout: 30000 });
                     setCurrentBill(formatBillAmount(res.data.current_billing?.amount_due));
                 } catch (err) {
                     if (err.response?.status !== 404) {
@@ -189,7 +189,7 @@ const Dashboard = () => {
 
             const fetchPendingRequests = async () => {
                 try {
-                    const res = await client.get('/maintenance', { timeout: 15000 });
+                    const res = await client.get('/maintenance', { timeout: 30000 });
                     const requests = Array.isArray(res.data?.requests) ? res.data.requests : [];
                     const pendingCount = requests.filter((request) =>
                         ['pending', 'in-progress'].includes(request.status)
