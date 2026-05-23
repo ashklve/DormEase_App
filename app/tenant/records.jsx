@@ -15,13 +15,12 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import styles, { COLORS } from '../../src/constants/recordsstyles';
+import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
-const BASE_URL = 'https://strongman-studio-stoke.ngrok-free.dev';
 
 const STATUS_CONFIG = {
     pending:    { label: 'Pending',    color: COLORS.warning, bg: COLORS.warningLight, icon: 'schedule' },
@@ -108,7 +107,7 @@ const RecordCard = ({ item, index }) => {
 
     const openFile = async (path) => {
         try {
-            await Linking.openURL(`${BASE_URL}/storage/${path}`);
+            await Linking.openURL(`${client.defaults.baseURL.replace('/api', '')}/storage/${path}`);
         } catch {
             Alert.alert('Error', 'Could not open file. Please try again.');
         }
@@ -190,7 +189,7 @@ const RecordCard = ({ item, index }) => {
                             <View style={[styles.fileBtnIcon, { backgroundColor: COLORS.success }]}>
                                 <MaterialIcons name="description" size={18} color={COLORS.white} />
                             </View>
-                            <View style={{ flex: 1 }}>
+                            <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: '#065F46' }]}>Document Ready</Text>
                                 <Text style={[styles.fileBtnSub,  { color: '#059669' }]}>Tap to view fulfilled document</Text>
                             </View>
@@ -201,7 +200,7 @@ const RecordCard = ({ item, index }) => {
                             <View style={[styles.fileBtnIcon, { backgroundColor: '#E5E7EB' }]}>
                                 <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
                             </View>
-                            <View style={{ flex: 1 }}>
+                            <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: COLORS.muted }]}>Awaiting Document</Text>
                                 <Text style={[styles.fileBtnSub,  { color: COLORS.muted }]}>Admin hasn't sent a file yet</Text>
                             </View>
@@ -218,7 +217,7 @@ const RecordCard = ({ item, index }) => {
                             <View style={[styles.fileBtnIcon, { backgroundColor: COLORS.primary }]}>
                                 <MaterialIcons name="attach-file" size={18} color={COLORS.white} />
                             </View>
-                            <View style={{ flex: 1 }}>
+                            <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: COLORS.primary }]}>Your Submitted Form</Text>
                                 <Text style={[styles.fileBtnSub,  { color: '#BE185D' }]}>Tap to view your uploaded file</Text>
                             </View>
@@ -260,15 +259,8 @@ export default function TenantRecordsScreen() {
         if (isRefresh) setRefreshing(true);
         else           setLoading(true);
         try {
-            const token = await AsyncStorage.getItem('auth_token');
-            const res   = await fetch(`${BASE_URL}/api/document-requests`, {
-                headers: {
-                    'Accept':        'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            if (!res.ok) throw new Error();
-            const data = await res.json();
+            const res = await client.get('/document-requests');
+            const data = res.data;
             setRecords(data.data ?? data);
         } catch {
             Alert.alert('Error', 'Could not load your records. Please try again.');
@@ -312,7 +304,12 @@ export default function TenantRecordsScreen() {
 
             {/* page header */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>My Records 📁</Text>
+                <View style={styles.headerTitleRow}>
+                    <View style={styles.headerIconBadge}>
+                        <Ionicons name="folder-open-outline" size={20} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.headerTitle}>My Records</Text>
+                </View>
                 <Text style={styles.headerSub}>Your document request history & received files</Text>
             </View>
 

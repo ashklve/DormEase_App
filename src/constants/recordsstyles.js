@@ -48,6 +48,7 @@ export default StyleSheet.create({
     topRowRight: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexShrink: 0,
         gap: 12,
     },
     iconBtn: {
@@ -74,11 +75,26 @@ export default StyleSheet.create({
         paddingTop: 4,
         paddingBottom: 10,
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 4,
+    },
+    headerIconBadge: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.primary,
+    },
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
         color: COLORS.dark,
         marginBottom: 0,
+        flexShrink: 1,
     },
     headerSub: {
         fontSize: 13,
@@ -120,6 +136,7 @@ export default StyleSheet.create({
     statLabel: {
         fontSize: 11,
         color: COLORS.muted,
+        flexShrink: 1,
     },
 
     // filter chips
@@ -133,6 +150,7 @@ export default StyleSheet.create({
     filterChipText: {
         fontSize: 12,
         fontWeight: '600',
+        flexShrink: 1,
     },
 
     // record card
@@ -160,10 +178,11 @@ export default StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: 10,
+        gap: 10,
     },
     cardHeaderLeft: {
         flex: 1,
-        marginRight: 10,
+        minWidth: 0,
     },
     reqId: {
         fontSize: 11,
@@ -175,12 +194,14 @@ export default StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: COLORS.dark,
+        lineHeight: 20,
     },
 
     // status badge
     statusBadge: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexShrink: 0,
         gap: 4,
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -198,13 +219,16 @@ export default StyleSheet.create({
         alignItems: 'center',
         gap: 6,
         marginBottom: 4,
+        flexShrink: 1,
     },
     metaText: {
         fontSize: 11,
         color: COLORS.muted,
+        flexShrink: 1,
     },
     metaGroup: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 14,
         marginBottom: 4,
     },
@@ -254,6 +278,10 @@ export default StyleSheet.create({
         padding: 12,
         marginBottom: 8,
     },
+    fileBtnTextWrap: {
+        flex: 1,
+        minWidth: 0,
+    },
     fileBtnIcon: {
         width: 34,
         height: 34,
@@ -268,6 +296,7 @@ export default StyleSheet.create({
     fileBtnSub: {
         fontSize: 11,
         marginTop: 1,
+        flexShrink: 1,
     },
 
     // empty state
