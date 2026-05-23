@@ -20,25 +20,23 @@ import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
-
-const BASE_URL = 'https://strongman-studio-stoke.ngrok-free.dev';
+const FILE_BASE_URL = client.defaults.baseURL.replace(/\/api\/?$/, '');
 
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
 const DOWNLOADABLE_FORMS = [
-    { id: 'after_curfew_arrivals',          label: 'After Curfew Arrivals',          icon: 'nights-stay', url: `${BASE_URL}/forms/after_curfew_arrivals.pdf` },
-    { id: 'approval_to_leave_after_curfew', label: 'Approval to Leave After Curfew', icon: 'verified',    url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf` },
-    { id: 'guards_form',                    label: 'Guards Form',                    icon: 'security',    url: `${BASE_URL}/forms/guards_form.pdf` },
-    { id: 'letter_for_renewal_of_tenants',  label: 'Letter for Renewal of Tenants',  icon: 'mail',        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf` },
-    { id: 'list_of_things',                 label: 'List of Things',                 icon: 'checklist',   url: `${BASE_URL}/forms/list_of_things.pdf` },
-    { id: 'sleepover_of_non_tenant',        label: 'Sleepover of Non-Tenant',        icon: 'hotel',       url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf` },
-    { id: 'tenants_info_sheet',             label: 'Tenants Info Sheet',             icon: 'person',      url: `${BASE_URL}/forms/tenants_info_sheet.pdf` },
-    { id: 'turnover_sheet',                 label: 'Turnover Sheet',                 icon: 'swap-horiz',  url: `${BASE_URL}/forms/turnover_sheet.pdf` },
-    { id: 'voucher',                        label: 'Voucher',                        icon: 'receipt',     url: `${BASE_URL}/forms/voucher.pdf` },
+    { id: 'after_curfew_arrivals',          label: 'After Curfew Arrivals',          icon: 'nights-stay', url: `${FILE_BASE_URL}/forms/after_curfew_arrivals.pdf` },
+    { id: 'approval_to_leave_after_curfew', label: 'Approval to Leave After Curfew', icon: 'verified',    url: `${FILE_BASE_URL}/forms/approval_to_leave_after_curfew.pdf` },
+    { id: 'guards_form',                    label: 'Guards Form',                    icon: 'security',    url: `${FILE_BASE_URL}/forms/guards_form.pdf` },
+    { id: 'letter_for_renewal_of_tenants',  label: 'Letter for Renewal of Tenants',  icon: 'mail',        url: `${FILE_BASE_URL}/forms/letter_for_renewal_of_tenants.pdf` },
+    { id: 'list_of_things',                 label: 'List of Things',                 icon: 'checklist',   url: `${FILE_BASE_URL}/forms/list_of_things.pdf` },
+    { id: 'sleepover_of_non_tenant',        label: 'Sleepover of Non-Tenant',        icon: 'hotel',       url: `${FILE_BASE_URL}/forms/sleepover_of_non_tenant.pdf` },
+    { id: 'tenants_info_sheet',             label: 'Tenants Info Sheet',             icon: 'person',      url: `${FILE_BASE_URL}/forms/tenants_info_sheet.pdf` },
+    { id: 'turnover_sheet',                 label: 'Turnover Sheet',                 icon: 'swap-horiz',  url: `${FILE_BASE_URL}/forms/turnover_sheet.pdf` },
+    { id: 'voucher',                        label: 'Voucher',                        icon: 'receipt',     url: `${FILE_BASE_URL}/forms/voucher.pdf` },
 ];
 
 const DROPDOWN_SECTIONS = [
@@ -157,8 +155,6 @@ export default function DocumentsScreen() {
 
         setSubmitting(true);
         try {
-            const token = await AsyncStorage.getItem('auth_token');
-
             const formData = new FormData();
             formData.append('full_name',     fullName.trim());
             formData.append('contact_no',    contactNo.trim());
@@ -181,25 +177,9 @@ export default function DocumentsScreen() {
                 });
             }
 
-            const response = await fetch(`${BASE_URL}/api/document-requests`, {
-                method: 'POST',
-                headers: {
-                    'Accept':        'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
+            await client.post('/document-requests', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
-
-            const rawText = await response.text();
-
-            if (!response.ok) {
-                try {
-                    const err = JSON.parse(rawText);
-                    throw new Error(err.message ?? 'Server error');
-                } catch {
-                    throw new Error(rawText || `Server error (${response.status})`);
-                }
-            }
 
             // reset form but restore user info fields
             setFullName(userInfo ? `${userInfo.first_name ?? ''} ${userInfo.last_name ?? ''}`.trim() : '');
@@ -212,7 +192,11 @@ export default function DocumentsScreen() {
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
         } catch (err) {
-            Alert.alert('Error', err.message ?? 'Failed to submit. Please try again.');
+            const message = err.response?.data?.message
+                ?? err.response?.data?.error
+                ?? err.message
+                ?? 'Failed to submit. Please try again.';
+            Alert.alert('Error', message);
         } finally {
             setSubmitting(false);
         }
