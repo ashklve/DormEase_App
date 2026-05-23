@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -21,6 +21,7 @@ import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -29,15 +30,15 @@ const BASE_URL = 'https://strongman-studio-stoke.ngrok-free.dev';
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
 const DOWNLOADABLE_FORMS = [
-    { id: 'after_curfew_arrivals',            label: 'After Curfew Arrivals',            icon: 'nights-stay', url: `${BASE_URL}/forms/after_curfew_arrivals.pdf` },
-    { id: 'approval_to_leave_after_curfew',   label: 'Approval to Leave After Curfew',   icon: 'verified',    url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf` },
-    { id: 'guards_form',                      label: 'Guards Form',                      icon: 'security',    url: `${BASE_URL}/forms/guards_form.pdf` },
-    { id: 'letter_for_renewal_of_tenants',    label: 'Letter for Renewal of Tenants',    icon: 'mail',        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf` },
-    { id: 'list_of_things',                   label: 'List of Things',                   icon: 'checklist',   url: `${BASE_URL}/forms/list_of_things.pdf` },
-    { id: 'sleepover_of_non_tenant',          label: 'Sleepover of Non-Tenant',          icon: 'hotel',       url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf` },
-    { id: 'tenants_info_sheet',               label: 'Tenants Info Sheet',               icon: 'person',      url: `${BASE_URL}/forms/tenants_info_sheet.pdf` },
-    { id: 'turnover_sheet',                   label: 'Turnover Sheet',                   icon: 'swap-horiz',  url: `${BASE_URL}/forms/turnover_sheet.pdf` },
-    { id: 'voucher',                          label: 'Voucher',                          icon: 'receipt',     url: `${BASE_URL}/forms/voucher.pdf` },
+    { id: 'after_curfew_arrivals',          label: 'After Curfew Arrivals',          icon: 'nights-stay', url: `${BASE_URL}/forms/after_curfew_arrivals.pdf` },
+    { id: 'approval_to_leave_after_curfew', label: 'Approval to Leave After Curfew', icon: 'verified',    url: `${BASE_URL}/forms/approval_to_leave_after_curfew.pdf` },
+    { id: 'guards_form',                    label: 'Guards Form',                    icon: 'security',    url: `${BASE_URL}/forms/guards_form.pdf` },
+    { id: 'letter_for_renewal_of_tenants',  label: 'Letter for Renewal of Tenants',  icon: 'mail',        url: `${BASE_URL}/forms/letter_for_renewal_of_tenants.pdf` },
+    { id: 'list_of_things',                 label: 'List of Things',                 icon: 'checklist',   url: `${BASE_URL}/forms/list_of_things.pdf` },
+    { id: 'sleepover_of_non_tenant',        label: 'Sleepover of Non-Tenant',        icon: 'hotel',       url: `${BASE_URL}/forms/sleepover_of_non_tenant.pdf` },
+    { id: 'tenants_info_sheet',             label: 'Tenants Info Sheet',             icon: 'person',      url: `${BASE_URL}/forms/tenants_info_sheet.pdf` },
+    { id: 'turnover_sheet',                 label: 'Turnover Sheet',                 icon: 'swap-horiz',  url: `${BASE_URL}/forms/turnover_sheet.pdf` },
+    { id: 'voucher',                        label: 'Voucher',                        icon: 'receipt',     url: `${BASE_URL}/forms/voucher.pdf` },
 ];
 
 const DROPDOWN_SECTIONS = [
@@ -86,16 +87,28 @@ export default function DocumentsScreen() {
     const { avatarUri } = useUser();
     const drawerRef     = useRef(null);
 
-    const [formsExpanded,   setFormsExpanded]   = useState(true);
-    const [selectedOption,  setSelectedOption]  = useState(null);
-    const [dropdownOpen,    setDropdownOpen]     = useState(false);
-    const [fullName,        setFullName]         = useState('');
-    const [contactNo,       setContactNo]        = useState('');
-    const [roomNo,          setRoomNo]           = useState('');
-    const [purpose,         setPurpose]          = useState('');
-    const [deliveryMethod,  setDeliveryMethod]   = useState('digital');
-    const [uploadedFile,    setUploadedFile]     = useState(null);
-    const [submitting,      setSubmitting]       = useState(false);
+    const [formsExpanded,  setFormsExpanded]  = useState(true);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [dropdownOpen,   setDropdownOpen]   = useState(false);
+    const [fullName,       setFullName]       = useState('');
+    const [contactNo,      setContactNo]      = useState('');
+    const [roomNo,         setRoomNo]         = useState('');
+    const [purpose,        setPurpose]        = useState('');
+    const [deliveryMethod, setDeliveryMethod] = useState('digital');
+    const [uploadedFile,   setUploadedFile]   = useState(null);
+    const [submitting,     setSubmitting]     = useState(false);
+    const [userInfo,       setUserInfo]       = useState(null);
+
+    // pre-fill fields from the logged-in tenant's profile
+    useEffect(() => {
+        client.get('/user').then((res) => {
+            const u = res.data;
+            setUserInfo(u);
+            setFullName(`${u.first_name ?? ''} ${u.last_name ?? ''}`.trim());
+            setContactNo(u.contact_number ?? '');
+            setRoomNo(u.room_number ?? '');
+        }).catch(() => {});
+    }, []);
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm        = selectedOption?.category === CATEGORY.FORM;
@@ -156,8 +169,8 @@ export default function DocumentsScreen() {
             formData.append('category',      selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose',          purpose.trim());
-                formData.append('delivery_method',  deliveryMethod);
+                formData.append('purpose',         purpose.trim());
+                formData.append('delivery_method', deliveryMethod);
             }
 
             if (isForm && uploadedFile) {
@@ -171,7 +184,7 @@ export default function DocumentsScreen() {
             const response = await fetch(`${BASE_URL}/api/document-requests`, {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    'Accept':        'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
                 body: formData,
@@ -188,10 +201,10 @@ export default function DocumentsScreen() {
                 }
             }
 
-            // Reset form
-            setFullName('');
-            setContactNo('');
-            setRoomNo('');
+            // reset form but restore user info fields
+            setFullName(userInfo ? `${userInfo.first_name ?? ''} ${userInfo.last_name ?? ''}`.trim() : '');
+            setContactNo(userInfo?.contact_number ?? '');
+            setRoomNo(userInfo?.room_number ?? '');
             setSelectedOption(null);
             setUploadedFile(null);
             setPurpose('');
@@ -203,7 +216,7 @@ export default function DocumentsScreen() {
         } finally {
             setSubmitting(false);
         }
-    }; // ← this closing brace was missing before
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -214,7 +227,7 @@ export default function DocumentsScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={20}
             >
-                {/* ── Top Row ── */}
+                {/* top row */}
                 <View style={styles.topRow}>
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -240,7 +253,7 @@ export default function DocumentsScreen() {
                     </View>
                 </View>
 
-                {/* ── Page Header ── */}
+                {/* page header */}
                 <View style={styles.headerSection}>
                     <View style={styles.headerTitleRow}>
                         <View style={styles.headerIconBadge}>
@@ -253,7 +266,7 @@ export default function DocumentsScreen() {
                     </Text>
                 </View>
 
-                {/* ── Body ── */}
+                {/* body */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
@@ -261,10 +274,7 @@ export default function DocumentsScreen() {
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
                 >
-
-                    {/* ═══════════════════════════════════════════════════════
-                        SECTION 1 — Downloadable Form Templates
-                    ═══════════════════════════════════════════════════════ */}
+                    {/* section 1 — downloadable form templates */}
                     <View style={styles.sectionCard}>
 
                         <TouchableOpacity
@@ -334,9 +344,7 @@ export default function DocumentsScreen() {
                         )}
                     </View>
 
-                    {/* ═══════════════════════════════════════════════════════
-                        SECTION 2 — Submit a Request
-                    ═══════════════════════════════════════════════════════ */}
+                    {/* section 2 — submit a request */}
                     <View style={styles.sectionCard}>
 
                         <View style={styles.sectionHeaderRow}>
@@ -353,7 +361,7 @@ export default function DocumentsScreen() {
                             </View>
                         </View>
 
-                        {/* ── Tenant Info ── */}
+                        {/* tenant info */}
                         <TextInput
                             style={styles.input}
                             placeholder="Full Name"
@@ -390,7 +398,7 @@ export default function DocumentsScreen() {
 
                         <View style={styles.divider} />
 
-                        {/* ── Request Type Dropdown ── */}
+                        {/* request type dropdown */}
                         <Text style={styles.fieldLabel}>What would you like to submit?</Text>
 
                         <TouchableOpacity
@@ -457,7 +465,7 @@ export default function DocumentsScreen() {
                             </View>
                         )}
 
-                        {/* ══ FORM flow ══ */}
+                        {/* form flow */}
                         {isForm && (
                             <>
                                 <Text style={styles.fieldHint}>
@@ -490,7 +498,7 @@ export default function DocumentsScreen() {
                             </>
                         )}
 
-                        {/* ══ CERTIFICATE flow ══ */}
+                        {/* certificate flow */}
                         {isCertificate && (
                             <>
                                 <TextInput
@@ -552,7 +560,7 @@ export default function DocumentsScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* ── Bottom Nav ── */}
+            {/* bottom nav */}
             <View style={styles.bottomNav}>
                 <NavItem
                     iconName="home"
@@ -586,7 +594,7 @@ export default function DocumentsScreen() {
                 />
             </View>
 
-            {/* ── Side Drawer ── */}
+            {/* side drawer */}
             <DrawerMenu ref={drawerRef} />
         </SafeAreaView>
     );
