@@ -1,18 +1,20 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
-import { scale, verticalScale } from '../utils/scale';
+import { scale, verticalScale, moderateScale } from '../utils/scale';
 
 export const COLORS = {
     primary:      '#D63375',
-    primaryLight: '#FCE4EE',
-    bg:           '#FFF5F8',
+    primaryLight: '#FFB0CE',
+    bg:           '#FFF0F3',
     card:         '#FFFFFF',
-    dark:         '#1A1A2E',
-    muted:        '#9E9E9E',
-    border:       '#F0D6E0',
+    dark:         '#2D1B2E',
+    darkText:     '#1C1C1C',
+    muted:        '#B5B7C0',
+    grayText:     '#9E9E9E',
+    lightPink:    '#FDE8F0',
+    border:       '#E5ECF6',
     white:        '#FFFFFF',
-    panic:        '#E8175D',
-    panicDark:    '#9B1239',
-    submitDark:   '#7D1035',
+    panic:        '#B02060',
+    panicLight:   '#FBE1EB',
 };
 
 export const CATEGORY_COLORS = {
@@ -71,53 +73,79 @@ export default StyleSheet.create({
 
     // page header
     headerSection: {
-        paddingHorizontal: 20,
-        paddingTop: 4,
-        paddingBottom: 10,
+        paddingHorizontal: scale(20),
+        paddingTop: verticalScale(4),
+        paddingBottom: verticalScale(10),
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 4,
+    },
+    headerIconBadge: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.primary,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         fontWeight: '700',
         color: COLORS.dark,
+        marginBottom: 0,
     },
     headerSub: {
-        fontSize: 13,
+        fontSize: moderateScale(13),
         fontWeight: '600',
         color: COLORS.primary,
-        marginTop: 2,
     },
 
     // scroll
     scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 120,
-        paddingTop: 4,
+        paddingBottom: verticalScale(120),
+        paddingTop: verticalScale(4),
     },
 
     // panic button
     panicBtn: {
         backgroundColor: COLORS.panic,
         borderRadius: 10,
-        paddingVertical: 16,
+        paddingVertical: 14,
         alignItems: 'center',
-        marginBottom: 6,
+        marginHorizontal: 20,
+        marginBottom: 8,
         shadowColor: COLORS.panic,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
+        shadowOpacity: 0.22,
         shadowRadius: 8,
-        elevation: 6,
+        elevation: 4,
     },
     panicBtnText: {
         color: COLORS.white,
-        fontSize: 16,
-        fontWeight: '900',
-        letterSpacing: 1.5,
+        fontSize: 15,
+        fontWeight: '800',
+        letterSpacing: 0.8,
     },
     panicSub: {
         fontSize: 11,
         color: COLORS.muted,
         textAlign: 'center',
-        marginBottom: 18,
+        marginHorizontal: 24,
+        marginBottom: 14,
+    },
+
+    // form card
+    formCard: {
+        backgroundColor: COLORS.card,
+        marginHorizontal: 20,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
 
     // section label
@@ -125,13 +153,16 @@ export default StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: COLORS.dark,
+        marginBottom: 4,
+    },
+    standaloneSectionLabel: {
+        marginHorizontal: 20,
         marginBottom: 12,
     },
     sectionSub: {
-        fontSize: 11.5,
+        fontSize: 11,
         color: COLORS.muted,
-        marginBottom: 10,
-        marginTop: -8,
+        marginBottom: 12,
     },
 
     // category grid
@@ -139,6 +170,7 @@ export default StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 10,
+        marginHorizontal: 20,
         marginBottom: 20,
     },
     categoryChip: {
@@ -148,7 +180,7 @@ export default StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 20,
-        borderWidth: 1.5,
+        borderWidth: 1,
     },
     categoryChipText: {
         fontSize: 12,
@@ -158,14 +190,19 @@ export default StyleSheet.create({
     // voice recorder box
     recorderBox: {
         borderWidth: 1.5,
-        borderColor: COLORS.primary,
+        borderColor: COLORS.border,
         borderRadius: 12,
-        paddingVertical: 24,
+        paddingVertical: 18,
+        paddingHorizontal: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: COLORS.white,
-        marginBottom: 8,
-        minHeight: 130,
+        backgroundColor: COLORS.bg,
+        marginBottom: 10,
+        minHeight: 124,
+    },
+    recorderBoxActive: {
+        borderColor: COLORS.primary,
+        backgroundColor: '#FFF5F8',
     },
     micCircle: {
         width: 56,
@@ -177,17 +214,18 @@ export default StyleSheet.create({
         marginBottom: 10,
     },
     timerText: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '700',
         color: COLORS.dark,
-        letterSpacing: 2,
+        letterSpacing: 1,
         marginTop: 8,
     },
     tapToSpeak: {
         fontSize: 12,
         color: COLORS.muted,
         textAlign: 'center',
-        marginBottom: 12,
+        marginBottom: 2,
+        fontWeight: '500',
     },
 
     // waveform bars
@@ -204,8 +242,8 @@ export default StyleSheet.create({
     orRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginVertical: 14,
+        gap: 8,
+        marginVertical: 10,
     },
     orLine: {
         flex: 1,
@@ -213,47 +251,54 @@ export default StyleSheet.create({
         backgroundColor: COLORS.border,
     },
     orText: {
-        fontSize: 11,
+        fontSize: 12,
         color: COLORS.muted,
+        fontWeight: '500',
     },
 
     // transcribed text display
+    transcriptBox: {
+        backgroundColor: COLORS.lightPink,
+        borderRadius: 10,
+        padding: 12,
+        marginTop: 10,
+        marginBottom: 2,
+    },
     transcriptText: {
         fontSize: 13,
         color: COLORS.dark,
         lineHeight: 20,
-        marginBottom: 12,
-        paddingHorizontal: 2,
     },
 
     // text input
     textInput: {
         borderWidth: 1.5,
-        borderColor: COLORS.border,
+        borderColor: COLORS.primary,
         borderRadius: 10,
-        padding: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
         fontSize: 13,
         color: COLORS.dark,
-        backgroundColor: COLORS.white,
+        backgroundColor: COLORS.bg,
         minHeight: 90,
         textAlignVertical: 'top',
-        marginBottom: 14,
     },
 
     // detected info card
     detectedCard: {
-        backgroundColor: COLORS.white,
-        borderRadius: 10,
+        backgroundColor: COLORS.card,
+        marginHorizontal: 20,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: COLORS.border,
         padding: 14,
-        marginBottom: 20,
+        marginBottom: 14,
     },
     detectedRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 4,
+        paddingVertical: 8,
     },
     detectedLabel: {
         fontSize: 12,
@@ -269,12 +314,14 @@ export default StyleSheet.create({
 
     // submit button
     submitBtn: {
-        backgroundColor: COLORS.submitDark,
+        backgroundColor: COLORS.primary,
         borderRadius: 10,
-        paddingVertical: 14,
+        paddingVertical: 13,
         alignItems: 'center',
-        width: '55%',
+        width: '50%',
         alignSelf: 'center',
+        marginTop: 4,
+        marginBottom: 20,
     },
     submitBtnText: {
         color: COLORS.white,
