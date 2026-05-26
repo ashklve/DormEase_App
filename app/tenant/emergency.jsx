@@ -17,13 +17,12 @@ import {
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import styles, { COLORS, CATEGORY_COLORS } from '../../src/constants/emergencystyles';
 
 const defaultPhoto = require('../../assets/def_icon.png');
-const BASE_URL = 'https://strongman-studio-stoke.ngrok-free.dev';
 
 // emergency categories
 const CATEGORIES = [
@@ -167,20 +166,10 @@ export default function EmergencyScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const token = await AsyncStorage.getItem('auth_token');
-                            // TODO: POST /api/emergency with type='Panic Alert'
-                            await fetch(`${BASE_URL}/api/emergency`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type':  'application/json',
-                                    'Accept':        'application/json',
-                                    'Authorization': `Bearer ${token}`,
-                                },
-                                body: JSON.stringify({
-                                    type:        'Panic Alert',
-                                    description: 'Panic alert sent from app.',
-                                    status:      'pending',
-                                }),
+                            await client.post('/emergency', {
+                                type:        'Panic Alert',
+                                description: 'Panic alert sent from app.',
+                                status:      'pending',
                             });
                             Alert.alert('Alert Sent!', 'Staff have been notified immediately.');
                         } catch {
@@ -202,21 +191,11 @@ export default function EmergencyScreen() {
 
         setSubmitting(true);
         try {
-            const token = await AsyncStorage.getItem('auth_token');
-            // TODO: POST /api/emergency
-            await fetch(`${BASE_URL}/api/emergency`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type':  'application/json',
-                    'Accept':        'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    type:        detectedType || selectedCategory || 'Other',
-                    description: description,
-                    location:    detectedLocation,
-                    status:      'pending',
-                }),
+            await client.post('/emergency', {
+                type:        detectedType || selectedCategory || 'Other',
+                description: description,
+                location:    detectedLocation,
+                status:      'pending',
             });
 
             Alert.alert('Submitted!', 'Your emergency report has been sent to staff.');
@@ -260,7 +239,12 @@ export default function EmergencyScreen() {
 
             {/* page header */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>Emergency Report 🚨</Text>
+                <View style={styles.headerTitleRow}>
+                    <View style={styles.headerIconBadge}>
+                        <MaterialIcons name="warning" size={20} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.headerTitle}>Emergency Report</Text>
+                </View>
                 <Text style={styles.headerSub}>Describe the situation by speaking or typing.</Text>
             </View>
 
@@ -278,7 +262,7 @@ export default function EmergencyScreen() {
                 </Text>
 
                 {/* category selector */}
-                <Text style={styles.sectionLabel}>Whats your emergency?</Text>
+                <Text style={[styles.sectionLabel, styles.standaloneSectionLabel]}>What's your emergency?</Text>
                 <View style={styles.categoryGrid}>
                     {CATEGORIES.map(cat => {
                         const active  = selectedCategory === cat.key;
@@ -310,50 +294,54 @@ export default function EmergencyScreen() {
                 </View>
 
                 {/* voice recorder */}
-                <Text style={styles.sectionLabel}>Describe the emergency</Text>
-                <Text style={styles.sectionSub}>Speak or type the situation</Text>
+                <View style={styles.formCard}>
+                    <Text style={styles.sectionLabel}>Describe the emergency</Text>
+                    <Text style={styles.sectionSub}>Speak or type the situation</Text>
 
-                <TouchableOpacity
-                    style={styles.recorderBox}
-                    activeOpacity={0.85}
-                    onPress={handleToggleRecord}
-                >
-                    {isRecording ? (
-                        <Waveform isRecording={isRecording} />
-                    ) : (
-                        <View style={styles.micCircle}>
-                            <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                    <TouchableOpacity
+                        style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
+                        activeOpacity={0.85}
+                        onPress={handleToggleRecord}
+                    >
+                        {isRecording ? (
+                            <Waveform isRecording={isRecording} />
+                        ) : (
+                            <View style={styles.micCircle}>
+                                <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                            </View>
+                        )}
+                        <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.tapToSpeak}>
+                        {isRecording ? 'Tap to stop recording' : 'Tap to Speak'}
+                    </Text>
+
+                    {/* transcript output */}
+                    {!!transcript && (
+                        <View style={styles.transcriptBox}>
+                            <Text style={styles.transcriptText}>{transcript}</Text>
                         </View>
                     )}
-                    <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
-                </TouchableOpacity>
 
-                <Text style={styles.tapToSpeak}>
-                    {isRecording ? 'Tap to stop recording' : 'Tap to Speak'}
-                </Text>
+                    {/* or divider */}
+                    <View style={styles.orRow}>
+                        <View style={styles.orLine} />
+                        <Text style={styles.orText}>or</Text>
+                        <View style={styles.orLine} />
+                    </View>
 
-                {/* transcript output */}
-                {!!transcript && (
-                    <Text style={styles.transcriptText}>{transcript}</Text>
-                )}
-
-                {/* or divider */}
-                <View style={styles.orRow}>
-                    <View style={styles.orLine} />
-                    <Text style={styles.orText}>or</Text>
-                    <View style={styles.orLine} />
+                    {/* manual text input */}
+                    <TextInput
+                        style={styles.textInput}
+                        placeholder="Describe the emergency here"
+                        placeholderTextColor={COLORS.muted}
+                        value={manualText}
+                        onChangeText={setManualText}
+                        multiline
+                        numberOfLines={4}
+                    />
                 </View>
-
-                {/* manual text input */}
-                <TextInput
-                    style={styles.textInput}
-                    placeholder="Describe the emergency here"
-                    placeholderTextColor={COLORS.muted}
-                    value={manualText}
-                    onChangeText={setManualText}
-                    multiline
-                    numberOfLines={4}
-                />
 
                 {/* AI-detected info card — shown after transcription */}
                 {showDetected && (
