@@ -137,6 +137,11 @@ export default StyleSheet.create({
         gap: 10,
         marginBottom: 18,
         alignItems: 'center',
+        zIndex: 20,
+    },
+    dropdownWrapper: {
+        position: 'relative',
+        flexShrink: 0,
     },
     filterBtn: {
         flexDirection: 'row',
@@ -152,7 +157,7 @@ export default StyleSheet.create({
         color: COLORS.white,
         fontWeight: '600',
     },
-    yearBtn: {
+    priorityBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
@@ -163,7 +168,7 @@ export default StyleSheet.create({
         borderWidth: 1.5,
         borderColor: COLORS.primary,
     },
-    yearBtnText: {
+    priorityBtnText: {
         fontSize: 13,
         color: COLORS.primary,
         fontWeight: '600',
@@ -348,8 +353,8 @@ export default StyleSheet.create({
         letterSpacing: 0.5,
     },
 
-    // ── year dropdown ─────────────────────────────────────────────────────────
-    yearDropdown: {
+    // ── dropdown filters ──────────────────────────────────────────────────────
+    filterDropdown: {
         position: 'absolute',
         top: 42,
         left: 0,
@@ -365,22 +370,22 @@ export default StyleSheet.create({
         shadowRadius: 8,
         elevation: 6,
     },
-    yearDropdownItem: {
+    filterDropdownItem: {
         paddingVertical: 11,
         paddingHorizontal: 16,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    yearDropdownItemActive: {
+    filterDropdownItemActive: {
         backgroundColor: COLORS.lightPink,
     },
-    yearDropdownText: {
+    filterDropdownText: {
         fontSize: 13,
         color: COLORS.dark,
         fontWeight: '500',
     },
-    yearDropdownTextActive: {
+    filterDropdownTextActive: {
         color: COLORS.primary,
         fontWeight: '700',
     },

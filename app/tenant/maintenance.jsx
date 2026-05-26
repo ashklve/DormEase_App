@@ -36,6 +36,11 @@ import { useUser } from '../../src/context/UserContext';
 // ── Mock user / avatar ────────────────────────────────────────────────────────
 const defaultPhoto = require('../../assets/def_icon.png');
 
+const SPEECH_LANGUAGE_OPTIONS = [
+    { key: 'en', label: 'English', model: 'model-en-us' },
+    { key: 'tl', label: 'Tagalog', model: 'model-tl-ph' },
+];
+
 // ── Dropdown options ──────────────────────────────────────────────────────────
 const CATEGORY_OPTIONS = [
     'Plumbing',
@@ -80,14 +85,14 @@ const PRIORITY_STYLE = {
 };
 
 const ISSUE_KEYWORDS = [
-    { category: 'Plumbing', words: ['leak', 'water', 'faucet', 'sink', 'toilet', 'pipe', 'drain', 'shower'] },
-    { category: 'Electrical', words: ['electric', 'electrical', 'light', 'lights', 'outlet', 'power', 'spark', 'wire'] },
-    { category: 'HVAC / Air Conditioning', words: ['aircon', 'air conditioning', 'ac', 'cooling', 'hvac', 'fan'] },
-    { category: 'Appliance Repair', words: ['appliance', 'fridge', 'refrigerator', 'stove', 'washer', 'microwave'] },
-    { category: 'Carpentry / Furniture', words: ['door', 'cabinet', 'chair', 'table', 'bed', 'lock', 'furniture'] },
-    { category: 'Pest Control', words: ['pest', 'insect', 'cockroach', 'roach', 'ant', 'rats', 'mouse'] },
-    { category: 'Cleaning', words: ['clean', 'dirty', 'trash', 'garbage', 'smell', 'stain'] },
-    { category: 'Internet / Cable', words: ['internet', 'wifi', 'wi-fi', 'cable', 'connection', 'router'] },
+    { category: 'Plumbing', words: ['leak', 'water', 'faucet', 'sink', 'toilet', 'pipe', 'drain', 'shower', 'tulo', 'tumutulo', 'tagas', 'gripo', 'lababo', 'inidoro', 'kubeta', 'tubo', 'barado', 'bara', 'banyo', 'cr'] },
+    { category: 'Electrical', words: ['electric', 'electrical', 'light', 'lights', 'outlet', 'power', 'spark', 'wire', 'kuryente', 'saksakan', 'ilaw', 'bumbilya', 'kurap', 'kumukurap', 'pumutok', 'brownout'] },
+    { category: 'HVAC / Air Conditioning', words: ['aircon', 'air conditioning', 'ac', 'cooling', 'hvac', 'fan', 'mainit', 'lumalamig', 'lamig', 'bentilador'] },
+    { category: 'Appliance Repair', words: ['appliance', 'fridge', 'refrigerator', 'stove', 'washer', 'microwave', 'ref', 'kalan'] },
+    { category: 'Carpentry / Furniture', words: ['door', 'cabinet', 'chair', 'table', 'bed', 'lock', 'furniture', 'pinto', 'upuan', 'mesa', 'kama', 'bintana', 'susi'] },
+    { category: 'Pest Control', words: ['pest', 'insect', 'cockroach', 'roach', 'ant', 'rats', 'mouse', 'ipis', 'langgam', 'daga', 'lamok', 'anay', 'insekto'] },
+    { category: 'Cleaning', words: ['clean', 'dirty', 'trash', 'garbage', 'smell', 'stain', 'linis', 'marumi', 'basura', 'mabaho', 'amoy', 'mantsa'] },
+    { category: 'Internet / Cable', words: ['internet', 'wifi', 'wi-fi', 'cable', 'connection', 'router', 'signal', 'network', 'mahina ang wifi', 'walang internet'] },
 ];
 
 const detectCategoryFromTranscript = (text) => {
@@ -256,6 +261,7 @@ export default function MaintenanceScreen() {
     const [submitting, setSubmitting] = useState(false);
 
     // ── Voice recorder state
+    const [speechLanguage, setSpeechLanguage] = useState('en');
     const [isRecording, setIsRecording] = useState(false);
     const [modelLoaded, setModelLoaded] = useState(false);
     const [modelLoading, setModelLoading] = useState(true);
@@ -308,17 +314,36 @@ export default function MaintenanceScreen() {
         updateTranscript(existing ? `${existing} ${partial}` : partial);
     }, [updateTranscript]);
 
+    const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((option) => option.key === speechLanguage)
+        ?? SPEECH_LANGUAGE_OPTIONS[0];
+
+    const handleSpeechLanguageChange = (nextLanguage) => {
+        if (isRecording || modelLoading || nextLanguage === speechLanguage) return;
+
+        setSpeechLanguage(nextLanguage);
+        setDescription('');
+        setCategory('');
+        setHasRecording(false);
+        setElapsed(0);
+        transcribedRef.current = '';
+        confirmedTranscriptRef.current = '';
+    };
+
     useEffect(() => {
         let mounted = true;
 
-        loadModel('model-en-us')
+        setModelLoaded(false);
+        setModelLoading(true);
+        unload();
+
+        loadModel(selectedSpeechLanguage.model)
             .then(() => {
                 if (mounted) setModelLoaded(true);
             })
             .catch((error) => {
                 console.error('failed to load Vosk model:', error);
                 if (mounted) {
-                    Alert.alert('Voice Input Unavailable', 'The speech recognition model could not be loaded.');
+                    Alert.alert('Voice Input Unavailable', `${selectedSpeechLanguage.label} speech recognition could not be loaded.`);
                 }
             })
             .finally(() => {
@@ -332,7 +357,7 @@ export default function MaintenanceScreen() {
             stop();
             unload();
         };
-    }, [clearVoskListeners]);
+    }, [clearVoskListeners, selectedSpeechLanguage.model, selectedSpeechLanguage.label]);
 
     const startRecording = async () => {
         if (!modelLoaded) {
@@ -398,6 +423,7 @@ export default function MaintenanceScreen() {
             const res = await client.post('/maintenance', {
                 description: description.trim(),
                 input_type: hasRecording ? 'voice' : 'text',
+                language: speechLanguage,
             });
 
             const savedRequest = res.data?.request;
@@ -494,6 +520,32 @@ export default function MaintenanceScreen() {
                         </View>
                         <Text style={styles.fieldHint}>Speak or type the details of the problem</Text>
 
+                        <View style={styles.languageSelector}>
+                            {SPEECH_LANGUAGE_OPTIONS.map((option) => {
+                                const active = speechLanguage === option.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={option.key}
+                                        style={[
+                                            styles.languageOption,
+                                            active && styles.languageOptionActive,
+                                            (isRecording || modelLoading) && styles.languageOptionDisabled,
+                                        ]}
+                                        onPress={() => handleSpeechLanguageChange(option.key)}
+                                        disabled={isRecording || modelLoading}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={[
+                                            styles.languageOptionText,
+                                            active && styles.languageOptionTextActive,
+                                        ]}>
+                                            {option.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
                         {/* Waveform recorder box */}
                         <View style={[
                             styles.recorderBox,
@@ -514,7 +566,7 @@ export default function MaintenanceScreen() {
                                     color={COLORS.white}
                                 />
                                 <Text style={styles.micBtnText}>
-                                    {modelLoading ? 'Loading Voice Model...' : (isRecording ? 'Stop Recording' : (hasRecording ? 'Re-record' : 'Tap to Record'))}
+                                    {modelLoading ? `Loading ${selectedSpeechLanguage.label} Model...` : (isRecording ? 'Stop Recording' : (hasRecording ? 'Re-record' : 'Tap to Record'))}
                                 </Text>
                             </TouchableOpacity>
                         </View>
