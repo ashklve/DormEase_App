@@ -8,12 +8,10 @@ import {
     Image,
     ActivityIndicator,
     RefreshControl,
-    Modal,
     Animated,
-    Platform,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/maintenancehistorystyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -23,9 +21,8 @@ import { useUser } from '../../src/context/UserContext';
 const defaultPhoto = require('../../assets/def_icon.png');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const YEAR_OPTIONS = ['All Time', '2026', '2025', '2024'];
-
 const STATUS_OPTIONS = ['All', 'Pending', 'In Progress', 'Resolved', 'Closed'];
+const PRIORITY_OPTIONS = ['All Priority', 'Low', 'Moderate', 'Urgent'];
 
 const STATUS_STYLE = {
     pending: { bg: '#FFF3CD', text: '#856404' },
@@ -81,11 +78,6 @@ const formatDateTime = (value) => {
         hour: 'numeric',
         minute: '2-digit',
     });
-};
-
-const getRequestYear = (item) => {
-    const date = new Date(item.submitted_at);
-    return Number.isNaN(date.getTime()) ? null : String(date.getFullYear());
 };
 
 const summarizeDescription = (description) => {
@@ -231,55 +223,11 @@ const RequestCard = ({ item }) => {
     );
 };
 
-// ── Filter Modal ──────────────────────────────────────────────────────────────
-const FilterModal = ({ visible, activeStatus, onApply, onClose }) => {
-    const [tempStatus, setTempStatus] = useState(activeStatus);
-
-    return (
-        <Modal transparent animationType="slide" visible={visible}>
-            <View style={styles.modalOverlay}>
-                <View style={styles.filterModal}>
-                    <View style={styles.filterModalHeader}>
-                        <Text style={styles.filterModalTitle}>Filter Requests</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <MaterialIcons name="close" size={22} color={COLORS.dark} />
-                        </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.filterSectionLabel}>Status</Text>
-                    <View style={styles.filterChipsRow}>
-                        {STATUS_OPTIONS.map((s) => {
-                            const active = tempStatus === s;
-                            return (
-                                <TouchableOpacity
-                                    key={s}
-                                    style={[styles.filterChip, active && styles.filterChipActive]}
-                                    onPress={() => setTempStatus(s)}
-                                >
-                                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                                        {s}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.applyBtn}
-                        onPress={() => { onApply(tempStatus); onClose(); }}
-                    >
-                        <Text style={styles.applyBtnText}>Apply Filter</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-    );
-};
-
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function MaintenanceHistoryScreen() {
     const router = useRouter();
     const { avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
     const [requests, setRequests] = useState([]);
@@ -288,9 +236,9 @@ export default function MaintenanceHistoryScreen() {
 
     // ── Filter state
     const [activeStatus, setActiveStatus] = useState('All');
-    const [activeYear, setActiveYear] = useState('All Time');
-    const [showFilter, setShowFilter] = useState(false);
-    const [showYearDropdown, setShowYearDropdown] = useState(false);
+    const [activePriority, setActivePriority] = useState('All Priority');
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+    const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
     // ── Derived stats
     const pendingCount = requests.filter(r => r.status?.toLowerCase() === 'pending').length;
@@ -299,8 +247,8 @@ export default function MaintenanceHistoryScreen() {
     // ── Filtered list
     const filtered = requests.filter((r) => {
         const statusMatch = activeStatus === 'All' || r.status?.toLowerCase() === activeStatus.toLowerCase();
-        const yearMatch = activeYear === 'All Time' || getRequestYear(r) === activeYear;
-        return statusMatch && yearMatch;
+        const priorityMatch = activePriority === 'All Priority' || r.priority?.toLowerCase() === activePriority.toLowerCase();
+        return statusMatch && priorityMatch;
     });
 
     // ── Fetch (replace mock with real API)
@@ -379,7 +327,10 @@ export default function MaintenanceHistoryScreen() {
             ) : (
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
                     keyboardShouldPersistTaps="handled"
                     refreshControl={
                         <RefreshControl
@@ -405,49 +356,84 @@ export default function MaintenanceHistoryScreen() {
                     {/* ── Filter Row ── */}
                     <View style={styles.filterRow}>
                         {/* Filter button */}
-                        <TouchableOpacity
-                            style={styles.filterBtn}
-                            onPress={() => { setShowFilter(true); setShowYearDropdown(false); }}
-                        >
-                            <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
-                            <Text style={styles.filterBtnText}>
-                                Filter{activeStatus !== 'All' ? `: ${activeStatus}` : ''}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Year selector — relative so dropdown is positioned to it */}
-                        <View style={{ position: 'relative' }}>
+                        <View style={styles.dropdownWrapper}>
                             <TouchableOpacity
-                                style={styles.yearBtn}
-                                onPress={() => { setShowYearDropdown(!showYearDropdown); setShowFilter(false); }}
+                                style={styles.filterBtn}
+                                onPress={() => { setShowStatusDropdown(!showStatusDropdown); setShowPriorityDropdown(false); }}
                             >
-                                <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
-                                <Text style={styles.yearBtnText}>{activeYear}</Text>
+                                <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
+                                <Text style={styles.filterBtnText}>
+                                    {activeStatus}
+                                </Text>
                                 <MaterialIcons
-                                    name={showYearDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                    name={showStatusDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                    size={16}
+                                    color={COLORS.white}
+                                />
+                            </TouchableOpacity>
+
+                            {showStatusDropdown && (
+                                <View style={styles.filterDropdown}>
+                                    {STATUS_OPTIONS.map((status) => (
+                                        <TouchableOpacity
+                                            key={status}
+                                            style={[
+                                                styles.filterDropdownItem,
+                                                activeStatus === status && styles.filterDropdownItemActive,
+                                            ]}
+                                            onPress={() => {
+                                                setActiveStatus(status);
+                                                setShowStatusDropdown(false);
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.filterDropdownText,
+                                                activeStatus === status && styles.filterDropdownTextActive,
+                                            ]}>
+                                                {status}
+                                            </Text>
+                                            {activeStatus === status && (
+                                                <MaterialIcons name="check" size={14} color={COLORS.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Priority selector */}
+                        <View style={styles.dropdownWrapper}>
+                            <TouchableOpacity
+                                style={styles.priorityBtn}
+                                onPress={() => { setShowPriorityDropdown(!showPriorityDropdown); setShowStatusDropdown(false); }}
+                            >
+                                <Ionicons name="flag-outline" size={14} color={COLORS.primary} />
+                                <Text style={styles.priorityBtnText}>{activePriority}</Text>
+                                <MaterialIcons
+                                    name={showPriorityDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                                     size={16}
                                     color={COLORS.primary}
                                 />
                             </TouchableOpacity>
 
-                            {showYearDropdown && (
-                                <View style={styles.yearDropdown}>
-                                    {YEAR_OPTIONS.map((y) => (
+                            {showPriorityDropdown && (
+                                <View style={styles.filterDropdown}>
+                                    {PRIORITY_OPTIONS.map((priority) => (
                                         <TouchableOpacity
-                                            key={y}
+                                            key={priority}
                                             style={[
-                                                styles.yearDropdownItem,
-                                                activeYear === y && styles.yearDropdownItemActive,
+                                                styles.filterDropdownItem,
+                                                activePriority === priority && styles.filterDropdownItemActive,
                                             ]}
-                                            onPress={() => { setActiveYear(y); setShowYearDropdown(false); }}
+                                            onPress={() => { setActivePriority(priority); setShowPriorityDropdown(false); }}
                                         >
                                             <Text style={[
-                                                styles.yearDropdownText,
-                                                activeYear === y && styles.yearDropdownTextActive,
+                                                styles.filterDropdownText,
+                                                activePriority === priority && styles.filterDropdownTextActive,
                                             ]}>
-                                                {y}
+                                                {priority}
                                             </Text>
-                                            {activeYear === y && (
+                                            {activePriority === priority && (
                                                 <MaterialIcons name="check" size={14} color={COLORS.primary} />
                                             )}
                                         </TouchableOpacity>
@@ -475,7 +461,10 @@ export default function MaintenanceHistoryScreen() {
             )}
 
             {/* ── Bottom Nav ── */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
@@ -486,13 +475,6 @@ export default function MaintenanceHistoryScreen() {
             {/* ── Drawer ── */}
             <DrawerMenu ref={drawerRef} />
 
-            {/* ── Filter Modal ── */}
-            <FilterModal
-                visible={showFilter}
-                activeStatus={activeStatus}
-                onApply={(s) => setActiveStatus(s)}
-                onClose={() => setShowFilter(false)}
-            />
         </SafeAreaView>
     );
 }
