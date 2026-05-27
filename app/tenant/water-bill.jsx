@@ -11,7 +11,7 @@ import {
     Alert,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import styles from '../../src/constants/water-billstyles';
 import { COLORS } from '../../src/constants/colors';
@@ -101,6 +101,7 @@ const HistoryRow = ({ month, amount, status, isLast }) => {
 export default function WaterBillScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
     const [loading, setLoading] = useState(true);
@@ -210,7 +211,10 @@ export default function WaterBillScreen() {
             ) : (
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -345,7 +349,10 @@ export default function WaterBillScreen() {
             )}
 
             {/* ── Bottom Nav ── */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

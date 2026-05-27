@@ -9,7 +9,7 @@ import {
     FlatList,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { useUser } from '../../src/context/UserContext';
@@ -138,6 +138,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function NotificationsScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState('notifications');
     const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
 
@@ -211,7 +212,7 @@ export default function NotificationsScreen() {
             {/* notifications list */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
             >
                 <View style={styles.tabRow}>
                     <Text style={styles.tabText}>Recents</Text>
@@ -232,7 +233,10 @@ export default function NotificationsScreen() {
             </ScrollView>
 
             {/* bottom nav */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

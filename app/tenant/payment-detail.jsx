@@ -13,7 +13,7 @@ import {
     Platform,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import styles from '../../src/constants/payment-detailstyles';
@@ -68,6 +68,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function PaymentDetailScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
     // Params from bills-payment screen
@@ -210,7 +211,10 @@ export default function PaymentDetailScreen() {
 
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 >
@@ -363,7 +367,10 @@ export default function PaymentDetailScreen() {
             </KeyboardAvoidingView>
 
             {/* ── Bottom Nav ── */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"
