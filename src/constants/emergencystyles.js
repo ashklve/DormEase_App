@@ -165,6 +165,37 @@ export default StyleSheet.create({
         marginBottom: 12,
     },
 
+    languageSelector: {
+        flexDirection: 'row',
+        backgroundColor: COLORS.bg,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 3,
+        marginBottom: 12,
+    },
+    languageOption: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 9,
+        paddingVertical: 8,
+    },
+    languageOptionActive: {
+        backgroundColor: COLORS.primary,
+    },
+    languageOptionDisabled: {
+        opacity: 0.7,
+    },
+    languageOptionText: {
+        fontSize: 12,
+        color: COLORS.grayText,
+        fontWeight: '700',
+    },
+    languageOptionTextActive: {
+        color: COLORS.white,
+    },
+
     // category grid
     categoryGrid: {
         flexDirection: 'row',
