@@ -168,8 +168,8 @@ const Dashboard = () => {
 
             const fetchAnnouncements = async () => {
                 try {
-                    const res = await client.get('/announcements', { timeout: 15000 });
-                    setAnnouncements(res.data.slice(0, 3));
+                    const res = await client.get('/announcements', { timeout: 30000 });
+                    setAnnouncements(Array.isArray(res.data) ? res.data : []);
                 } catch (err) {
                     console.error('failed to load announcements:', err);
                 }
@@ -358,7 +358,7 @@ const Dashboard = () => {
                     />
                 </View>
 
-                {/* announcements — live from API, shows latest 3 */}
+                {/* announcements — live from API */}
                 <View style={styles.announcementHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={styles.sectionTitle}>Announcements</Text>
