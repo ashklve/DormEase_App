@@ -13,7 +13,7 @@ import {
     Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -248,6 +248,7 @@ const EmptyState = () => (
 export default function TenantRecordsScreen() {
     const router        = useRouter();
     const { avatarUri } = useUser();
+    const insets        = useSafeAreaInsets();
     const drawerRef     = useRef(null);
 
     const [records,      setRecords]      = useState([]);
@@ -360,6 +361,7 @@ export default function TenantRecordsScreen() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[
                         styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
                         filtered.length === 0 && { flex: 1 },
                     ]}
                     refreshControl={
@@ -382,7 +384,10 @@ export default function TenantRecordsScreen() {
             )}
 
             {/* bottom nav */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

@@ -14,7 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import client from '../../api/client';
@@ -279,6 +279,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function AnnouncementsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab]           = useState('All');
   const [announcements, setAnnouncements]   = useState([]);
   const [loading, setLoading]               = useState(true);
@@ -330,7 +331,7 @@ export default function AnnouncementsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       {loading ? (
@@ -340,7 +341,7 @@ export default function AnnouncementsScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
+          contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24), gap: 12 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -427,7 +428,10 @@ export default function AnnouncementsScreen() {
       )}
 
       {/* ── Bottom Nav ── */}
-      <View style={styles.bottomNav}>
+      <View style={[
+        styles.bottomNav,
+        { paddingBottom: Math.max(insets.bottom, 24) },
+      ]}>
         <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
         <NavItem iconName="person-outline" label="Visitor"    isActive={false} onPress={() => router.push('/tenant/visitors')} />
         <NavItem iconName="warning"        label="Emergency"  isCenter />

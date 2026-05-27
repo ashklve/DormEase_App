@@ -14,7 +14,7 @@ import {
     Linking,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
@@ -83,6 +83,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function DocumentsScreen() {
     const router        = useRouter();
     const { avatarUri } = useUser();
+    const insets        = useSafeAreaInsets();
     const drawerRef     = useRef(null);
 
     const [formsExpanded,  setFormsExpanded]  = useState(true);
@@ -253,7 +254,10 @@ export default function DocumentsScreen() {
                 {/* body */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
@@ -545,7 +549,10 @@ export default function DocumentsScreen() {
             </KeyboardAvoidingView>
 
             {/* bottom nav */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, Linking, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
@@ -73,6 +73,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 
 export default function HotlinesScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     const call = (number) => {
         const cleaned = number.replace(/[^0-9]/g, '');
@@ -80,7 +81,7 @@ export default function HotlinesScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={[]}>
+        <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             <View style={styles.topRow}>
@@ -115,7 +116,10 @@ export default function HotlinesScreen() {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 120 + Math.max(insets.bottom, 24),
+                }}
             >
                 {HOTLINES.map((section) => (
                     <View key={section.category} style={{ marginBottom: 16 }}>
@@ -178,7 +182,10 @@ export default function HotlinesScreen() {
                 ))}
             </ScrollView>
 
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem iconName="home" label="Home" onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />

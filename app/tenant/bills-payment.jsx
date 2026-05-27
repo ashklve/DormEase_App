@@ -8,7 +8,7 @@ import {
     Image,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import styles from '../../src/constants/bills-paymentstyles';
 import { COLORS } from '../../src/constants/colors';
@@ -72,6 +72,7 @@ const BreakdownRow = ({ label, value, accent }) => (
 export default function BillsPaymentScreen() {
     const router = useRouter();
     const { avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
     // Params passed from water-bill screen via router.push
@@ -144,7 +145,10 @@ export default function BillsPaymentScreen() {
             {/* ── Content ── */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                ]}
             >
                 {/* ── Billing Summary Card ── */}
                 {billing ? (
@@ -267,7 +271,10 @@ export default function BillsPaymentScreen() {
             </ScrollView>
 
             {/* ── Bottom Nav ── */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

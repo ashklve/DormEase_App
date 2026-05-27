@@ -11,7 +11,7 @@ import {
   Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/profilestyles';
@@ -262,6 +262,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -461,12 +462,15 @@ export default function ProfileScreen() {
     contactNumber !== (user?.contact_number || '');
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Top Row ── */}
@@ -642,7 +646,10 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* ── Bottom Nav ── */}
-      <View style={styles.bottomNav}>
+      <View style={[
+        styles.bottomNav,
+        { paddingBottom: Math.max(insets.bottom, 24) },
+      ]}>
         <NavItem
           iconName="home"
           label="Home"

@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -142,6 +142,7 @@ const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron
 // ── main screen ───────────────────────────────────────────────────────────────
 const Dashboard = () => {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const greeting = getGreeting();
 
     const { user, avatarUri, fetchUser } = useUser();
@@ -284,7 +285,7 @@ const Dashboard = () => {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
             >
                 {/* greeting */}
                 <View style={styles.greeting}>
@@ -392,7 +393,10 @@ const Dashboard = () => {
             </ScrollView>
 
             {/* bottom nav */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem
                     iconName="home"
                     label="Home"

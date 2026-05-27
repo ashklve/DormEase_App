@@ -12,7 +12,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
     loadModel,
@@ -155,6 +155,7 @@ const Waveform = ({ isRecording }) => {
 export default function EmergencyScreen() {
     const router = useRouter();
     const { avatarUri, user } = useUser();
+    const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -451,7 +452,10 @@ export default function EmergencyScreen() {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                ]}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* panic alert button */}
@@ -610,7 +614,10 @@ export default function EmergencyScreen() {
             </ScrollView>
 
             {/* bottom nav */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem iconName="home" label="Home" onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter isActive onPress={() => { }} />

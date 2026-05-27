@@ -15,7 +15,7 @@ import {
     Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
     loadModel,
@@ -248,6 +248,7 @@ export default function MaintenanceScreen() {
     const router = useRouter();
     const drawerRef = useRef(null);
     const { avatarUri } = useUser();
+    const insets = useSafeAreaInsets();
 
     // ── Form state
     const [description, setDescription] = useState('');
@@ -527,7 +528,10 @@ export default function MaintenanceScreen() {
                 {/* ── Content ── */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 >
@@ -730,7 +734,10 @@ export default function MaintenanceScreen() {
             </KeyboardAvoidingView>
 
             {/* ── Bottom Nav ── */}
-            <View style={styles.bottomNav}>
+            <View style={[
+                styles.bottomNav,
+                { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}>
                 <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
