@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,165 @@ const priorityColors = {
 };
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+const MONTH_INDEX_BY_NAME = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
+
+const parseAnnouncementDateValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+  if (typeof value === 'number') {
+    const timestampDate = new Date(value);
+    return Number.isNaN(timestampDate.getTime()) ? null : timestampDate;
+  }
+
+  const dateText = String(value).trim();
+  const normalizedDateText = dateText
+    .replace(/\s+at\s+/i, ' ')
+    .replace(/[•·]/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const isoDateMatch = normalizedDateText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoDateMatch) {
+    const [, year, month, day] = isoDateMatch;
+    const isoDate = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(isoDate.getTime()) ? null : isoDate;
+  }
+
+  const monthNameMatch = normalizedDateText.match(
+    /^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:,\s*(\d{4}))?/i
+  );
+
+  if (monthNameMatch) {
+    const [, monthName, day, year] = monthNameMatch;
+    const fallbackYear = year || String(new Date().getFullYear());
+    const monthDate = new Date(
+      Number(fallbackYear),
+      MONTH_INDEX_BY_NAME[monthName.toLowerCase().replace('.', '')],
+      Number(day)
+    );
+    return Number.isNaN(monthDate.getTime()) ? null : monthDate;
+  }
+
+  const dayMonthNameMatch = normalizedDateText.match(
+    /^(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?(?:,?\s*(\d{4}))?/i
+  );
+
+  if (dayMonthNameMatch) {
+    const [, day, monthName, year] = dayMonthNameMatch;
+    const fallbackYear = year || String(new Date().getFullYear());
+    const dayMonthDate = new Date(
+      Number(fallbackYear),
+      MONTH_INDEX_BY_NAME[monthName.toLowerCase().replace('.', '')],
+      Number(day)
+    );
+    return Number.isNaN(dayMonthDate.getTime()) ? null : dayMonthDate;
+  }
+
+  const numericDateMatch = normalizedDateText.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (numericDateMatch) {
+    const [, first, second, year] = numericDateMatch;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const firstNumber = Number(first);
+    const secondNumber = Number(second);
+    const month = firstNumber > 12 ? secondNumber : firstNumber;
+    const day = firstNumber > 12 ? firstNumber : secondNumber;
+    const numericDate = new Date(Number(fullYear), month - 1, day);
+    return Number.isNaN(numericDate.getTime()) ? null : numericDate;
+  }
+
+  const parsedDate = new Date(normalizedDateText);
+  if (!Number.isNaN(parsedDate.getTime())) return parsedDate;
+
+  return null;
+};
+
+const getAnnouncementDate = (announcement) => {
+  const dateFields = [
+    announcement?.created_at,
+    announcement?.createdAt,
+    announcement?.date,
+    announcement?.updated_at,
+  ];
+
+  for (const dateField of dateFields) {
+    const parsedDate = parseAnnouncementDateValue(dateField);
+    if (parsedDate) return parsedDate;
+  }
+
+  return null;
+};
+
+const getFilterReferenceDate = (announcements) => {
+  const newestAnnouncementDate = announcements.reduce((newestDate, announcement) => {
+    const announcementDate = getAnnouncementDate(announcement);
+    if (!announcementDate) return newestDate;
+    if (!newestDate || announcementDate > newestDate) return announcementDate;
+    return newestDate;
+  }, null);
+
+  return newestAnnouncementDate || new Date();
+};
+
+const isSameDay = (left, right) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const isInSelectedPeriod = (announcement, selectedFilter, referenceDate) => {
+  if (selectedFilter === 'All Time') return true;
+
+  const announcementDate = getAnnouncementDate(announcement);
+  if (!announcementDate) return false;
+
+  if (selectedFilter === 'Today') {
+    return isSameDay(announcementDate, referenceDate);
+  }
+
+  if (selectedFilter === 'This Week') {
+    const startOfWeek = new Date(referenceDate);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(referenceDate.getDate() - referenceDate.getDay());
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+    return announcementDate >= startOfWeek && announcementDate < endOfWeek;
+  }
+
+  if (selectedFilter === 'This Month') {
+    return (
+      announcementDate.getFullYear() === referenceDate.getFullYear() &&
+      announcementDate.getMonth() === referenceDate.getMonth()
+    );
+  }
+
+  return true;
+};
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
 const AnnouncementDetail = ({ item, visible, onClose }) => {
@@ -291,7 +450,7 @@ export default function AnnouncementsScreen() {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [selectedFilter]);
+  }, []);
 
   const fetchAnnouncements = async () => {
     try {
@@ -324,11 +483,25 @@ export default function AnnouncementsScreen() {
     setShowDetail(true);
   };
 
-  const filteredAnnouncements = () => {
-    if (activeTab === 'Unread') return announcements.filter((a) => !a.read);
-    if (activeTab === 'Pinned') return announcements.filter((a) => a.pinned);
-    return announcements;
-  };
+  const periodFilteredAnnouncements = useMemo(() => {
+    const referenceDate = getFilterReferenceDate(announcements);
+
+    return announcements.filter((announcement) =>
+      isInSelectedPeriod(announcement, selectedFilter, referenceDate)
+    );
+  }, [announcements, selectedFilter]);
+
+  const visibleAnnouncements = useMemo(() => {
+    if (activeTab === 'Unread') {
+      return periodFilteredAnnouncements.filter((announcement) => !announcement.read);
+    }
+
+    if (activeTab === 'Pinned') {
+      return periodFilteredAnnouncements.filter((announcement) => announcement.pinned);
+    }
+
+    return periodFilteredAnnouncements;
+  }, [activeTab, periodFilteredAnnouncements]);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -403,7 +576,7 @@ export default function AnnouncementsScreen() {
                 onPress={() => setActiveTab(tab)}
               >
                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tab}{tab === 'All' ? ` ${announcements.length}` : ''}
+                  {tab}{tab === 'All' ? ` ${periodFilteredAnnouncements.length}` : ''}
                 </Text>
                 {activeTab === tab && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
@@ -412,10 +585,10 @@ export default function AnnouncementsScreen() {
 
           {/* ── Cards ── */}
           <View style={{ paddingHorizontal: 16, gap: 12 }}>
-            {filteredAnnouncements().length === 0 ? (
+            {visibleAnnouncements.length === 0 ? (
               <Text style={styles.emptyText}>No announcements here.</Text>
             ) : (
-              filteredAnnouncements().map((item) => (
+              visibleAnnouncements.map((item) => (
                 <AnnouncementCard
                   key={item.id}
                   item={item}
