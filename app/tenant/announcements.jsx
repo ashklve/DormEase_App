@@ -607,9 +607,9 @@ export default function AnnouncementsScreen() {
       ]}>
         <NavItem iconName="home"           label="Home"       isActive={false} onPress={() => router.push('/tenant/dashboard')} />
         <NavItem iconName="person-outline" label="Visitor"    isActive={false} onPress={() => router.push('/tenant/visitors')} />
-        <NavItem iconName="warning"        label="Emergency"  isCenter />
-        <NavItem iconName="water-drop"     label="Water Bill" isActive={false} />
-        <NavItem iconName="account-circle" label="Profile"    isActive={false} onPress={() => router.push('/tenant/profile')}/>
+        <NavItem iconName="warning"        label="Emergency"  isCenter onPress={() => router.push('/tenant/emergency')} />
+        <NavItem iconName="water-drop"     label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+        <NavItem iconName="account-circle" label="Profile"    isActive={false} onPress={() => router.push('/tenant/profile')} />
       </View>
 
       {/* ── Dropdown Modal ── */}
