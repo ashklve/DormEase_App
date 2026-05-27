@@ -268,6 +268,7 @@ export default function MaintenanceScreen() {
     const [elapsed, setElapsed] = useState(0);
     const [hasRecording, setHasRecording] = useState(false);
     const timerRef = useRef(null);
+    const lastTimerTickRef = useRef(null);
     const transcribedRef = useRef('');
     const confirmedTranscriptRef = useRef('');
     const listenerRefs = useRef([]);
@@ -280,6 +281,27 @@ export default function MaintenanceScreen() {
     const detectedPriority = category ? PRIORITY_MAP[category] : null;
 
     // ── Recording timer
+    const stopRecordingTimer = useCallback(() => {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        lastTimerTickRef.current = null;
+    }, []);
+
+    const startRecordingTimer = useCallback(() => {
+        stopRecordingTimer();
+        setElapsed(0);
+        lastTimerTickRef.current = Date.now();
+        timerRef.current = setInterval(() => {
+            const now = Date.now();
+            if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) {
+                return;
+            }
+
+            lastTimerTickRef.current = now;
+            setElapsed((seconds) => seconds + 1);
+        }, 1000);
+    }, [stopRecordingTimer]);
+
     const clearVoskListeners = useCallback(() => {
         listenerRefs.current.forEach((listener) => listener?.remove?.());
         listenerRefs.current = [];
@@ -352,12 +374,12 @@ export default function MaintenanceScreen() {
 
         return () => {
             mounted = false;
-            clearInterval(timerRef.current);
+            stopRecordingTimer();
             clearVoskListeners();
             stop();
             unload();
         };
-    }, [clearVoskListeners, selectedSpeechLanguage.model, selectedSpeechLanguage.label]);
+    }, [clearVoskListeners, selectedSpeechLanguage.model, selectedSpeechLanguage.label, stopRecordingTimer]);
 
     const startRecording = async () => {
         if (!modelLoaded) {
@@ -370,8 +392,9 @@ export default function MaintenanceScreen() {
         confirmedTranscriptRef.current = '';
         setDescription('');
         setCategory('');
-        setElapsed(0);
         setHasRecording(false);
+        setIsRecording(true);
+        startRecordingTimer();
 
         listenerRefs.current = [
             onPartialResult((text) => applyPartialTranscript(text)),
@@ -383,24 +406,24 @@ export default function MaintenanceScreen() {
             onError((error) => {
                 console.error('Vosk recognition error:', error);
                 setIsRecording(false);
-                clearInterval(timerRef.current);
+                stopRecordingTimer();
                 Alert.alert('Voice Input Error', String(error));
             }),
         ];
 
         try {
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await start();
-
-            setIsRecording(true);
-            timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
         } catch (error) {
+            setIsRecording(false);
+            stopRecordingTimer();
             clearVoskListeners();
             Alert.alert('Voice Input Error', String(error));
         }
     };
 
     const stopRecording = async () => {
-        clearInterval(timerRef.current);
+        stopRecordingTimer();
         setIsRecording(false);
 
         try {
