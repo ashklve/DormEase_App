@@ -161,11 +161,13 @@ export default StyleSheet.create({
         borderWidth: 1.5,
         borderColor: COLORS.border,
         borderRadius: 12,
-        paddingVertical: 16,
+        paddingVertical: 18,
         paddingHorizontal: 14,
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: COLORS.bg,
-        marginBottom: 12,
+        marginBottom: 10,
+        minHeight: 124,
     },
     recorderBoxActive: {
         borderColor: COLORS.primary,
@@ -173,47 +175,38 @@ export default StyleSheet.create({
     },
 
     // ── waveform ──────────────────────────────────────────────────────────────
-    waveformContainer: {
-        alignItems: 'center',
-        width: '100%',
-        marginBottom: 12,
-    },
-    waveformBars: {
+    waveformRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 3,
-        height: 48,
-        marginBottom: 6,
+        marginBottom: 10,
+        height: 40,
     },
-    waveBar: {
-        width: 3,
-        borderRadius: 3,
+    micCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
     },
-    waveTimer: {
-        fontSize: 16,
+    timerText: {
+        fontSize: 18,
         fontWeight: '700',
         color: COLORS.dark,
         letterSpacing: 1,
+        marginTop: 8,
     },
 
     // ── mic button ────────────────────────────────────────────────────────────
-    micBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: COLORS.primary,
-        borderRadius: 22,
-        paddingVertical: 9,
-        paddingHorizontal: 20,
-    },
-    micBtnActive: {
-        backgroundColor: '#B02060',
-    },
-    micBtnText: {
-        color: COLORS.white,
-        fontSize: 13,
-        fontWeight: '600',
+    tapToSpeak: {
+        fontSize: 12,
+        color: COLORS.muted,
+        textAlign: 'center',
+        marginBottom: 2,
+        fontWeight: '500',
     },
 
     // ── transcript ────────────────────────────────────────────────────────────

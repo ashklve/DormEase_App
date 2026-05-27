@@ -116,10 +116,18 @@ const STATUS_STYLE = {
 };
 
 // ── Waveform animation component ──────────────────────────────────────────────
-const WaveformVisualizer = ({ isRecording, elapsed }) => {
-    const bars = 28;
+const BAR_COUNT = 28;
+
+const fmtTimer = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+};
+
+const Waveform = ({ isRecording }) => {
     const anims = useRef(
-        Array.from({ length: bars }, () => new Animated.Value(0.3))
+        Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
     ).current;
 
     useEffect(() => {
@@ -130,13 +138,13 @@ const WaveformVisualizer = ({ isRecording, elapsed }) => {
                         Animated.delay(i * 40),
                         Animated.timing(anim, {
                             toValue: Math.random() * 0.7 + 0.3,
-                            duration: 300 + Math.random() * 300,
-                            useNativeDriver: false,
+                            duration: 200 + Math.random() * 200,
+                            useNativeDriver: true,
                         }),
                         Animated.timing(anim, {
                             toValue: 0.2 + Math.random() * 0.3,
-                            duration: 300 + Math.random() * 300,
-                            useNativeDriver: false,
+                            duration: 200 + Math.random() * 200,
+                            useNativeDriver: true,
                         }),
                     ])
                 )
@@ -144,43 +152,30 @@ const WaveformVisualizer = ({ isRecording, elapsed }) => {
             animations.forEach((a) => a.start());
             return () => animations.forEach((a) => a.stop());
         } else {
-            // Flat line when not recording
             anims.forEach((anim) =>
                 Animated.timing(anim, {
-                    toValue: 0.25,
-                    duration: 300,
-                    useNativeDriver: false,
+                    toValue: 0.3,
+                    duration: 200,
+                    useNativeDriver: true,
                 }).start()
             );
         }
     }, [isRecording]);
 
-    const formatTime = (secs) => {
-        const m = String(Math.floor(secs / 60)).padStart(2, '0');
-        const s = String(secs % 60).padStart(2, '0');
-        return `${m}:${s}`;
-    };
-
     return (
-        <View style={styles.waveformContainer}>
-            <View style={styles.waveformBars}>
-                {anims.map((anim, i) => (
-                    <Animated.View
-                        key={i}
-                        style={[
-                            styles.waveBar,
-                            {
-                                height: anim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [6, 40],
-                                }),
-                                opacity: isRecording ? anim : 0.4,
-                            },
-                        ]}
-                    />
-                ))}
-            </View>
-            <Text style={styles.waveTimer}>{formatTime(elapsed)}</Text>
+        <View style={styles.waveformRow}>
+            {anims.map((anim, i) => (
+                <Animated.View
+                    key={i}
+                    style={{
+                        width: 3,
+                        height: 36,
+                        borderRadius: 2,
+                        backgroundColor: COLORS.primary,
+                        transform: [{ scaleY: anim }],
+                    }}
+                />
+            ))}
         </View>
     );
 };
@@ -265,7 +260,7 @@ export default function MaintenanceScreen() {
     const [isRecording, setIsRecording] = useState(false);
     const [modelLoaded, setModelLoaded] = useState(false);
     const [modelLoading, setModelLoading] = useState(true);
-    const [elapsed, setElapsed] = useState(0);
+    const [recordSecs, setRecordSecs] = useState(0);
     const [hasRecording, setHasRecording] = useState(false);
     const timerRef = useRef(null);
     const lastTimerTickRef = useRef(null);
@@ -289,7 +284,7 @@ export default function MaintenanceScreen() {
 
     const startRecordingTimer = useCallback(() => {
         stopRecordingTimer();
-        setElapsed(0);
+        setRecordSecs(0);
         lastTimerTickRef.current = Date.now();
         timerRef.current = setInterval(() => {
             const now = Date.now();
@@ -298,7 +293,7 @@ export default function MaintenanceScreen() {
             }
 
             lastTimerTickRef.current = now;
-            setElapsed((seconds) => seconds + 1);
+            setRecordSecs((seconds) => seconds + 1);
         }, 1000);
     }, [stopRecordingTimer]);
 
@@ -346,7 +341,7 @@ export default function MaintenanceScreen() {
         setDescription('');
         setCategory('');
         setHasRecording(false);
-        setElapsed(0);
+        setRecordSecs(0);
         transcribedRef.current = '';
         confirmedTranscriptRef.current = '';
     };
@@ -435,6 +430,14 @@ export default function MaintenanceScreen() {
         setHasRecording(Boolean(transcribedRef.current));
     };
 
+    const handleToggleRecord = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
     // ── Submit
     const handleSubmit = async () => {
         if (!description.trim()) {
@@ -462,7 +465,7 @@ export default function MaintenanceScreen() {
             setDescription('');
             setCategory('');
             setHasRecording(false);
-            setElapsed(0);
+            setRecordSecs(0);
         } catch (err) {
             console.error('maintenance submit error:', err.response?.data ?? err.message);
             const errors = err.response?.data?.errors;
@@ -570,29 +573,25 @@ export default function MaintenanceScreen() {
                         </View>
 
                         {/* Waveform recorder box */}
-                        <View style={[
-                            styles.recorderBox,
-                            isRecording && styles.recorderBoxActive,
-                        ]}>
-                            <WaveformVisualizer isRecording={isRecording} elapsed={elapsed} />
+                        <TouchableOpacity
+                            style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
+                            activeOpacity={0.85}
+                            onPress={handleToggleRecord}
+                            disabled={modelLoading}
+                        >
+                            {isRecording ? (
+                                <Waveform isRecording={isRecording} />
+                            ) : (
+                                <View style={styles.micCircle}>
+                                    <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                                </View>
+                            )}
+                            <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+                        </TouchableOpacity>
 
-                            {/* Record / Stop button */}
-                            <TouchableOpacity
-                                style={[styles.micBtn, isRecording && styles.micBtnActive]}
-                                onPress={isRecording ? stopRecording : startRecording}
-                                activeOpacity={0.8}
-                                disabled={modelLoading}
-                            >
-                                <MaterialIcons
-                                    name={isRecording ? 'stop' : 'mic'}
-                                    size={20}
-                                    color={COLORS.white}
-                                />
-                                <Text style={styles.micBtnText}>
-                                    {modelLoading ? `Loading ${selectedSpeechLanguage.label} Model...` : (isRecording ? 'Stop Recording' : (hasRecording ? 'Re-record' : 'Tap to Record'))}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={styles.tapToSpeak}>
+                            {modelLoading ? `Loading ${selectedSpeechLanguage.label} Model...` : (isRecording ? 'Tap to stop recording' : (hasRecording ? 'Tap to re-record' : 'Tap to Speak'))}
+                        </Text>
 
                         {/* Transcription result */}
                         {(isRecording || hasRecording) && description ? (
