@@ -2,11 +2,10 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const client = axios.create({
-    baseURL: 'https://strongman-studio-stoke.ngrok-free.dev/api',
+    baseURL: 'http://32.236.73.172/api',
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
     }
 });
 
