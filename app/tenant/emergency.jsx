@@ -15,25 +15,24 @@ import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-ic
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-    loadModel,
     onError,
     onFinalResult,
     onPartialResult,
     onResult,
     start,
     stop,
-    unload,
 } from 'react-native-vosk';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import styles, { COLORS, CATEGORY_COLORS } from '../../src/constants/emergencystyles';
+import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
 const SPEECH_LANGUAGE_OPTIONS = [
-    { key: 'en', label: 'English', model: 'model-en-us' },
     { key: 'tl', label: 'Tagalog', model: 'model-tl-ph' },
+    { key: 'en', label: 'English', model: 'model-en-us' },
 ];
 
 // emergency categories
@@ -159,7 +158,7 @@ export default function EmergencyScreen() {
     const drawerRef = useRef(null);
 
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [speechLanguage, setSpeechLanguage] = useState('en');
+    const [speechLanguage, setSpeechLanguage] = useState('tl');
     const [isRecording, setIsRecording] = useState(false);
     const [modelLoaded, setModelLoaded] = useState(false);
     const [modelLoading, setModelLoading] = useState(true);
@@ -264,9 +263,8 @@ export default function EmergencyScreen() {
 
         setModelLoaded(false);
         setModelLoading(true);
-        unload();
 
-        loadModel(selectedSpeechLanguage.model)
+        ensureVoskModelLoaded(selectedSpeechLanguage.model)
             .then(() => {
                 if (mounted) setModelLoaded(true);
             })
@@ -285,7 +283,6 @@ export default function EmergencyScreen() {
             stopRecordingTimer();
             clearVoskListeners();
             stop();
-            unload();
         };
     }, [clearVoskListeners, selectedSpeechLanguage.label, selectedSpeechLanguage.model, stopRecordingTimer]);
 
