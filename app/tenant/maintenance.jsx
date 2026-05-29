@@ -53,6 +53,27 @@ const CATEGORY_OPTIONS = [
     'Others',
 ];
 
+const CATEGORY_TO_ISSUE = {
+    Plumbing: 'plumbing',
+    Electrical: 'electrical',
+    'HVAC / Air Conditioning': 'hvac',
+    'Appliance Repair': 'appliance',
+    'Carpentry / Furniture': 'carpentry',
+    'Pest Control': 'pest',
+    Cleaning: 'cleaning',
+    'Internet / Cable': 'internet',
+    Others: 'other',
+    plumbing: 'plumbing',
+    electrical: 'electrical',
+    hvac: 'hvac',
+    appliance: 'appliance',
+    carpentry: 'carpentry',
+    pest: 'pest',
+    cleaning: 'cleaning',
+    internet: 'internet',
+    other: 'other',
+};
+
 const PRIORITY_MAP = {
     Plumbing: 'Moderate',
     Electrical: 'High',
@@ -83,22 +104,101 @@ const PRIORITY_STYLE = {
     low: { bg: '#D4EDDA', text: '#155724' },
 };
 
-const ISSUE_KEYWORDS = [
-    { category: 'Plumbing', words: ['leak', 'water', 'faucet', 'sink', 'toilet', 'pipe', 'drain', 'shower', 'tulo', 'tumutulo', 'tagas', 'gripo', 'lababo', 'inidoro', 'kubeta', 'tubo', 'barado', 'bara', 'banyo', 'cr'] },
-    { category: 'Electrical', words: ['electric', 'electrical', 'light', 'lights', 'outlet', 'power', 'spark', 'wire', 'kuryente', 'saksakan', 'ilaw', 'bumbilya', 'kurap', 'kumukurap', 'pumutok', 'brownout'] },
-    { category: 'HVAC / Air Conditioning', words: ['aircon', 'air conditioning', 'ac', 'cooling', 'hvac', 'fan', 'mainit', 'lumalamig', 'lamig', 'bentilador'] },
-    { category: 'Appliance Repair', words: ['appliance', 'fridge', 'refrigerator', 'stove', 'washer', 'microwave', 'ref', 'kalan'] },
-    { category: 'Carpentry / Furniture', words: ['door', 'cabinet', 'chair', 'table', 'bed', 'lock', 'furniture', 'pinto', 'upuan', 'mesa', 'kama', 'bintana', 'susi'] },
-    { category: 'Pest Control', words: ['pest', 'insect', 'cockroach', 'roach', 'ant', 'rats', 'mouse', 'ipis', 'langgam', 'daga', 'lamok', 'anay', 'insekto'] },
-    { category: 'Cleaning', words: ['clean', 'dirty', 'trash', 'garbage', 'smell', 'stain', 'linis', 'marumi', 'basura', 'mabaho', 'amoy', 'mantsa'] },
-    { category: 'Internet / Cable', words: ['internet', 'wifi', 'wi-fi', 'cable', 'connection', 'router', 'signal', 'network', 'mahina ang wifi', 'walang internet'] },
+const ISSUE_RULES = [
+    { issue: 'plumbing', category: 'Plumbing', priority: 'moderate', words: ['leak', 'leaking', 'drip', 'dripping', 'water', 'faucet', 'sink', 'toilet', 'pipe', 'drain', 'shower', 'flush', 'clog', 'clogged', 'overflow', 'tagas', 'tumatagas', 'tumutulo', 'tulo', 'gripo', 'lababo', 'inidoro', 'kubeta', 'tubo', 'barado', 'bara', 'baha'] },
+    { issue: 'electrical', category: 'Electrical', priority: 'urgent', words: ['electric', 'electrical', 'power', 'outlet', 'socket', 'spark', 'wire', 'wiring', 'breaker', 'short circuit', 'brownout', 'light', 'lights', 'flicker', 'flickering', 'kuryente', 'ilaw', 'saksakan', 'kawad', 'pundi', 'kumukutitap', 'walang kuryente', 'walang ilaw'] },
+    { issue: 'hvac', category: 'HVAC / Air Conditioning', priority: 'moderate', words: ['aircon', 'air conditioning', 'ac', 'a c', 'cooling', 'hvac', 'fan', 'ventilation', 'hot room', 'air con', 'electric fan', 'mainit', 'mainit kwarto', 'hindi malamig', 'hindi lumalamig', 'mahina aircon', 'bentilador'] },
+    { issue: 'appliance', category: 'Appliance Repair', priority: 'low', words: ['appliance', 'fridge', 'refrigerator', 'stove', 'microwave', 'washer', 'washing machine', 'kettle', 'ref', 'kalan', 'takure', 'plantsa', 'rice cooker'] },
+    { issue: 'carpentry', category: 'Carpentry / Furniture', priority: 'low', words: ['door', 'cabinet', 'chair', 'table', 'bed', 'lock', 'window', 'drawer', 'furniture', 'hinge', 'wood', 'pinto', 'aparador', 'upuan', 'mesa', 'kama', 'kandado', 'bintana', 'bisagra', 'kahoy', 'sira pinto'] },
+    { issue: 'pest', category: 'Pest Control', priority: 'urgent', words: ['pest', 'cockroach', 'roach', 'ant', 'ants', 'rat', 'rats', 'mouse', 'mice', 'termite', 'insect', 'bug', 'mosquito', 'ipis', 'langgam', 'daga', 'anay', 'lamok', 'insekto', 'surot'] },
+    { issue: 'cleaning', category: 'Cleaning', priority: 'low', words: ['clean', 'cleaning', 'dirty', 'trash', 'garbage', 'smell', 'odor', 'stain', 'mold', 'mould', 'marumi', 'basura', 'mabaho', 'amoy', 'mantsa', 'amag', 'linis', 'kalat'] },
+    { issue: 'internet', category: 'Internet / Cable', priority: 'moderate', words: ['internet', 'wifi', 'wi fi', 'wi-fi', 'cable', 'router', 'connection', 'signal', 'network', 'mahina signal', 'walang internet', 'walang wifi', 'walang wi fi', 'mabagal internet', 'mabagal wifi', 'putol internet'] },
 ];
 
+const PRIORITY_RULES = {
+    urgent: ['spark', 'sparking', 'short circuit', 'exposed wire', 'smoke', 'burning', 'fire', 'flood', 'flooding', 'overflow', 'overflowing', 'no power', 'no electricity', 'gas leak', 'sunog', 'nasusunog', 'usok', 'amoy sunog', 'baha', 'umaapaw', 'walang kuryente', 'may kuryente', 'kumukuryente', 'grounded'],
+    moderate: ['leak', 'leaking', 'clog', 'clogged', 'broken', 'not working', 'cannot use', 'tagas', 'tumatagas', 'tumutulo', 'barado', 'sira', 'hindi gumagana', 'di gumagana', 'hindi magamit', 'di magamit'],
+};
+
+const PRIORITY_WEIGHT = {
+    urgent: 3,
+    moderate: 2,
+    low: 1,
+};
+
+const normalizeMaintenanceText = (text) =>
+    String(text ?? '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s\-]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const expandIngForms = (word) => {
+    const forms = [word];
+    if (!word.endsWith('ing') || word.length <= 5) return forms;
+
+    const base = word.slice(0, -3);
+    if (/([b-df-hj-np-tv-z])\1$/.test(base)) {
+        forms.push(base.slice(0, -1));
+    }
+    forms.push(`${base}e`, base);
+
+    return [...new Set(forms)];
+};
+
+const matchesKeyword = (text, keyword) => {
+    if (text.includes(keyword)) return true;
+
+    const expandedWords = text.split(' ').map(expandIngForms);
+    let candidates = [''];
+
+    expandedWords.forEach((forms) => {
+        const next = [];
+        candidates.forEach((prefix) => {
+            forms.forEach((form) => {
+                next.push(prefix === '' ? form : `${prefix} ${form}`);
+            });
+        });
+        candidates = next.slice(0, 512);
+    });
+
+    return candidates.some((candidate) => candidate.includes(keyword));
+};
+
+const classifyPriority = (text, rule) => {
+    const priorityEntry = Object.entries(PRIORITY_RULES).find(([, words]) =>
+        words.some((word) => matchesKeyword(text, word))
+    );
+
+    return priorityEntry?.[0] ?? rule?.priority ?? 'low';
+};
+
+const classifyMaintenanceFromTranscript = (text) => {
+    const normalized = normalizeMaintenanceText(text);
+    let bestRule = null;
+    let bestScore = 0;
+    let bestPriorityWeight = 0;
+
+    ISSUE_RULES.forEach((rule) => {
+        const score = rule.words.filter((word) => matchesKeyword(normalized, word)).length;
+        if (score === 0) return;
+
+        const priorityWeight = PRIORITY_WEIGHT[rule.priority] ?? 0;
+        if (score > bestScore || (score === bestScore && priorityWeight > bestPriorityWeight)) {
+            bestRule = rule;
+            bestScore = score;
+            bestPriorityWeight = priorityWeight;
+        }
+    });
+
+    return {
+        category: bestRule?.category ?? '',
+        priority: classifyPriority(normalized, bestRule),
+    };
+};
+
 const detectCategoryFromTranscript = (text) => {
-    const normalized = text.toLowerCase();
-    return ISSUE_KEYWORDS.find(({ words }) =>
-        words.some((word) => normalized.includes(word))
-    )?.category ?? '';
+    return classifyMaintenanceFromTranscript(text).category;
 };
 
 // ── History modal dummy data ──────────────────────────────────────────────────
@@ -272,8 +372,11 @@ export default function MaintenanceScreen() {
     const [showHistory, setShowHistory] = useState(false);
 
     // ── Derived: detected issue
-    const detectedType = category || null;
-    const detectedPriority = category ? PRIORITY_MAP[category] : null;
+    const classifiedMaintenance = classifyMaintenanceFromTranscript(description);
+    const detectedType = category || classifiedMaintenance.category || null;
+    const detectedPriority = classifiedMaintenance.category
+        ? classifiedMaintenance.priority
+        : (category ? PRIORITY_MAP[category] : null);
 
     // ── Recording timer
     const stopRecordingTimer = useCallback(() => {
@@ -446,6 +549,7 @@ export default function MaintenanceScreen() {
         try {
             const res = await client.post('/maintenance', {
                 description: description.trim(),
+                issue_type: CATEGORY_TO_ISSUE[detectedType] ?? undefined,
                 input_type: hasRecording ? 'voice' : 'text',
                 language: speechLanguage,
             });
