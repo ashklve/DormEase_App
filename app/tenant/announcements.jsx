@@ -10,7 +10,6 @@ import {
   Modal,
   TouchableWithoutFeedback,
   RefreshControl,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -194,6 +193,7 @@ const isInSelectedPeriod = (announcement, selectedFilter, referenceDate) => {
 // ── Detail Modal ──────────────────────────────────────────────────────────────
 const AnnouncementDetail = ({ item, visible, onClose }) => {
   const [imageRatio, setImageRatio] = useState(4 / 3);
+  const insets = useSafeAreaInsets();
 
   if (!item) return null;
 
@@ -244,7 +244,12 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       transparent={false}
       onRequestClose={onClose}
     >
-      <View style={detailStyles.modalRoot}>
+      <View
+        style={[
+          detailStyles.modalRoot,
+          { paddingTop: Math.max(insets.top + verticalScale(14), verticalScale(58)) },
+        ]}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={detailStyles.scrollContent}
@@ -659,7 +664,6 @@ const detailStyles = {
   modalRoot: {
     flex: 1,
     backgroundColor: COLORS.white,
-    paddingTop: Platform.OS === 'ios' ? 54 : StatusBar.currentHeight,
   },
   scrollContent: {
     paddingBottom: verticalScale(40),
