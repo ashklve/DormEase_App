@@ -60,12 +60,19 @@ const EMERGENCY_KEYWORDS = [
     { category: 'Medical', words: ['medical', 'injury', 'injured', 'hurt', 'bleeding', 'fainted', 'unconscious', 'sick', 'ambulance', 'heart', 'chest pain', 'nahilo', 'himatay', 'sugat', 'nasugatan', 'dugo', 'may sakit', 'masakit', 'ambulansya'] },
     { category: 'Fire/Smoke', words: ['fire', 'smoke', 'burning', 'burn', 'flame', 'sunog', 'usok', 'nasusunog', 'apoy'] },
     { category: 'Electrical Hazard', words: ['electric', 'electrical', 'spark', 'wire', 'outlet', 'power', 'shock', 'kuryente', 'saksakan', 'kurente', 'grounded', 'kumukuryente', 'pumutok'] },
-    { category: 'Security', words: ['security', 'intruder', 'break in', 'break-in', 'stolen', 'theft', 'fight', 'threat', 'stranger', 'magnanakaw', 'nanakaw', 'nakawan', 'away', 'gulo', 'banta', 'estranghero'] },
+    { category: 'Security', words: ['security', 'intruder', 'break in', 'break-in', 'stolen', 'theft', 'fight', 'threat', 'stranger', 'harass', 'harassing', 'harassment', 'assault', 'magnanakaw', 'nanakaw', 'nakawan', 'away', 'gulo', 'banta', 'estranghero', 'panliligalig'] },
     { category: 'Flood/Water Leak', words: ['flood', 'flooding', 'water leak', 'leak', 'pipe burst', 'overflow', 'baha', 'binabaha', 'tagas', 'tumutulo', 'pumutok na tubo', 'umaapaw'] },
 ];
 
+const normalizeEmergencyText = (text) =>
+    String(text ?? '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s\-\/]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
 const detectEmergencyTypeFromTranscript = (text) => {
-    const normalized = String(text ?? '').toLowerCase();
+    const normalized = normalizeEmergencyText(text);
     return EMERGENCY_KEYWORDS.find(({ words }) =>
         words.some((word) => normalized.includes(word))
     )?.category ?? '';
@@ -385,8 +392,10 @@ export default function EmergencyScreen() {
 
         setSubmitting(true);
         try {
+            const submittedType = detectedType || selectedCategory || undefined;
+
             await client.post('/emergency', {
-                type: detectedType || selectedCategory || 'Other',
+                type: submittedType,
                 description: description,
                 location: detectedLocation,
                 status: 'pending',
