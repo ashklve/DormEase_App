@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "377476830502",
+    "project_id": "dormease-fc891",
+    "storage_bucket": "dormease-fc891.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:377476830502:android:4f85fcee982d2fb3e51de7",
+        "android_client_info": {
+          "package_name": "com.ninerzaaa.dormease"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFhmBSCBE1NyeM3_lgyASxqyPPxlkb5Vc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
