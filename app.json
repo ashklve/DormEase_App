@@ -23,6 +23,7 @@
       "bundleIdentifier": "com.dormease.app"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECORD_AUDIO",
         "POST_NOTIFICATIONS",
