@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -6,110 +6,133 @@ import {
     ScrollView,
     StatusBar,
     Image,
-    FlatList,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { useUser } from '../../src/context/UserContext';
+import client from '../../api/client';
+import { addNotificationReceivedListener } from '../../src/services/pushNotifications';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-// placeholder notifications — replace with real data from your database later
-const MOCK_NOTIFICATIONS = [
-    {
-        id: '1',
-        title: 'Admin has posted a new documents for your review',
-        description: 'dorm-policy-feb2026.pdf · 324 kb',
-        timestamp: 'Today, 11:42 AM',
-        type: 'document',
-        read: false,
-        avatar: '👤',
+const TYPE_META = {
+    announcement: {
+        label: 'Announcement',
+        icon: 'campaign',
+        color: '#FF9800',
+        route: '/tenant/announcements',
     },
-    {
-        id: '2',
-        title: 'Emergency report acknowledged.',
-        description: 'Staff are responding now.',
-        timestamp: 'Today, 10:35 AM',
-        type: 'emergency',
-        read: false,
-        avatar: '⚠️',
+    document: {
+        label: 'Document',
+        icon: 'description',
+        color: COLORS.primary,
+        route: '/tenant/records',
     },
-    {
-        id: '3',
-        title: 'Your water bill payment has been recorded successfully.',
-        timestamp: 'Today, 9:18 AM',
-        type: 'payment',
-        read: true,
-        avatar: '💧',
+    bill: {
+        label: 'Water Bill',
+        icon: 'water-drop',
+        color: '#2196F3',
+        route: '/tenant/water-bill',
     },
-    {
-        id: '4',
-        title: 'New announcement has been posted.',
-        timestamp: 'Today, 8:00 AM',
-        type: 'announcement',
-        read: true,
-        avatar: '📣',
+    payment: {
+        label: 'Payment',
+        icon: 'payments',
+        color: '#4CAF50',
+        route: '/tenant/water-bill',
     },
-    {
-        id: '5',
-        title: 'Your current water bill is ready to view and settle before the due date.',
-        timestamp: 'Feb 16, 2026 · 5:00 PM',
-        type: 'bill',
-        read: true,
-        avatar: '💸',
+    maintenance: {
+        label: 'Maintenance',
+        icon: 'build',
+        color: '#795548',
+        route: '/tenant/maintenancehistory',
     },
-];
-
-// notification item component
-const NotificationItem = ({ item, onPress }) => {
-    const getAvatarColor = (type) => {
-        switch (type) {
-            case 'document':
-                return COLORS.primary;
-            case 'emergency':
-                return '#FF6B6B';
-            case 'payment':
-                return '#4CAF50';
-            case 'announcement':
-                return '#FF9800';
-            case 'bill':
-                return '#2196F3';
-            default:
-                return COLORS.primary;
-        }
-    };
-
-    return (
-        <TouchableOpacity
-            style={[
-                styles.notificationItem,
-                !item.read && { backgroundColor: '#FFF5F8' },
-            ]}
-            onPress={onPress}
-        >
-            <View
-                style={[
-                    styles.notifAvatar,
-                    { backgroundColor: getAvatarColor(item.type) },
-                ]}
-            >
-                <Text style={styles.notifAvatarText}>{item.avatar}</Text>
-            </View>
-            <View style={styles.notifContent}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                {item.description && (
-                    <Text style={styles.notifDescription}>{item.description}</Text>
-                )}
-                <Text style={styles.notifTime}>{item.timestamp}</Text>
-            </View>
-            {!item.read && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-    );
+    emergency: {
+        label: 'Emergency',
+        icon: 'warning',
+        color: '#FF6B6B',
+        route: '/tenant/emergency',
+    },
+    visitor: {
+        label: 'Visitor',
+        icon: 'person-add',
+        color: '#7E57C2',
+        route: '/tenant/visitors',
+    },
 };
 
-// bottom nav item component
+const getTypeMeta = (type) => TYPE_META[type] ?? {
+    label: 'Notification',
+    icon: 'notifications',
+    color: COLORS.primary,
+    route: null,
+};
+
+const formatDateTime = (value) => {
+    if (!value) return '';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+
+    const now = new Date();
+    const sameDay =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate();
+
+    return date.toLocaleString('en-US', {
+        month: sameDay ? undefined : 'short',
+        day: sameDay ? undefined : 'numeric',
+        year: sameDay ? undefined : 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+const mapNotification = (notification) => {
+    const type = notification.type ?? 'notification';
+    const meta = getTypeMeta(type);
+
+    return {
+        id: notification.notif_id,
+        type,
+        title: meta.label,
+        description: notification.message ?? '',
+        timestamp: formatDateTime(notification.created_at),
+        read: Boolean(notification.is_read),
+        refId: notification.ref_id,
+        route: meta.route,
+        icon: meta.icon,
+        color: meta.color,
+    };
+};
+
+const NotificationItem = ({ item, onPress }) => (
+    <TouchableOpacity
+        style={[
+            styles.notificationItem,
+            !item.read && { backgroundColor: '#FFF5F8' },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.82}
+    >
+        <View style={[styles.notifAvatar, { backgroundColor: item.color }]}>
+            <MaterialIcons name={item.icon} size={24} color={COLORS.white} />
+        </View>
+        <View style={styles.notifContent}>
+            <Text style={styles.notifTitle}>{item.title}</Text>
+            {!!item.description && (
+                <Text style={styles.notifDescription}>{item.description}</Text>
+            )}
+            <Text style={styles.notifTime}>{item.timestamp}</Text>
+        </View>
+        {!item.read && <View style={styles.unreadDot} />}
+    </TouchableOpacity>
+);
+
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -134,40 +157,93 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// main notifications screen
 export default function NotificationsScreen() {
     const router = useRouter();
-    const { user, avatarUri } = useUser();
+    const { avatarUri } = useUser();
     const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState('notifications');
-    const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [markingAll, setMarkingAll] = useState(false);
 
-    const handleNotificationPress = (notification) => {
-        // Mark as read
-        setNotifications(
-            notifications.map((n) =>
-                n.id === notification.id ? { ...n, read: true } : n
+    const unreadCount = notifications.filter((notification) => !notification.read).length;
+
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const res = await client.get('/notifications', { timeout: 15000 });
+            const rows = Array.isArray(res.data?.data)
+                ? res.data.data
+                : Array.isArray(res.data)
+                    ? res.data
+                    : [];
+
+            setNotifications(rows.map(mapNotification));
+        } catch (err) {
+            console.error('fetch notifications error:', err.response?.data ?? err.message);
+            setNotifications([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            fetchNotifications();
+        }, [fetchNotifications])
+    );
+
+    useEffect(() => {
+        const subscription = addNotificationReceivedListener(() => {
+            fetchNotifications();
+        });
+
+        return () => subscription.remove();
+    }, [fetchNotifications]);
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchNotifications();
+    }, [fetchNotifications]);
+
+    const markNotificationRead = useCallback(async (notification) => {
+        if (notification.read) return;
+
+        setNotifications((current) =>
+            current.map((item) =>
+                item.id === notification.id ? { ...item, read: true } : item
             )
         );
 
-        // Navigate based on notification type
-        switch (notification.type) {
-            case 'announcement':
-                router.push('/tenant/announcements');
-                break;
-            case 'bill':
-            case 'payment':
-                router.push('/tenant/water-bill');
-                break;
-            case 'emergency':
-                router.push('/tenant/emergency');
-                break;
-            case 'document':
-                // Navigate to documents when available
-                break;
-            default:
-                break;
+        try {
+            await client.patch(`/notifications/${notification.id}/read`);
+        } catch (err) {
+            console.error('mark notification read error:', err.response?.data ?? err.message);
         }
+    }, []);
+
+    const markAllRead = useCallback(async () => {
+        if (!unreadCount || markingAll) return;
+
+        setMarkingAll(true);
+        const previous = notifications;
+        setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+
+        try {
+            await client.patch('/notifications/read-all');
+        } catch (err) {
+            console.error('mark all notifications read error:', err.response?.data ?? err.message);
+            setNotifications(previous);
+        } finally {
+            setMarkingAll(false);
+        }
+    }, [markingAll, notifications, unreadCount]);
+
+    const handleNotificationPress = async (notification) => {
+        await markNotificationRead(notification);
+        if (notification.route) router.push(notification.route);
     };
 
     const tabNavigate = (tab, route) => {
@@ -179,7 +255,6 @@ export default function NotificationsScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* header row */}
             <View style={styles.topRow}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
                     <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
@@ -190,7 +265,7 @@ export default function NotificationsScreen() {
                         onPress={() => router.push('/tenant/notifications')}
                     >
                         <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        <View style={styles.notifDot} />
+                        {unreadCount > 0 && <View style={styles.notifDot} />}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image
@@ -201,38 +276,65 @@ export default function NotificationsScreen() {
                 </View>
             </View>
 
-            {/* title section */}
             <View style={styles.headerSection}>
-                <Text style={styles.headerTitle}>Notifications 🔔</Text>
+                <Text style={styles.headerTitle}>Notifications</Text>
                 <Text style={styles.headerSub}>
                     Stay updated on important updates
                 </Text>
             </View>
 
-            {/* notifications list */}
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
-            >
-                <View style={styles.tabRow}>
-                    <Text style={styles.tabText}>Recents</Text>
-                    <TouchableOpacity style={{ marginLeft: 'auto' }}>
-                        <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '500' }}>
-                            Mark all as read
-                        </Text>
-                    </TouchableOpacity>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
+            ) : (
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[COLORS.primary]}
+                            tintColor={COLORS.primary}
+                        />
+                    }
+                    contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
+                >
+                    <View style={styles.tabRow}>
+                        <Text style={styles.tabText}>
+                            {unreadCount ? `${unreadCount} unread` : 'Recents'}
+                        </Text>
+                        <TouchableOpacity
+                            style={{ marginLeft: 'auto' }}
+                            onPress={markAllRead}
+                            disabled={!unreadCount || markingAll}
+                        >
+                            <Text
+                                style={{
+                                    fontSize: 12,
+                                    color: unreadCount ? COLORS.primary : COLORS.muted,
+                                    fontWeight: '500',
+                                }}
+                            >
+                                {markingAll ? 'Marking...' : 'Mark all as read'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
-                {notifications.map((notification) => (
-                    <NotificationItem
-                        key={notification.id}
-                        item={notification}
-                        onPress={() => handleNotificationPress(notification)}
-                    />
-                ))}
-            </ScrollView>
+                    {notifications.length ? (
+                        notifications.map((notification) => (
+                            <NotificationItem
+                                key={notification.id}
+                                item={notification}
+                                onPress={() => handleNotificationPress(notification)}
+                            />
+                        ))
+                    ) : (
+                        <Text style={styles.emptyText}>No notifications yet.</Text>
+                    )}
+                </ScrollView>
+            )}
 
-            {/* bottom nav */}
             <View style={[
                 styles.bottomNav,
                 { paddingBottom: Math.max(insets.bottom, 24) },
@@ -247,7 +349,7 @@ export default function NotificationsScreen() {
                     iconName="person-outline"
                     label="Visitor"
                     isActive={activeTab === 'visitor'}
-                    onPress={() => tabNavigate('visitor', '/tenant/visitor')}
+                    onPress={() => tabNavigate('visitor', '/tenant/visitors')}
                 />
                 <NavItem
                     iconName="warning"
