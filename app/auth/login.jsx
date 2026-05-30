@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { loginTenant, saveSession } from '../../api/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerForPushNotificationsAsync } from '../../src/services/pushNotifications';
 
 const { width } = Dimensions.get('window');
 const PINK_PRIMARY = '#CA5D86';
@@ -50,6 +51,10 @@ export default function LoginScreen() {
             const res = await loginTenant(accountId, password);
 
             await AsyncStorage.setItem('auth_token', res.token);
+
+            if (res.user.role === 'tenant') {
+                registerForPushNotificationsAsync();
+            }
 
             if (rememberMe) {
                 await saveSession(res.token, res.user);

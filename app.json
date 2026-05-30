@@ -24,7 +24,9 @@
     },
     "android": {
       "permissions": [
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/spicon.png",
@@ -39,6 +41,13 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#CA5D86",
+          "defaultChannel": "default"
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "react-native-vosk",
