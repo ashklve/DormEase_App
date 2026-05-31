@@ -371,7 +371,6 @@ export default function EmergencyScreen() {
                             await client.post('/emergency', {
                                 type: 'Panic Alert',
                                 description: 'Panic alert sent from app.',
-                                status: 'pending',
                             });
                             Alert.alert('Alert Sent!', 'Staff have been notified immediately.');
                         } catch {
@@ -399,7 +398,6 @@ export default function EmergencyScreen() {
                 type: submittedType,
                 description: description,
                 location: detectedLocation,
-                status: 'pending',
                 input_type: hasRecording ? 'voice' : 'text',
                 language: speechLanguage,
             });
