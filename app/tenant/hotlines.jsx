@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -89,13 +90,7 @@ export default function HotlinesScreen() {
                     <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
-                    <TouchableOpacity
-                        style={styles.iconBtn}
-                        onPress={() => router.push('/tenant/notifications')}
-                    >
-                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        <View style={styles.notifDot} />
-                    </TouchableOpacity>
+                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image source={defaultPhoto} style={styles.avatar} />
                     </TouchableOpacity>

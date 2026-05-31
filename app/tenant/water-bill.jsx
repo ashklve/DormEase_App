@@ -18,6 +18,7 @@ import { COLORS } from '../../src/constants/colors';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -176,13 +177,7 @@ export default function WaterBillScreen() {
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
-                    <TouchableOpacity
-                        style={styles.iconBtn}
-                        onPress={() => router.push('/tenant/notifications')}
-                    >
-                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        <View style={styles.notifDot} />
-                    </TouchableOpacity>
+                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image
                             source={avatarUri ? { uri: avatarUri } : defaultPhoto}
