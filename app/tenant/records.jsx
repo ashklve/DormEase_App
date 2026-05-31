@@ -16,6 +16,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '../../src/context/UserContext';
+import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import styles, { COLORS } from '../../src/constants/recordsstyles';
 import client from '../../api/client';
@@ -290,10 +291,7 @@ export default function TenantRecordsScreen() {
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
-                    <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/tenant/notifications')}>
-                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        <View style={styles.notifDot} />
-                    </TouchableOpacity>
+                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image
                             source={avatarUri ? { uri: avatarUri } : defaultPhoto}

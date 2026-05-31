@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/profilestyles';
 import client from '../../api/client';
+import NotificationBell from '../../src/components/NotificationBell';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const buildAvatarUrl = (path) => {
@@ -479,13 +480,7 @@ export default function ProfileScreen() {
             <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
           </TouchableOpacity>
           <View style={styles.topRowRight}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push('/tenant/notifications')}
-            >
-              <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-              <View style={styles.notifDot} />
-            </TouchableOpacity>
+            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
           </View>
         </View>
 

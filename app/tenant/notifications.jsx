@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     View,
     Text,
@@ -195,13 +195,15 @@ export default function NotificationsScreen() {
         }, [fetchNotifications])
     );
 
-    useEffect(() => {
-        const subscription = addNotificationReceivedListener(() => {
-            fetchNotifications();
-        });
+    useFocusEffect(
+        useCallback(() => {
+            const subscription = addNotificationReceivedListener(() => {
+                fetchNotifications();
+            });
 
-        return () => subscription.remove();
-    }, [fetchNotifications]);
+            return () => subscription.remove();
+        }, [fetchNotifications])
+    );
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -265,7 +267,35 @@ export default function NotificationsScreen() {
                         onPress={() => router.push('/tenant/notifications')}
                     >
                         <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        {unreadCount > 0 && <View style={styles.notifDot} />}
+                        {unreadCount > 0 && (
+                            <View
+                                style={{
+                                    position: 'absolute',
+                                    top: -7,
+                                    right: -8,
+                                    minWidth: 18,
+                                    height: 18,
+                                    borderRadius: 9,
+                                    paddingHorizontal: 4,
+                                    backgroundColor: '#E8175D',
+                                    borderWidth: 1.5,
+                                    borderColor: '#FFFFFF',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: '#FFFFFF',
+                                        fontSize: 10,
+                                        fontWeight: '800',
+                                        lineHeight: 12,
+                                    }}
+                                >
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image

@@ -8,6 +8,7 @@ import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import { clearSession } from '../../api/auth';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -270,13 +271,7 @@ const Dashboard = () => {
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
-                    <TouchableOpacity
-                        style={styles.iconBtn}
-                        onPress={() => router.push('/tenant/notifications')}
-                    >
-                        <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                        <View style={styles.notifDot} />
-                    </TouchableOpacity>
+                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                         <Image source={photoSource} style={styles.avatar} />
                     </TouchableOpacity>
