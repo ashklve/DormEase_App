@@ -6,7 +6,7 @@ const client = axios.create({
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-    }
+        }
 });
 
 // ── Auto-attach saved token to every request ──────────────────────────────────

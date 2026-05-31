@@ -86,17 +86,20 @@ export default function DocumentsScreen() {
     const insets        = useSafeAreaInsets();
     const drawerRef     = useRef(null);
 
-    const [formsExpanded,  setFormsExpanded]  = useState(true);
-    const [selectedOption, setSelectedOption] = useState(null);
-    const [dropdownOpen,   setDropdownOpen]   = useState(false);
-    const [fullName,       setFullName]       = useState('');
-    const [contactNo,      setContactNo]      = useState('');
-    const [roomNo,         setRoomNo]         = useState('');
-    const [purpose,        setPurpose]        = useState('');
-    const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [uploadedFile,   setUploadedFile]   = useState(null);
-    const [submitting,     setSubmitting]     = useState(false);
-    const [userInfo,       setUserInfo]       = useState(null);
+    const [formsExpanded,   setFormsExpanded]   = useState(true);
+    const [adminDocsExpanded, setAdminDocsExpanded] = useState(true);
+    const [selectedOption,  setSelectedOption]  = useState(null);
+    const [dropdownOpen,    setDropdownOpen]    = useState(false);
+    const [fullName,        setFullName]        = useState('');
+    const [contactNo,       setContactNo]       = useState('');
+    const [roomNo,          setRoomNo]          = useState('');
+    const [purpose,         setPurpose]         = useState('');
+    const [deliveryMethod,  setDeliveryMethod]  = useState('digital');
+    const [uploadedFile,    setUploadedFile]    = useState(null);
+    const [submitting,      setSubmitting]      = useState(false);
+    const [userInfo,        setUserInfo]        = useState(null);
+    const [adminDocuments,  setAdminDocuments]  = useState([]);
+    const [docsLoading,     setDocsLoading]     = useState(true);
 
     // pre-fill fields from the logged-in tenant's profile
     useEffect(() => {
@@ -109,12 +112,35 @@ export default function DocumentsScreen() {
         }).catch(() => {});
     }, []);
 
+    // fetch admin-uploaded documents for this tenant
+    useEffect(() => {
+        const fetchAdminDocs = async () => {
+            try {
+                setDocsLoading(true);
+                const res = await client.get('/tenant/documents');
+                setAdminDocuments(res.data?.data ?? res.data ?? []);
+            } catch {
+                // silently fail — section just shows empty state
+            } finally {
+                setDocsLoading(false);
+            }
+        };
+        fetchAdminDocs();
+    }, []);
+
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm        = selectedOption?.category === CATEGORY.FORM;
 
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
             Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
+        );
+    };
+
+    const handleOpenDoc = (filePath) => {
+        const url = `${FILE_BASE_URL}/storage/${filePath}`;
+        Linking.openURL(url).catch(() =>
+            Alert.alert('Error', 'Could not open the document. Please try again.')
         );
     };
 
@@ -262,9 +288,8 @@ export default function DocumentsScreen() {
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
                 >
-                    {/* section 1 — downloadable form templates */}
+                    {/* ── SECTION 1: downloadable blank form templates ── */}
                     <View style={styles.sectionCard}>
-
                         <TouchableOpacity
                             style={styles.sectionHeaderRow}
                             activeOpacity={0.7}
@@ -332,7 +357,93 @@ export default function DocumentsScreen() {
                         )}
                     </View>
 
-                    {/* section 2 — submit a request */}
+                    {/* ── SECTION 2: admin-uploaded documents for this tenant ── */}
+                    <View style={styles.sectionCard}>
+                        <TouchableOpacity
+                            style={styles.sectionHeaderRow}
+                            activeOpacity={0.7}
+                            onPress={() => setAdminDocsExpanded((v) => !v)}
+                        >
+                            <View style={styles.sectionHeaderLeft}>
+                                <View style={styles.sectionIconBadge}>
+                                    <MaterialIcons name="folder-shared" size={14} color={COLORS.white} />
+                                </View>
+                                <View>
+                                    <Text style={styles.sectionHeaderText}>Documents for You</Text>
+                                    <Text style={styles.sectionHeaderCount}>
+                                        {docsLoading
+                                            ? 'Loading…'
+                                            : `${adminDocuments.length} document${adminDocuments.length !== 1 ? 's' : ''} from admin`}
+                                    </Text>
+                                </View>
+                            </View>
+                            <MaterialIcons
+                                name={adminDocsExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                size={22}
+                                color={COLORS.muted}
+                            />
+                        </TouchableOpacity>
+
+                        {adminDocsExpanded && (
+                            <>
+                                {docsLoading ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={COLORS.primary}
+                                        style={{ marginVertical: 20 }}
+                                    />
+                                ) : adminDocuments.length === 0 ? (
+                                    <View style={styles.hintBox}>
+                                        <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
+                                        <Text style={styles.hintBoxText}>
+                                            No documents posted for you yet. Check back later.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    adminDocuments.map((doc, index) => (
+                                        <View
+                                            key={doc.document_id ?? index}
+                                            style={[
+                                                styles.formRow,
+                                                index < adminDocuments.length - 1 && styles.formRowBorder,
+                                            ]}
+                                        >
+                                            <View style={[styles.formRowLeft, { flex: 1, marginRight: 8 }]}>
+                                                <View style={styles.formIconCircle}>
+                                                     <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.formLabel} numberOfLines={2}>
+                                                        {doc.title}
+                                                    </Text>
+                                                    <Text style={[styles.uploadBoxSub, { marginTop: 2, fontSize: 11 }]}>
+                                                        {doc.document_type}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {doc.file_path ? (
+                                                <TouchableOpacity
+                                                    style={styles.downloadBtn}
+                                                    activeOpacity={0.75}
+                                                    onPress={() => handleOpenDoc(doc.file_path)}
+                                                >
+                                                    <MaterialIcons name="open-in-new" size={13} color={COLORS.primary} />
+                                                    <Text style={styles.downloadBtnText}>Open</Text>
+                                                </TouchableOpacity>
+                                            ) : (
+                                                <Text style={[styles.uploadBoxSub, { fontSize: 11 }]}>
+                                                    No file
+                                                </Text>
+                                            )}
+                                        </View>
+                                    ))
+                                )}
+                            </>
+                        )}
+                    </View>
+
+                    {/* ── SECTION 3: submit a request (unchanged) ── */}
                     <View style={styles.sectionCard}>
 
                         <View style={styles.sectionHeaderRow}>
