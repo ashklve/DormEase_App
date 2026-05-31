@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { clearSession } from '../../api/auth';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
+import { dashboardCache } from '../../src/cache/dashboardCache.js';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -23,7 +24,6 @@ const getGreeting = () => {
 
 const formatBillAmount = (amount) => {
     if (amount === null || amount === undefined || amount === '') return '0.00';
-
     const numericAmount = Number(String(amount).replace(/,/g, ''));
     return Number.isFinite(numericAmount)
         ? numericAmount.toLocaleString('en-US', {
@@ -147,8 +147,12 @@ const Dashboard = () => {
     const greeting = getGreeting();
 
     const { user, avatarUri, fetchUser } = useUser();
-    const [currentBill, setCurrentBill] = useState('0.00');
-    const [pendingRequests, setPendingRequests] = useState(0);
+
+    // ── initialise state directly from cache so there is zero loading flash ──
+    const [announcements, setAnnouncements] = useState(dashboardCache.announcements);
+    const [currentBill, setCurrentBill] = useState(dashboardCache.currentBill);
+    const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
+    const [refreshing, setRefreshing] = useState(false);
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -161,56 +165,76 @@ const Dashboard = () => {
         pendingRequests,
     };
 
-    // ── load latest announcements from API ────────────────────────────────────
-    const [announcements, setAnnouncements] = useState([]);
+    // ── all API calls — writes results to cache after each fetch ──────────────
+    const fetchDashboardData = useCallback(async () => {
+        const fetchAnnouncements = async () => {
+            try {
+                const res = await client.get('/announcements', { timeout: 30000 });
+                const data = Array.isArray(res.data) ? res.data : [];
+                dashboardCache.announcements = data;
+                setAnnouncements(data);
+            } catch (err) {
+                console.error('failed to load announcements:', err);
+            }
+        };
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchUser();
-
-            const fetchAnnouncements = async () => {
-                try {
-                    const res = await client.get('/announcements', { timeout: 30000 });
-                    setAnnouncements(Array.isArray(res.data) ? res.data : []);
-                } catch (err) {
-                    console.error('failed to load announcements:', err);
+        const fetchCurrentBill = async () => {
+            try {
+                const res = await client.get('/water-bill', { timeout: 30000 });
+                const amount = formatBillAmount(res.data.current_billing?.amount_due);
+                dashboardCache.currentBill = amount;
+                setCurrentBill(amount);
+            } catch (err) {
+                if (err.response?.status !== 404) {
+                    console.error('failed to load current bill:', err);
                 }
-            };
+                dashboardCache.currentBill = '0.00';
+                setCurrentBill('0.00');
+            }
+        };
 
-            const fetchCurrentBill = async () => {
-                try {
-                    const res = await client.get('/water-bill', { timeout: 30000 });
-                    setCurrentBill(formatBillAmount(res.data.current_billing?.amount_due));
-                } catch (err) {
-                    if (err.response?.status !== 404) {
-                        console.error('failed to load current bill:', err);
-                    }
-                    setCurrentBill('0.00');
-                }
-            };
+        const fetchPendingRequests = async () => {
+            try {
+                const res = await client.get('/maintenance', { timeout: 30000 });
+                const requests = Array.isArray(res.data?.requests) ? res.data.requests : [];
+                const pendingCount = requests.filter((request) =>
+                    ['pending', 'in-progress'].includes(request.status)
+                ).length;
+                dashboardCache.pendingRequests = pendingCount;
+                setPendingRequests(pendingCount);
+            } catch (err) {
+                console.error('failed to load pending maintenance requests:', err);
+                dashboardCache.pendingRequests = 0;
+                setPendingRequests(0);
+            }
+        };
 
-            const fetchPendingRequests = async () => {
-                try {
-                    const res = await client.get('/maintenance', { timeout: 30000 });
-                    const requests = Array.isArray(res.data?.requests) ? res.data.requests : [];
-                    const pendingCount = requests.filter((request) =>
-                        ['pending', 'in-progress'].includes(request.status)
-                    ).length;
+        await Promise.all([fetchAnnouncements(), fetchCurrentBill(), fetchPendingRequests()]);
 
-                    setPendingRequests(pendingCount);
-                } catch (err) {
-                    console.error('failed to load pending maintenance requests:', err);
-                    setPendingRequests(0);
-                }
-            };
+        // mark as loaded so future mounts skip the fetch
+        dashboardCache.loaded = true;
+    }, []);
 
-            fetchAnnouncements();
-            fetchCurrentBill();
-            fetchPendingRequests();
-        }, [])
-    );
+    // ── on mount: skip fetch entirely if cache already has data ──────────────
+    useEffect(() => {
+        if (dashboardCache.loaded) {
+            // cache hit — data already in state from useState(dashboardCache.x), nothing to do
+            return;
+        }
+        // first ever load — fetch from API
+        fetchUser();
+        fetchDashboardData();
+    }, []);
 
-    // controls which bottom tab is active
+    // ── pull-to-refresh — always forces a fresh fetch ─────────────────────────
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        fetchUser();
+        await fetchDashboardData();
+        setRefreshing(false);
+    }, [fetchDashboardData]);
+
+    // controls which bottom tab is active — fine to run on every focus, no API calls
     const [activeTab, setActiveTab] = useState('home');
     useFocusEffect(
         useCallback(() => {
@@ -249,10 +273,9 @@ const Dashboard = () => {
         }).start(() => setDrawerOpen(false));
     };
 
-    // navigate and close drawer at the same time
     const drawerNavigate = (route) => {
         closeDrawer();
-        setTimeout(() => router.push(route), 260);
+        router.push(route);
     };
 
     // navigate bottom tab and set active state
@@ -281,6 +304,9 @@ const Dashboard = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
             >
                 {/* greeting */}
                 <View style={styles.greeting}>
@@ -536,11 +562,15 @@ const Dashboard = () => {
 
                 <View style={styles.drawerDivider} />
 
-                {/* logout */}
+                {/* logout — also clears the cache so the next login fetches fresh */}
                 <TouchableOpacity
                     style={styles.drawerLogout}
                     onPress={async () => {
                         closeDrawer();
+                        dashboardCache.loaded = false;
+                        dashboardCache.announcements = [];
+                        dashboardCache.currentBill = '0.00';
+                        dashboardCache.pendingRequests = 0;
                         await clearSession();
                         setTimeout(() => router.replace('/auth/login'), 260);
                     }}
