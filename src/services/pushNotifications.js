@@ -70,10 +70,12 @@ export const registerForPushNotificationsAsync = async () => {
 
         const existingPermission = await Notifications.getPermissionsAsync();
         let finalStatus = existingPermission.status;
+        console.log('Push notification permission status:', finalStatus);
 
         if (existingPermission.status !== 'granted') {
             const requestedPermission = await Notifications.requestPermissionsAsync();
             finalStatus = requestedPermission.status;
+            console.log('Push notification requested permission status:', finalStatus);
         }
 
         if (finalStatus !== 'granted') {
@@ -88,12 +90,14 @@ export const registerForPushNotificationsAsync = async () => {
         }
 
         const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.log('Expo push token registered:', token);
 
         await client.post('/device-tokens', {
             expo_push_token: token,
             platform: Platform.OS,
             device_name: Constants.deviceName ?? null,
         });
+        console.log('Expo push token saved to API.');
 
         return token;
     } catch (error) {
