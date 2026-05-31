@@ -20,6 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
+import NotificationBell from '../../src/components/NotificationBell';
 import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -248,13 +249,7 @@ export default function DocumentsScreen() {
                     </TouchableOpacity>
 
                     <View style={styles.topRowRight}>
-                        <TouchableOpacity
-                            style={styles.iconBtn}
-                            onPress={() => router.push('/tenant/notifications')}
-                        >
-                            <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                            <View style={styles.notifDot} />
-                        </TouchableOpacity>
+                        <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                         <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                             <Image
                                 source={avatarUri ? { uri: avatarUri } : defaultPhoto}

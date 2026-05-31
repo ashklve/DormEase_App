@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import client from '../../api/client';
+import NotificationBell from '../../src/components/NotificationBell';
 import * as WebBrowser from 'expo-web-browser';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 
@@ -535,13 +536,7 @@ export default function AnnouncementsScreen() {
               <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
             </TouchableOpacity>
             <View style={styles.topRowRight}>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={() => router.push('/tenant/notifications')}
-              >
-                <Ionicons name="notifications-outline" size={22} color={COLORS.dark} />
-                <View style={styles.notifDot} />
-              </TouchableOpacity>
+              <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
               <TouchableOpacity>
                 <Image source={require('../../assets/def_icon.png')} style={styles.avatar} />
               </TouchableOpacity>
