@@ -61,10 +61,9 @@ export default function DocumentsScreen() {
     const drawerRef     = useRef(null);
 
     // UI state
-    const [formsExpanded,     setFormsExpanded]     = useState(true);
-    const [adminDocsExpanded, setAdminDocsExpanded] = useState(true);
-    const [selectedOption,    setSelectedOption]    = useState(null);
-    const [dropdownOpen,      setDropdownOpen]      = useState(false);
+    const [formsExpanded,  setFormsExpanded]  = useState(true);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [dropdownOpen,   setDropdownOpen]   = useState(false);
 
     // Form fields
     const [fullName,       setFullName]       = useState('');
@@ -78,11 +77,9 @@ export default function DocumentsScreen() {
 
     // Data state
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [adminDocuments,    setAdminDocuments]    = useState([]); // visibility: specific
-    const [allTenantDocs,     setAllTenantDocs]     = useState([]); // visibility: all
     const [docsLoading,       setDocsLoading]       = useState(true);
 
-    // ── dropdownSections is computed from state, so it lives inside the component
+    // ── dropdownSections computed from state
     const dropdownSections = [
         {
             sectionLabel: 'Upload a Filled Form',
@@ -117,32 +114,20 @@ export default function DocumentsScreen() {
         }).catch(() => {});
     }, []);
 
-    // ── Fetch forms + documents ───────────────────────────────────────────────
+    // ── Fetch downloadable forms ──────────────────────────────────────────────
     useEffect(() => {
-        const fetchAll = async () => {
+        const fetchForms = async () => {
             try {
                 setDocsLoading(true);
-
-                const [formsRes, docsRes] = await Promise.all([
-                    client.get('/tenant/forms'),
-                    client.get('/tenant/documents'),
-                ]);
-
-                // Downloadable forms from DB (replaces hardcoded list)
-                setDownloadableForms(formsRes.data ?? []);
-
-                // Split admin-uploaded docs by visibility
-                const docs = docsRes.data?.data ?? docsRes.data ?? [];
-                setAllTenantDocs(docs.filter(d => d.visibility === 'all'));
-                setAdminDocuments(docs.filter(d => d.visibility === 'specific'));
-
+                const res = await client.get('/tenant/forms');
+                setDownloadableForms(res.data ?? []);
             } catch {
-                // silently fail — sections show empty state
+                // silently fail
             } finally {
                 setDocsLoading(false);
             }
         };
-        fetchAll();
+        fetchForms();
     }, []);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -152,13 +137,6 @@ export default function DocumentsScreen() {
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
             Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
-        );
-    };
-
-    const handleOpenDoc = (filePath) => {
-        const url = `${FILE_BASE_URL}/storage/${filePath}`;
-        Linking.openURL(url).catch(() =>
-            Alert.alert('Error', 'Could not open the document. Please try again.')
         );
     };
 
@@ -344,168 +322,36 @@ export default function DocumentsScreen() {
                                         color={COLORS.primary}
                                         style={{ marginVertical: 20 }}
                                     />
-                                ) : downloadableForms.length === 0 && allTenantDocs.length === 0 ? (
+                                ) : downloadableForms.length === 0 ? (
                                     <View style={styles.hintBox}>
                                         <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
                                         <Text style={styles.hintBoxText}>No forms available yet.</Text>
                                     </View>
                                 ) : (
-                                    <>
-                                        {/* Admin-managed downloadable forms from DB */}
-                                        {downloadableForms.map((form, index) => (
-                                            <View
-                                                key={String(form.id)}
-                                                style={[
-                                                    styles.formRow,
-                                                    index < downloadableForms.length - 1 && styles.formRowBorder,
-                                                ]}
-                                            >
-                                                <View style={styles.formRowLeft}>
-                                                    <View style={styles.formIconCircle}>
-                                                        <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
-                                                    </View>
-                                                    <Text style={styles.formLabel} numberOfLines={2}>
-                                                        {form.label}
-                                                    </Text>
-                                                </View>
-                                                <TouchableOpacity
-                                                    style={styles.downloadBtn}
-                                                    activeOpacity={0.75}
-                                                    onPress={() => handleDownload(form.url, form.label)}
-                                                >
-                                                    <MaterialIcons name="download" size={13} color={COLORS.primary} />
-                                                    <Text style={styles.downloadBtnText}>Download</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        ))}
-
-                                        {/* Admin-uploaded docs with visibility: all */}
-                                        {allTenantDocs.length > 0 && (
-                                            <>
-                                                <Text style={[styles.dropdownSectionLabel, { marginTop: 12 }]}>
-                                                    From Admin
-                                                </Text>
-                                                {allTenantDocs.map((doc, index) => (
-                                                    <View
-                                                        key={doc.document_id ?? index}
-                                                        style={[
-                                                            styles.formRow,
-                                                            index < allTenantDocs.length - 1 && styles.formRowBorder,
-                                                        ]}
-                                                    >
-                                                        <View style={[styles.formRowLeft, { flex: 1, marginRight: 8 }]}>
-                                                            <View style={styles.formIconCircle}>
-                                                                <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
-                                                            </View>
-                                                            <View style={{ flex: 1 }}>
-                                                                <Text style={styles.formLabel} numberOfLines={2}>
-                                                                    {doc.title}
-                                                                </Text>
-                                                                <Text style={[styles.uploadBoxSub, { marginTop: 2, fontSize: 11 }]}>
-                                                                    {doc.document_type}
-                                                                </Text>
-                                                            </View>
-                                                        </View>
-                                                        {doc.file_path ? (
-                                                            <TouchableOpacity
-                                                                style={styles.downloadBtn}
-                                                                activeOpacity={0.75}
-                                                                onPress={() => handleOpenDoc(doc.file_path)}
-                                                            >
-                                                                <MaterialIcons name="open-in-new" size={13} color={COLORS.primary} />
-                                                                <Text style={styles.downloadBtnText}>Open</Text>
-                                                            </TouchableOpacity>
-                                                        ) : (
-                                                            <Text style={[styles.uploadBoxSub, { fontSize: 11 }]}>No file</Text>
-                                                        )}
-                                                    </View>
-                                                ))}
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </>
-                        )}
-                    </View>
-
-                    {/* ── SECTION 2: Documents for You (visibility: specific) ── */}
-                    <View style={styles.sectionCard}>
-                        <TouchableOpacity
-                            style={styles.sectionHeaderRow}
-                            activeOpacity={0.7}
-                            onPress={() => setAdminDocsExpanded((v) => !v)}
-                        >
-                            <View style={styles.sectionHeaderLeft}>
-                                <View style={styles.sectionIconBadge}>
-                                    <MaterialIcons name="folder-shared" size={14} color={COLORS.white} />
-                                </View>
-                                <View>
-                                    <Text style={styles.sectionHeaderText}>Documents for You</Text>
-                                    <Text style={styles.sectionHeaderCount}>
-                                        {docsLoading
-                                            ? 'Loading…'
-                                            : `${adminDocuments.length} document${adminDocuments.length !== 1 ? 's' : ''} from admin`}
-                                    </Text>
-                                </View>
-                            </View>
-                            <MaterialIcons
-                                name={adminDocsExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                size={22}
-                                color={COLORS.muted}
-                            />
-                        </TouchableOpacity>
-
-                        {adminDocsExpanded && (
-                            <>
-                                {docsLoading ? (
-                                    <ActivityIndicator
-                                        size="small"
-                                        color={COLORS.primary}
-                                        style={{ marginVertical: 20 }}
-                                    />
-                                ) : adminDocuments.length === 0 ? (
-                                    <View style={styles.hintBox}>
-                                        <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
-                                        <Text style={styles.hintBoxText}>
-                                            No documents posted for you yet. Check back later.
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    adminDocuments.map((doc, index) => (
+                                    downloadableForms.map((form, index) => (
                                         <View
-                                            key={doc.document_id ?? index}
+                                            key={String(form.id)}
                                             style={[
                                                 styles.formRow,
-                                                index < adminDocuments.length - 1 && styles.formRowBorder,
+                                                index < downloadableForms.length - 1 && styles.formRowBorder,
                                             ]}
                                         >
-                                            <View style={[styles.formRowLeft, { flex: 1, marginRight: 8 }]}>
+                                            <View style={styles.formRowLeft}>
                                                 <View style={styles.formIconCircle}>
                                                     <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
                                                 </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={styles.formLabel} numberOfLines={2}>
-                                                        {doc.title}
-                                                    </Text>
-                                                    <Text style={[styles.uploadBoxSub, { marginTop: 2, fontSize: 11 }]}>
-                                                        {doc.document_type}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            {doc.file_path ? (
-                                                <TouchableOpacity
-                                                    style={styles.downloadBtn}
-                                                    activeOpacity={0.75}
-                                                    onPress={() => handleOpenDoc(doc.file_path)}
-                                                >
-                                                    <MaterialIcons name="open-in-new" size={13} color={COLORS.primary} />
-                                                    <Text style={styles.downloadBtnText}>Open</Text>
-                                                </TouchableOpacity>
-                                            ) : (
-                                                <Text style={[styles.uploadBoxSub, { fontSize: 11 }]}>
-                                                    No file
+                                                <Text style={styles.formLabel} numberOfLines={2}>
+                                                    {form.label}
                                                 </Text>
-                                            )}
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.downloadBtn}
+                                                activeOpacity={0.75}
+                                                onPress={() => handleDownload(form.url, form.label)}
+                                            >
+                                                <MaterialIcons name="download" size={13} color={COLORS.primary} />
+                                                <Text style={styles.downloadBtnText}>Download</Text>
+                                            </TouchableOpacity>
                                         </View>
                                     ))
                                 )}
@@ -513,7 +359,7 @@ export default function DocumentsScreen() {
                         )}
                     </View>
 
-                    {/* ── SECTION 3: Submit a Request ── */}
+                    {/* ── SECTION 2: Submit a Request ── */}
                     <View style={styles.sectionCard}>
                         <View style={styles.sectionHeaderRow}>
                             <View style={styles.sectionHeaderLeft}>
@@ -596,35 +442,41 @@ export default function DocumentsScreen() {
                                             <Text style={styles.dropdownSectionLabel}>
                                                 {section.sectionLabel}
                                             </Text>
-                                            {section.items.map((item) => {
-                                                const active = selectedOption?.id === item.id;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={item.id}
-                                                        style={[
-                                                            styles.dropdownListItem,
-                                                            active && styles.dropdownListItemActive,
-                                                        ]}
-                                                        onPress={() => handleSelectOption(item)}
-                                                    >
-                                                        <Text
+                                            {section.items.length === 0 ? (
+                                                <Text style={[styles.dropdownSectionLabel, { fontWeight: '400', color: COLORS.muted, paddingHorizontal: 12, paddingBottom: 8 }]}>
+                                                    No forms available yet.
+                                                </Text>
+                                            ) : (
+                                                section.items.map((item) => {
+                                                    const active = selectedOption?.id === item.id;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={item.id}
                                                             style={[
-                                                                styles.dropdownListItemText,
-                                                                active && styles.dropdownListItemTextActive,
+                                                                styles.dropdownListItem,
+                                                                active && styles.dropdownListItemActive,
                                                             ]}
+                                                            onPress={() => handleSelectOption(item)}
                                                         >
-                                                            {item.label}
-                                                        </Text>
-                                                        {active && (
-                                                            <MaterialIcons
-                                                                name="check"
-                                                                size={16}
-                                                                color={COLORS.primary}
-                                                            />
-                                                        )}
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
+                                                            <Text
+                                                                style={[
+                                                                    styles.dropdownListItemText,
+                                                                    active && styles.dropdownListItemTextActive,
+                                                                ]}
+                                                            >
+                                                                {item.label}
+                                                            </Text>
+                                                            {active && (
+                                                                <MaterialIcons
+                                                                    name="check"
+                                                                    size={16}
+                                                                    color={COLORS.primary}
+                                                                />
+                                                            )}
+                                                        </TouchableOpacity>
+                                                    );
+                                                })
+                                            )}
                                         </View>
                                     ))}
                                 </ScrollView>
