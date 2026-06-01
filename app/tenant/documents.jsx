@@ -99,8 +99,10 @@ export default function DocumentsScreen() {
     const [uploadedFile,    setUploadedFile]    = useState(null);
     const [submitting,      setSubmitting]      = useState(false);
     const [userInfo,        setUserInfo]        = useState(null);
-    const [adminDocuments,  setAdminDocuments]  = useState([]);
-    const [docsLoading,     setDocsLoading]     = useState(true);
+    const [downloadableForms, setDownloadableForms] = useState([]);
+    const [adminDocuments,    setAdminDocuments]    = useState([]); 
+    const [allTenantDocs,     setAllTenantDocs]     = useState([]); 
+    const [docsLoading,       setDocsLoading]       = useState(true);
 
     // pre-fill fields from the logged-in tenant's profile
     useEffect(() => {
