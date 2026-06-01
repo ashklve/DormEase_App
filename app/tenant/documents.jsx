@@ -40,10 +40,16 @@ const DOWNLOADABLE_FORMS = [
     { id: 'voucher',                        label: 'Voucher',                        icon: 'receipt',     url: `${FILE_BASE_URL}/forms/voucher.pdf` },
 ];
 
-const DROPDOWN_SECTIONS = [
+const dropdownSections = [
     {
         sectionLabel: 'Upload a Filled Form',
-        items: DOWNLOADABLE_FORMS.map((f) => ({ ...f, category: CATEGORY.FORM })),
+        items: downloadableForms.map(f => ({
+            id:       String(f.id),
+            label:    f.label,
+            url:      f.url,
+            icon:     'insert-drive-file',
+            category: CATEGORY.FORM,
+        })),
     },
     {
         sectionLabel: 'Request a Certificate / Document',
@@ -117,19 +123,32 @@ export default function DocumentsScreen() {
 
     // fetch admin-uploaded documents for this tenant
     useEffect(() => {
-        const fetchAdminDocs = async () => {
-            try {
-                setDocsLoading(true);
-                const res = await client.get('/tenant/documents');
-                setAdminDocuments(res.data?.data ?? res.data ?? []);
-            } catch {
-                // silently fail — section just shows empty state
-            } finally {
-                setDocsLoading(false);
-            }
-        };
-        fetchAdminDocs();
-    }, []);
+    const fetchAll = async () => {
+        try {
+            setDocsLoading(true);
+
+            const [formsRes, docsRes] = await Promise.all([
+                client.get('/tenant/forms'),
+                client.get('/tenant/documents'),
+            ]);
+
+            // Downloadable forms from DB
+            const forms = formsRes.data ?? [];
+            setDownloadableForms(forms);
+
+            // Split admin docs by visibility
+            const docs = docsRes.data?.data ?? docsRes.data ?? [];
+            setAllTenantDocs(docs.filter(d => d.visibility === 'all'));
+            setAdminDocuments(docs.filter(d => d.visibility === 'specific'));
+
+        } catch {
+            // silently fail
+        } finally {
+            setDocsLoading(false);
+        }
+    };
+    fetchAll();
+}, []);
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm        = selectedOption?.category === CATEGORY.FORM;
@@ -311,47 +330,86 @@ export default function DocumentsScreen() {
                         </TouchableOpacity>
 
                         {formsExpanded && (
-                            <>
-                                <View style={styles.hintBox}>
-                                    <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
-                                    <Text style={styles.hintBoxText}>
-                                        Download a blank form, fill it out, then submit it in the section below.
-                                    </Text>
-                                </View>
+    <>
+        <View style={styles.hintBox}>
+            <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
+            <Text style={styles.hintBoxText}>
+                Download a blank form, fill it out, then submit it in the section below.
+            </Text>
+        </View>
 
-                                {DOWNLOADABLE_FORMS.map((form, index) => (
-                                    <View
-                                        key={form.id}
-                                        style={[
-                                            styles.formRow,
-                                            index < DOWNLOADABLE_FORMS.length - 1 && styles.formRowBorder,
-                                        ]}
-                                    >
-                                        <View style={styles.formRowLeft}>
-                                            <View style={styles.formIconCircle}>
-                                                <MaterialIcons
-                                                    name={form.icon}
-                                                    size={15}
-                                                    color={COLORS.primary}
-                                                />
-                                            </View>
-                                            <Text style={styles.formLabel} numberOfLines={2}>
-                                                {form.label}
-                                            </Text>
-                                        </View>
+        {docsLoading ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
+        ) : downloadableForms.length === 0 && allTenantDocs.length === 0 ? (
+            <View style={styles.hintBox}>
+                <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
+                <Text style={styles.hintBoxText}>No forms available yet.</Text>
+            </View>
+        ) : (
+            <>
+                {downloadableForms.map((form, index) => (
+                    <View
+                        key={String(form.id)}
+                        style={[styles.formRow, index < downloadableForms.length - 1 && styles.formRowBorder]}
+                    >
+                        <View style={styles.formRowLeft}>
+                            <View style={styles.formIconCircle}>
+                                <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
+                            </View>
+                            <Text style={styles.formLabel} numberOfLines={2}>{form.label}</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.downloadBtn}
+                            activeOpacity={0.75}
+                            onPress={() => handleDownload(form.url, form.label)}
+                        >
+                            <MaterialIcons name="download" size={13} color={COLORS.primary} />
+                            <Text style={styles.downloadBtnText}>Download</Text>
+                        </TouchableOpacity>
+                    </View>
+                ))}
 
-                                        <TouchableOpacity
-                                            style={styles.downloadBtn}
-                                            activeOpacity={0.75}
-                                            onPress={() => handleDownload(form.url, form.label)}
-                                        >
-                                            <MaterialIcons name="download" size={13} color={COLORS.primary} />
-                                            <Text style={styles.downloadBtnText}>Download</Text>
-                                        </TouchableOpacity>
+                {allTenantDocs.length > 0 && (
+                    <>
+                        <Text style={[styles.dropdownSectionLabel, { marginTop: 12 }]}>
+                            From Admin
+                        </Text>
+                        {allTenantDocs.map((doc, index) => (
+                            <View
+                                key={doc.document_id ?? index}
+                                style={[styles.formRow, index < allTenantDocs.length - 1 && styles.formRowBorder]}
+                            >
+                                <View style={[styles.formRowLeft, { flex: 1, marginRight: 8 }]}>
+                                    <View style={styles.formIconCircle}>
+                                        <MaterialIcons name="insert-drive-file" size={15} color={COLORS.primary} />
                                     </View>
-                                ))}
-                            </>
-                        )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.formLabel} numberOfLines={2}>{doc.title}</Text>
+                                        <Text style={[styles.uploadBoxSub, { marginTop: 2, fontSize: 11 }]}>
+                                            {doc.document_type}
+                                        </Text>
+                                    </View>
+                                </View>
+                                {doc.file_path ? (
+                                    <TouchableOpacity
+                                        style={styles.downloadBtn}
+                                        activeOpacity={0.75}
+                                        onPress={() => handleOpenDoc(doc.file_path)}
+                                    >
+                                        <MaterialIcons name="open-in-new" size={13} color={COLORS.primary} />
+                                        <Text style={styles.downloadBtnText}>Open</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <Text style={[styles.uploadBoxSub, { fontSize: 11 }]}>No file</Text>
+                                )}
+                            </View>
+                                            ))}
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </>
+                     )}
                     </View>
 
                     {/* ── SECTION 2: admin-uploaded documents for this tenant ── */}
