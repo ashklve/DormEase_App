@@ -81,22 +81,143 @@ const BreakdownRow = ({ label, value, accent, isLast }) => (
     </View>
 );
 
-// ── History Row ───────────────────────────────────────────────────────────────
-const HistoryRow = ({ month, amount, status, isLast }) => {
+const firstAvailable = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
+
+const formatPaymentMethod = (method) => {
+    const labels = {
+        gcash: 'GCash',
+        maya: 'Maya',
+        bank: 'Bank Transfer',
+        cash: 'Cash (Admin Office)',
+    };
+    const key = typeof method === 'string' ? method.toLowerCase() : method;
+    return labels[key] ?? method;
+};
+
+// ── History Row (expandable) ──────────────────────────────────────────────────
+const HistoryRow = ({
+    month,
+    amount,
+    status,
+    referenceNo,
+    paymentDate,
+    paymentMethod,
+    isLast,
+}) => {
+    const [expanded, setExpanded] = useState(false);
+    const detailAnim = useRef(new Animated.Value(0)).current;
+
+    const toggle = () => {
+        setExpanded((current) => {
+            const next = !current;
+
+            Animated.timing(detailAnim, {
+                toValue: next ? 1 : 0,
+                duration: 260,
+                useNativeDriver: false,
+            }).start();
+
+            return next;
+        });
+    };
+
     const key = status?.toLowerCase() ?? 'unpaid';
     const colors = STATUS_COLORS[key] ?? STATUS_COLORS.unpaid;
+    const fallbackText = 'Not available';
+    const dropdownMaxHeight = detailAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 260],
+    });
+    const dropdownOpacity = detailAnim.interpolate({
+        inputRange: [0, 0.25, 1],
+        outputRange: [0, 0, 1],
+    });
+    const dropdownTranslateY = detailAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-8, 0],
+    });
+
     return (
-        <View style={[styles.historyRow, isLast && styles.historyRowLast]}>
-            <Text style={styles.historyMonth}>{month}</Text>
-            <View style={styles.historyRight}>
-                <Text style={styles.historyAmount}>{amount}</Text>
-                <View style={styles.historyBadge}>
-                    <View style={[styles.historyBadgeDot, { backgroundColor: colors.dot }]} />
-                    <Text style={[styles.historyBadgeText, { color: colors.text }]}>
-                        {status}
-                    </Text>
+        <View style={[styles.historyRowWrapper, isLast && styles.historyRowWrapperLast]}>
+            {/* Main row */}
+            <View style={styles.historyRow}>
+                {/* Left: icon + month */}
+                <View style={styles.historyRowLeft}>
+                    <View style={styles.historyIconCircle}>
+                        <MaterialIcons name="receipt-long" size={18} color={COLORS.white} />
+                    </View>
+                    <View>
+                        <Text style={styles.historyMonth}>{month}</Text>
+                        <View style={styles.historyBadge}>
+                            <View style={[styles.historyBadgeDot, { backgroundColor: colors.dot }]} />
+                            <Text style={[styles.historyBadgeText, { color: colors.text }]}>
+                                {status}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Right: amount + arrow */}
+                <View style={styles.historyRight}>
+                    <Text style={styles.historyAmount}>{amount}</Text>
+                    <TouchableOpacity
+                        style={styles.historyArrowButton}
+                        onPress={toggle}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={expanded ? 'Hide transaction details' : 'Show transaction details'}
+                    >
+                        <MaterialIcons
+                            name={expanded ? 'keyboard-arrow-down' : 'chevron-right'}
+                            size={24}
+                            color={COLORS.primary}
+                        />
+                    </TouchableOpacity>
                 </View>
             </View>
+
+            {/* Dropdown details */}
+            <Animated.View style={[styles.historyDropdown, { maxHeight: dropdownMaxHeight }]}>
+                <Animated.View
+                    style={[
+                        styles.historyDropdownInner,
+                        {
+                            opacity: dropdownOpacity,
+                            transform: [{ translateY: dropdownTranslateY }],
+                        },
+                    ]}
+                >
+                    <Text style={styles.transactionTitle}>Transaction Details</Text>
+
+                    <View style={styles.historyDetailRowStrong}>
+                        <Text style={styles.historyDetailLabelStrong}>Reference No.</Text>
+                        <Text style={styles.historyDetailValueStrong}>
+                            {referenceNo ?? fallbackText}
+                        </Text>
+                    </View>
+
+                    <View style={styles.historyDetailRow}>
+                        <Text style={styles.historyDetailLabel}>Payment Date</Text>
+                        <Text style={styles.historyDetailValue}>{paymentDate ?? fallbackText}</Text>
+                    </View>
+                    <View style={styles.historyDetailRow}>
+                        <Text style={styles.historyDetailLabel}>Payment Mode</Text>
+                        <Text style={styles.historyDetailValue}>{paymentMethod ?? fallbackText}</Text>
+                    </View>
+
+                    <View style={styles.historyDetailDivider} />
+
+                    <View style={styles.historyAmountPaidRow}>
+                        <Text style={styles.historyAmountPaidLabel}>Amount Paid</Text>
+                        <View style={styles.historyAmountPaidValueWrap}>
+                            <Text style={styles.historyPesoSymbol}>₱</Text>
+                            <Text style={styles.historyAmountPaidValue}>
+                                {String(amount).replace('₱', '')}
+                            </Text>
+                        </View>
+                    </View>
+                </Animated.View>
+            </Animated.View>
         </View>
     );
 };
@@ -175,7 +296,7 @@ export default function WaterBillScreen() {
 
         const direction = index > activeTab ? 1 : -1;
 
-        // Fade + slide out
+        // Fade + slide out current content
         Animated.parallel([
             Animated.timing(contentOpacity, {
                 toValue: 0,
@@ -201,7 +322,7 @@ export default function WaterBillScreen() {
                 friction: 10,
             }).start();
 
-            // Fade + slide in
+            // Fade + slide in new content
             Animated.parallel([
                 Animated.timing(contentOpacity, {
                     toValue: 1,
@@ -268,7 +389,7 @@ export default function WaterBillScreen() {
 
     // ─────────────────────────────────────────────────────────────────────────
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             {/* ── Top Row ── */}
@@ -454,6 +575,35 @@ export default function WaterBillScreen() {
                                                     month={item.month}
                                                     amount={`₱${item.amount}`}
                                                     status={item.status}
+                                                    referenceNo={firstAvailable(
+                                                        item.reference_no,
+                                                        item.reference_number,
+                                                        item.ref_no,
+                                                        item.transaction_reference,
+                                                        item.transaction_id,
+                                                        item.payment?.reference_no,
+                                                        item.payment?.reference_number
+                                                    )}
+                                                    paymentDate={firstAvailable(
+                                                        item.payment_date,
+                                                        item.date_paid,
+                                                        item.paid_at,
+                                                        item.transaction_date,
+                                                        item.created_at,
+                                                        item.payment?.payment_date,
+                                                        item.payment?.paid_at
+                                                    )}
+                                                    paymentMethod={formatPaymentMethod(
+                                                        firstAvailable(
+                                                            item.payment_method,
+                                                            item.method,
+                                                            item.payment_mode,
+                                                            item.payment_type,
+                                                            item.payment?.payment_method,
+                                                            item.payment?.method,
+                                                            item.payment?.payment_mode
+                                                        )
+                                                    )}
                                                     isLast={index === history.length - 1}
                                                 />
                                             ))}
