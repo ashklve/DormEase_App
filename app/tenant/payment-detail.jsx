@@ -212,6 +212,7 @@ export default function PaymentDetailScreen() {
                     ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
+                    automaticallyAdjustKeyboardInsets={true}
                 >
                     {/* ── Billing Summary ── */}
                     {billing && (
@@ -330,8 +331,7 @@ export default function PaymentDetailScreen() {
                                     onChangeText={setRefNumber}
                                     onFocus={() => setRefFocused(true)}
                                     onBlur={() => setRefFocused(false)}
-                                    keyboardType="default"
-                                    autoCapitalize="characters"
+                                    keyboardType="phone-pad"
                                 />
                             </View>
                         </>
