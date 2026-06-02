@@ -14,7 +14,6 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/maintenancehistorystyles';
-import DrawerMenu from '../../src/components/DrawerMenu';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -229,7 +228,6 @@ export default function MaintenanceHistoryScreen() {
     const router = useRouter();
     const { avatarUri } = useUser();
     const insets = useSafeAreaInsets();
-    const drawerRef = useRef(null);
 
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -288,9 +286,9 @@ export default function MaintenanceHistoryScreen() {
             <View style={styles.topRow}>
                 <TouchableOpacity
                     style={styles.backBtn}
-                    onPress={() => drawerRef.current?.open()}
+                    onPress={() => router.push('/tenant/maintenance')}
                 >
-                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
+                    <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
                     <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
@@ -466,9 +464,6 @@ export default function MaintenanceHistoryScreen() {
                 <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
-
-            {/* ── Drawer ── */}
-            <DrawerMenu ref={drawerRef} />
 
         </SafeAreaView>
     );

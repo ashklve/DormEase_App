@@ -78,6 +78,55 @@ export default StyleSheet.create({
     color: COLORS.primary,
   },
 
+  // ── tab bar ───────────────────────────────────────────────────────────────
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: scale(20),
+    marginBottom: verticalScale(14),
+    backgroundColor: '#F0EDF5',
+    borderRadius: 12,
+    padding: 4,
+    position: 'relative',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    width: '50%',
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: verticalScale(9),
+    gap: 5,
+    zIndex: 1,
+  },
+  tabIcon: {
+    // icon sits inline with label
+  },
+  tabLabel: {
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: COLORS.muted,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+  },
+
+  // ── tab content wrapper ───────────────────────────────────────────────────
+  tabContentWrapper: {
+    flex: 1,
+  },
+
   // ── loading / empty ───────────────────────────────────────────────────────
   loadingContainer: {
     flex: 1,
