@@ -89,6 +89,7 @@ export default StyleSheet.create({
     color: COLORS.muted,
     fontSize: moderateScale(14),
     marginTop: verticalScale(40),
+    marginBottom: verticalScale(14),
   },
 
   // ── scroll content ────────────────────────────────────────────────────────
@@ -106,20 +107,45 @@ export default StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    paddingVertical: verticalScale(12),
-    paddingHorizontal: scale(14),
+    borderRadius: 14,
+    paddingVertical: verticalScale(13),
+    paddingHorizontal: scale(13),
+    borderWidth: 0.5,
+    borderColor: COLORS.border,
+  },
+  statCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(10),
+  },
+  statIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statTrendBadge: {
+    borderRadius: 100,
+    paddingHorizontal: scale(8),
+    paddingVertical: 3,
+  },
+  statTrendText: {
+    fontSize: moderateScale(10),
+    fontWeight: '600',
+  },
+  statValue: {
+    fontSize: moderateScale(26),
+    fontWeight: '700',
+    color: COLORS.dark,
+    lineHeight: moderateScale(28),
   },
   statLabel: {
     fontSize: moderateScale(11),
     color: COLORS.muted,
-    fontWeight: '500',
-    marginBottom: verticalScale(4),
-  },
-  statValue: {
-    fontSize: moderateScale(22),
-    fontWeight: '700',
-    color: COLORS.dark,
+    fontWeight: '400',
+    marginTop: verticalScale(2),
   },
 
   // ── section title ─────────────────────────────────────────────────────────
@@ -131,71 +157,111 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── registered visitor card ───────────────────────────────────────────────
-  visitorCard: {
-    backgroundColor: COLORS.card,
+  // ── collapsible container ─────────────────────────────────────────────────
+  collapseContainer: {
     marginHorizontal: scale(20),
-    borderRadius: 12,
-    padding: scale(14),
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(14),
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
   },
-  visitorCardTop: {
+  collapseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(6),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(11),
   },
-  approvedBadge: {
-    backgroundColor: '#D4EDDA',
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  approvedBadgeText: {
-    fontSize: moderateScale(11),
-    fontWeight: '600',
-    color: '#28A745',
-  },
-  eyeBtn: {
-    padding: 4,
-  },
-
-  // check out button inside visitor card
-  checkoutBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: verticalScale(4),
-    paddingHorizontal: scale(12),
-  },
-  checkoutBtnText: {
-    color: '#FFFFFF',
-    fontSize: moderateScale(11),
-    fontWeight: '600',
-  },
-
-  visitorName: {
-    fontSize: moderateScale(15),
-    fontWeight: '700',
-    color: COLORS.dark,
-    marginBottom: verticalScale(2),
-  },
-
-  // purpose line shown under visitor name
-  visitorPurpose: {
-    fontSize: moderateScale(12),
-    color: COLORS.muted,
-    marginBottom: verticalScale(4),
-  },
-
-  visitorDateRow: {
+  collapseHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  collapseCountBadge: {
+    backgroundColor: '#FBEAF0',
+    borderRadius: 100,
+    paddingHorizontal: scale(10),
+    paddingVertical: 3,
+  },
+  collapseCountText: {
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: '#993556',
+  },
+  collapseHeaderLabel: {
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: COLORS.dark,
+  },
+  collapseListDivider: {
+    height: 0.5,
+    backgroundColor: COLORS.border,
+  },
+
+  // ── visitor row (inside collapsible) ─────────────────────────────────────
+  visitorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(10),
+    gap: scale(10),
+  },
+  visitorRowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: COLORS.border,
+  },
+  visitorAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FBEAF0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  visitorAvatarText: {
+    fontSize: moderateScale(12),
+    fontWeight: '700',
+    color: '#993556',
+  },
+  visitorRowLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  visitorRowName: {
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    color: COLORS.dark,
+    marginBottom: verticalScale(3),
+  },
+  visitorRowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 4,
   },
-  visitorDate: {
-    fontSize: moderateScale(12),
-    color: COLORS.primary,
-    fontWeight: '500',
+  visitorMetaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: COLORS.border,
+  },
+  visitorRowMetaText: {
+    fontSize: moderateScale(10),
+    color: COLORS.muted,
+  },
+  visitorRowBadge: {
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: scale(8),
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+  },
+  visitorRowBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: '600',
   },
 
   // ── register form section ─────────────────────────────────────────────────
@@ -215,7 +281,7 @@ export default StyleSheet.create({
     marginBottom: verticalScale(12),
   },
 
-  // ── text inputs — pink border ─────────────────────────────────────────────
+  // ── text inputs ───────────────────────────────────────────────────────────
   input: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
@@ -228,7 +294,7 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── dropdown trigger — pink border ────────────────────────────────────────
+  // ── dropdown trigger ──────────────────────────────────────────────────────
   pickerWrapper: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
@@ -249,11 +315,7 @@ export default StyleSheet.create({
     color: COLORS.dark,
   },
 
-  // ── dropdown list
-  // NOTE: overflow is NOT set to 'hidden' here — that kills nestedScrollEnabled
-  // on Android. The maxHeight + borderRadius give the rounded clipped look
-  // without breaking the inner ScrollView.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── dropdown list ─────────────────────────────────────────────────────────
   dropdownList: {
     backgroundColor: COLORS.card,
     borderRadius: 10,
