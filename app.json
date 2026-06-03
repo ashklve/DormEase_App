@@ -18,6 +18,8 @@
       "icon": "./assets/spicon.png",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "DormEase uses your microphone to transcribe maintenance requests.",
+        "NSPhotoLibraryUsageDescription": "DormEase needs photo library access to save QR codes and upload payment proofs.",
+        "NSPhotoLibraryAddUsageDescription": "DormEase needs permission to save payment QR codes to your photo library.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.dormease.app"
