@@ -20,6 +20,7 @@ import client from '../../api/client';
 import NotificationBell from '../../src/components/NotificationBell';
 import * as WebBrowser from 'expo-web-browser';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
+import { useUser } from '../../src/context/UserContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
@@ -445,6 +446,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function AnnouncementsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { avatarUri } = useUser();
   const [activeTab, setActiveTab]           = useState('All');
   const [announcements, setAnnouncements]   = useState([]);
   const [loading, setLoading]               = useState(true);
@@ -531,17 +533,20 @@ export default function AnnouncementsScreen() {
           }
         >
           {/* ── Top Row ── */}
-          <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
-            </TouchableOpacity>
-            <View style={styles.topRowRight}>
-              <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-              <TouchableOpacity>
-                <Image source={require('../../assets/def_icon.png')} style={styles.avatar} />
-              </TouchableOpacity>
+            <View style={styles.topRow}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                    <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+                </TouchableOpacity>
+                <View style={styles.topRowRight}>
+                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                        <Image
+                            source={avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png')}
+                            style={styles.avatar}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
-          </View>
 
           {/* ── Header Section ── */}
           <View style={styles.headerSection}>
