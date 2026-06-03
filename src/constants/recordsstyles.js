@@ -146,11 +146,12 @@ export default StyleSheet.create({
         borderRadius: 20,
         borderWidth: 1.5,
         marginRight: 8,
+        flexShrink:0,
+        flexGrow:0,
     },
     filterChipText: {
         fontSize: 12,
         fontWeight: '600',
-        flexShrink: 1,
     },
 
     // record card
