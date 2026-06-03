@@ -7,6 +7,8 @@ import {
     StatusBar,
     Image,
     TextInput,
+    KeyboardAvoidingView,
+    Platform,
     Alert,
     Animated,
     ActivityIndicator,
@@ -88,14 +90,14 @@ const formatTenantRoomLocation = (roomNumber) => {
 const detectLocationFromTranscript = (text, tenantRoomNumber) => {
     const normalized = String(text ?? '').trim();
     const tenantRoomLocation = formatTenantRoomLocation(tenantRoomNumber);
-    const mentionsRoom = /\b(?:room|rm|kwarto|kuwarto)\b/i.test(normalized);
-    if (mentionsRoom && tenantRoomLocation) return tenantRoomLocation;
 
     const roomMatch = normalized.match(/\b(?:room|rm|kwarto|kuwarto)\s*([a-z0-9-]+)/i);
     if (roomMatch) return `Room ${roomMatch[1].toUpperCase()}`;
 
     const knownLocation = normalized.match(/\b(?:lobby|hallway|kitchen|bathroom|stairs|stairwell|elevator|parking|laundry|banyo|kusina|hagdan|pasilyo)\b/i);
-    return knownLocation?.[0] ?? '';
+    if (knownLocation) return knownLocation[0];
+
+    return tenantRoomLocation;
 };
 
 // nav item
@@ -232,6 +234,7 @@ export default function EmergencyScreen() {
 
         transcribedRef.current = nextText;
         setTranscript(nextText);
+        setManualText(nextText);
         applyEmergencyDetection(nextText);
     }, [applyEmergencyDetection]);
 
@@ -258,6 +261,7 @@ export default function EmergencyScreen() {
 
         setSpeechLanguage(nextLanguage);
         setTranscript('');
+        setManualText('');
         setHasRecording(false);
         setRecordSecs(0);
         setDetectedType('');
@@ -304,6 +308,7 @@ export default function EmergencyScreen() {
         transcribedRef.current = '';
         confirmedTranscriptRef.current = '';
         setTranscript('');
+        setManualText('');
         setDetectedType('');
         setDetectedLocation('');
         setHasRecording(false);
@@ -384,7 +389,7 @@ export default function EmergencyScreen() {
 
     // submit full emergency report
     const handleSubmit = async () => {
-        const description = transcript.trim() || manualText.trim();
+        const description = manualText.trim() || transcript.trim();
         if (!description && !selectedCategory) {
             Alert.alert('Missing Info', 'Please describe the emergency or select a category.');
             return;
@@ -393,11 +398,12 @@ export default function EmergencyScreen() {
         setSubmitting(true);
         try {
             const submittedType = detectedType || selectedCategory || undefined;
+            const submittedLocation = detectedLocation || formatTenantRoomLocation(user?.room_number);
 
             await client.post('/emergency', {
                 type: submittedType,
                 description: description,
-                location: detectedLocation,
+                location: submittedLocation,
                 input_type: hasRecording ? 'voice' : 'text',
                 language: speechLanguage,
             });
@@ -425,41 +431,47 @@ export default function EmergencyScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* top row */}
-            <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
-                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image
-                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                            style={styles.avatar}
-                        />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* page header */}
-            <View style={styles.headerSection}>
-                <View style={styles.headerTitleRow}>
-                    <View style={styles.headerIconBadge}>
-                        <MaterialIcons name="warning" size={20} color={COLORS.white} />
-                    </View>
-                    <Text style={styles.headerTitle}>Emergency Report</Text>
-                </View>
-                <Text style={styles.headerSub}>Describe the situation by speaking or typing.</Text>
-            </View>
-
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-                ]}
-                keyboardShouldPersistTaps="handled"
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={20}
             >
+                {/* top row */}
+                <View style={styles.topRow}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                        <MaterialIcons name="menu" size={24} color={COLORS.dark} />
+                    </TouchableOpacity>
+                    <View style={styles.topRowRight}>
+                        <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                        <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                            <Image
+                                source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                style={styles.avatar}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* page header */}
+                <View style={styles.headerSection}>
+                    <View style={styles.headerTitleRow}>
+                        <View style={styles.headerIconBadge}>
+                            <MaterialIcons name="warning" size={20} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.headerTitle}>Emergency Report</Text>
+                    </View>
+                    <Text style={styles.headerSub}>Describe the situation by speaking or typing.</Text>
+                </View>
+
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                    ]}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
+                >
                 {/* panic alert button */}
                 <TouchableOpacity style={styles.panicBtn} activeOpacity={0.85} onPress={handlePanicAlert}>
                     <Text style={styles.panicBtnText}>SEND PANIC ALERT</Text>
@@ -583,19 +595,20 @@ export default function EmergencyScreen() {
                 {/* AI-detected info card — shown after transcription */}
                 {showDetected && (
                     <View style={styles.detectedCard}>
-                        <View style={styles.detectedRow}>
-                            <Text style={styles.detectedLabel}>Detected Type:</Text>
-                            <Text style={styles.detectedValue}>{detectedType}</Text>
-                            <TouchableOpacity onPress={() => Alert.prompt?.('Edit Type', '', setDetectedType, 'plain-text', detectedType)}>
-                                <MaterialIcons name="edit" size={16} color={COLORS.primary} />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.detectedRow}>
-                            <Text style={styles.detectedLabel}>Location:</Text>
-                            <Text style={styles.detectedValue}>{detectedLocation}</Text>
-                            <TouchableOpacity onPress={() => Alert.prompt?.('Edit Location', '', setDetectedLocation, 'plain-text', detectedLocation)}>
-                                <MaterialIcons name="edit" size={16} color={COLORS.primary} />
-                            </TouchableOpacity>
+                        <Text style={styles.detectedTitle}>Detected Issue</Text>
+                        <View style={styles.detectedTable}>
+                            <View style={styles.detectedRow}>
+                                <Text style={styles.detectedKey}>Detected Type:</Text>
+                                <View style={styles.detectedValueRow}>
+                                    <Text style={styles.detectedValue}>{detectedType || 'Not detected'}</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.detectedRow, { borderTopWidth: 1, borderTopColor: COLORS.border }]}>
+                                <Text style={styles.detectedKey}>Location:</Text>
+                                <View style={styles.detectedValueRow}>
+                                    <Text style={styles.detectedValue}>{detectedLocation || 'Not detected'}</Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
                 )}
@@ -613,7 +626,8 @@ export default function EmergencyScreen() {
                     }
                 </TouchableOpacity>
 
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
 
             {/* bottom nav */}
             <View style={[
