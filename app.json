@@ -61,7 +61,9 @@
           ],
           "iOSMicrophonePermission": "DormEase uses your microphone to transcribe maintenance requests."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-status-bar"
     ],
     "extra": {
       "router": {},
