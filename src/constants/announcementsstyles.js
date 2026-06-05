@@ -190,6 +190,17 @@ headerSection: {
     marginBottom: 6,
     gap: 8,
   },
+  cardPinnedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.lightPink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 'auto',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '35',
+  },
   priorityBadge: {
     borderRadius: 6,
     paddingVertical: 3,
