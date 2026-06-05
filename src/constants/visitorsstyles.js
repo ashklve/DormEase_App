@@ -202,66 +202,98 @@ export default StyleSheet.create({
 
   // ── visitor row (inside collapsible) ─────────────────────────────────────
   visitorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: COLORS.card,
     paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(10),
-    gap: scale(10),
+    paddingVertical: verticalScale(14),
   },
   visitorRowBorder: {
     borderBottomWidth: 0.5,
     borderBottomColor: COLORS.border,
   },
+  visitorRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(10),
+    marginBottom: verticalScale(12),
+  },
   visitorAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#FBEAF0',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   visitorAvatarText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     fontWeight: '700',
     color: '#993556',
   },
-  visitorRowLeft: {
+  visitorRowTitleWrap: {
     flex: 1,
     minWidth: 0,
   },
   visitorRowName: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(15),
     fontWeight: '700',
     color: COLORS.dark,
-    marginBottom: verticalScale(3),
+    lineHeight: moderateScale(20),
+    marginBottom: verticalScale(4),
   },
-  visitorRowMeta: {
+  visitorContactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
+    gap: 5,
   },
-  visitorMetaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: COLORS.border,
-  },
-  visitorRowMetaText: {
-    fontSize: moderateScale(10),
+  visitorContactText: {
+    fontSize: moderateScale(12),
     color: COLORS.muted,
+    fontWeight: '600',
   },
   visitorRowBadge: {
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: scale(8),
-    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: scale(9),
     flexShrink: 0,
   },
   visitorRowBadgeText: {
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+  },
+  visitorDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
+  visitorDetailItem: {
+    width: '48%',
+    minHeight: verticalScale(52),
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(7),
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: '#F0DDE5',
+    borderRadius: 10,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(9),
+  },
+  visitorDetailTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  visitorDetailLabel: {
     fontSize: moderateScale(10),
-    fontWeight: '600',
+    color: COLORS.muted,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  visitorDetailValue: {
+    fontSize: moderateScale(12),
+    color: COLORS.dark,
+    fontWeight: '700',
+    lineHeight: moderateScale(16),
   },
 
   // ── register form section ─────────────────────────────────────────────────
