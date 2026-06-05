@@ -28,6 +28,55 @@ const FILE_BASE_URL = client.defaults.baseURL.replace(/\/api\/?$/, '');
 
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
+// ── Purpose options per certificate type ─────────────────────────────────────
+const PURPOSE_OPTIONS = {
+    cert_residency: [
+        'School / scholarship requirement',
+        'Employment requirement',
+        'Bank or loan application',
+        'Government ID or document processing',
+        'Travel or visa application',
+        'Others',
+    ],
+    receipt_copy: [
+        'Proof of payment for records',
+        'Required by employer or institution',
+        'Tax filing or audit',
+        'Dispute or billing concern',
+        'Others',
+    ],
+    lease_copy: [
+        'Lost my copy',
+        'Required by employer or institution',
+        'Bank or loan application',
+        'Legal or court requirement',
+        'Others',
+    ],
+    clearance: [
+        'Employment clearance',
+        'School requirement',
+        'End-of-lease processing',
+        'Government or legal requirement',
+        'Others',
+    ],
+    good_conduct: [
+        'Employment application',
+        'School or scholarship application',
+        'Travel or visa requirement',
+        'Government processing',
+        'Others',
+    ],
+};
+
+// Fallback options for any certificate type not explicitly listed above
+const DEFAULT_PURPOSE_OPTIONS = [
+    'School / scholarship requirement',
+    'Employment requirement',
+    'Personal use',
+    'Legal or government requirement',
+    'Others',
+];
+
 // ── NavItem ───────────────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
@@ -55,39 +104,41 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
-    const router        = useRouter();
+    const router = useRouter();
     const { avatarUri } = useUser();
-    const insets        = useSafeAreaInsets();
-    const drawerRef     = useRef(null);
+    const insets = useSafeAreaInsets();
+    const drawerRef = useRef(null);
 
     // UI state
-    const [formsExpanded,  setFormsExpanded]  = useState(true);
+    const [formsExpanded, setFormsExpanded] = useState(true);
     const [selectedOption, setSelectedOption] = useState(null);
-    const [dropdownOpen,   setDropdownOpen]   = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false);
 
     // Form fields
-    const [fullName,       setFullName]       = useState('');
-    const [contactNo,      setContactNo]      = useState('');
-    const [roomNo,         setRoomNo]         = useState('');
-    const [purpose,        setPurpose]        = useState('');
+    const [fullName, setFullName] = useState('');
+    const [contactNo, setContactNo] = useState('');
+    const [roomNo, setRoomNo] = useState('');
+    const [purpose, setPurpose] = useState('');   // selected option label
+    const [purposeOther, setPurposeOther] = useState('');   // free-text when "Others"
     const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [uploadedFile,   setUploadedFile]   = useState(null);
-    const [submitting,     setSubmitting]     = useState(false);
-    const [userInfo,       setUserInfo]       = useState(null);
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
 
     // Data state
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [docsLoading,       setDocsLoading]       = useState(true);
+    const [docsLoading, setDocsLoading] = useState(true);
 
     // ── dropdownSections computed from state
     const dropdownSections = [
         {
             sectionLabel: 'Upload a Filled Form',
             items: downloadableForms.map(f => ({
-                id:       String(f.id),
-                label:    f.label,
-                url:      f.url,
-                icon:     'insert-drive-file',
+                id: String(f.id),
+                label: f.label,
+                url: f.url,
+                icon: 'insert-drive-file',
                 category: CATEGORY.FORM,
             })),
         },
@@ -95,13 +146,24 @@ export default function DocumentsScreen() {
             sectionLabel: 'Request a Certificate / Document',
             items: [
                 { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
-                { id: 'receipt_copy',   label: 'Official Receipt Copy',     category: CATEGORY.CERTIFICATE },
-                { id: 'lease_copy',     label: 'Lease Contract Copy',       category: CATEGORY.CERTIFICATE },
-                { id: 'clearance',      label: 'Clearance Certificate',     category: CATEGORY.CERTIFICATE },
-                { id: 'good_conduct',   label: 'Good Conduct Certificate',  category: CATEGORY.CERTIFICATE },
+                { id: 'receipt_copy', label: 'Official Receipt Copy', category: CATEGORY.CERTIFICATE },
+                { id: 'lease_copy', label: 'Lease Contract Copy', category: CATEGORY.CERTIFICATE },
+                { id: 'clearance', label: 'Clearance Certificate', category: CATEGORY.CERTIFICATE },
+                { id: 'good_conduct', label: 'Good Conduct Certificate', category: CATEGORY.CERTIFICATE },
             ],
         },
     ];
+
+    // ── Purpose options derived from selected certificate ─────────────────────
+    const purposeOptions =
+        selectedOption?.category === CATEGORY.CERTIFICATE
+            ? (PURPOSE_OPTIONS[selectedOption.id] ?? DEFAULT_PURPOSE_OPTIONS)
+            : [];
+
+    const isOtherPurpose = purpose === 'Others';
+
+    // Final purpose value to submit (resolved free-text if "Others")
+    const resolvedPurpose = isOtherPurpose ? purposeOther.trim() : purpose;
 
     // ── Pre-fill from logged-in tenant profile ────────────────────────────────
     useEffect(() => {
@@ -111,7 +173,7 @@ export default function DocumentsScreen() {
             setFullName(`${u.first_name ?? ''} ${u.last_name ?? ''}`.trim());
             setContactNo(u.contact_number ?? '');
             setRoomNo(u.room_number ?? '');
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     // ── Fetch downloadable forms ──────────────────────────────────────────────
@@ -132,7 +194,7 @@ export default function DocumentsScreen() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
-    const isForm        = selectedOption?.category === CATEGORY.FORM;
+    const isForm = selectedOption?.category === CATEGORY.FORM;
 
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
@@ -159,7 +221,15 @@ export default function DocumentsScreen() {
         setDropdownOpen(false);
         setUploadedFile(null);
         setPurpose('');
+        setPurposeOther('');
+        setPurposeDropdownOpen(false);
         setDeliveryMethod('digital');
+    };
+
+    const handleSelectPurpose = (option) => {
+        setPurpose(option);
+        setPurposeOther('');
+        setPurposeDropdownOpen(false);
     };
 
     const handleSubmit = async () => {
@@ -175,26 +245,34 @@ export default function DocumentsScreen() {
             Alert.alert('Missing File', 'Please upload your completed form before submitting.');
             return;
         }
+        if (isCertificate && !purpose) {
+            Alert.alert('Missing Field', 'Please select a purpose for your request.');
+            return;
+        }
+        if (isCertificate && isOtherPurpose && !purposeOther.trim()) {
+            Alert.alert('Missing Field', 'Please describe your purpose in the text field.');
+            return;
+        }
 
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('full_name',     fullName.trim());
-            formData.append('contact_no',    contactNo.trim());
-            formData.append('room_no',       roomNo.trim());
-            formData.append('request_type',  selectedOption.id);
+            formData.append('full_name', fullName.trim());
+            formData.append('contact_no', contactNo.trim());
+            formData.append('room_no', roomNo.trim());
+            formData.append('request_type', selectedOption.id);
             formData.append('request_label', selectedOption.label);
             formData.append('document_type', selectedOption.label);
-            formData.append('category',      selectedOption.category);
+            formData.append('category', selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose',         purpose.trim());
+                formData.append('purpose', resolvedPurpose);
                 formData.append('delivery_method', deliveryMethod);
             }
 
             if (isForm && uploadedFile) {
                 formData.append('attachment', {
-                    uri:  uploadedFile.uri,
+                    uri: uploadedFile.uri,
                     name: uploadedFile.name,
                     type: uploadedFile.mimeType ?? 'application/pdf',
                 });
@@ -211,6 +289,8 @@ export default function DocumentsScreen() {
             setSelectedOption(null);
             setUploadedFile(null);
             setPurpose('');
+            setPurposeOther('');
+            setPurposeDropdownOpen(false);
             setDeliveryMethod('digital');
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
@@ -278,6 +358,7 @@ export default function DocumentsScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
+                    nestedScrollEnabled
                 >
 
                     {/* ── SECTION 1: Downloadable Forms ── */}
@@ -518,17 +599,93 @@ export default function DocumentsScreen() {
                         {/* Certificate request flow */}
                         {isCertificate && (
                             <>
-                                <TextInput
-                                    style={[styles.input, { marginTop: 4, textAlignVertical: 'top' }]}
-                                    placeholder="Purpose / Reason for Request"
-                                    placeholderTextColor={COLORS.muted}
-                                    value={purpose}
-                                    onChangeText={setPurpose}
-                                    multiline
-                                    numberOfLines={3}
-                                />
+                                {/* ── Purpose dropdown ── */}
+                                <Text style={styles.fieldLabel}>Purpose of Request</Text>
 
-                                <Text style={styles.fieldLabel}>Preferred delivery method</Text>
+                                <TouchableOpacity
+                                    style={styles.pickerWrapper}
+                                    activeOpacity={0.8}
+                                    onPress={() => setPurposeDropdownOpen((v) => !v)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.pickerText,
+                                            purpose && styles.pickerTextSelected,
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {purpose || 'Select a purpose...'}
+                                    </Text>
+                                    <MaterialIcons
+                                        name={purposeDropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                        size={20}
+                                        color={COLORS.muted}
+                                    />
+                                </TouchableOpacity>
+
+                                {purposeDropdownOpen && (
+                                    <View
+                                        style={[styles.dropdownList, { height: 220 }]}
+                                        onTouchStart={(e) => e.stopPropagation()}
+                                    >
+                                        <ScrollView
+                                            nestedScrollEnabled
+                                            showsVerticalScrollIndicator={false}
+                                            keyboardShouldPersistTaps="handled"
+                                        >
+                                            {purposeOptions.map((option) => {
+                                                const active = purpose === option;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={option}
+                                                        style={[
+                                                            styles.dropdownListItem,
+                                                            active && styles.dropdownListItemActive,
+                                                        ]}
+                                                        onPress={() => handleSelectPurpose(option)}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.dropdownListItemText,
+                                                                active && styles.dropdownListItemTextActive,
+                                                            ]}
+                                                        >
+                                                            {option}
+                                                        </Text>
+                                                        {active && (
+                                                            <MaterialIcons
+                                                                name="check"
+                                                                size={16}
+                                                                color={COLORS.primary}
+                                                            />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </View>
+                                )}
+
+                                {/* ── "Others" free-text input ── */}
+                                {isOtherPurpose && (
+                                    <TextInput
+                                        style={[
+                                            styles.input,
+                                            { marginTop: 6, textAlignVertical: 'top' },
+                                        ]}
+                                        placeholder="Please describe your purpose…"
+                                        placeholderTextColor={COLORS.muted}
+                                        value={purposeOther}
+                                        onChangeText={setPurposeOther}
+                                        multiline
+                                        numberOfLines={3}
+                                    />
+                                )}
+
+                                {/* ── Delivery method ── */}
+                                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                                    Preferred delivery method
+                                </Text>
 
                                 <TouchableOpacity
                                     style={styles.radioRow}
