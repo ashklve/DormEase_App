@@ -73,6 +73,14 @@ const formatShortDate = (dateStr) => {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+const formatVisitorTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours = '0', minutes = '0'] = String(timeStr).split(':');
+    const d = new Date();
+    d.setHours(Number(hours), Number(minutes), 0, 0);
+    return formatDisplayTime(d);
+};
+
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
@@ -102,6 +110,20 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 const getInitials = (name = '') =>
     name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
 
+const VisitorDetail = ({ icon, label, value }) => {
+    if (!value) return null;
+
+    return (
+        <View style={styles.visitorDetailItem}>
+            <MaterialIcons name={icon} size={15} color={COLORS.primary} />
+            <View style={styles.visitorDetailTextWrap}>
+                <Text style={styles.visitorDetailLabel}>{label}</Text>
+                <Text style={styles.visitorDetailValue}>{value}</Text>
+            </View>
+        </View>
+    );
+};
+
 // ── Compact Visitor Row ───────────────────────────────────────────────────────
 const VisitorRow = ({ item, isLast }) => {
     const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
@@ -109,44 +131,42 @@ const VisitorRow = ({ item, isLast }) => {
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
         : 'Pending';
 
-    const metaParts = [
-        formatShortDate(item.date_of_visit),
-        item.time_of_visit,
-        item.purpose,
-        item.id_type,
-    ].filter(Boolean);
+    const visitDate = formatShortDate(item.date_of_visit);
+    const visitTime = formatVisitorTime(item.time_of_visit);
 
     return (
         <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
-            {/* Initials avatar */}
-            <View style={styles.visitorAvatar}>
-                <Text style={styles.visitorAvatarText}>
-                    {getInitials(item.visitor_name)}
-                </Text>
-            </View>
+            <View style={styles.visitorRowHeader}>
+                <View style={styles.visitorAvatar}>
+                    <Text style={styles.visitorAvatarText}>
+                        {getInitials(item.visitor_name)}
+                    </Text>
+                </View>
 
-            {/* Name + meta */}
-            <View style={styles.visitorRowLeft}>
-                <Text style={styles.visitorRowName} numberOfLines={1}>
-                    {item.visitor_name}
-                </Text>
-                <View style={styles.visitorRowMeta}>
-                    {metaParts.map((part, i) => (
-                        <React.Fragment key={i}>
-                            {i > 0 && <View style={styles.visitorMetaDot} />}
-                            <Text style={styles.visitorRowMetaText} numberOfLines={1}>
-                                {part}
-                            </Text>
-                        </React.Fragment>
-                    ))}
+                <View style={styles.visitorRowTitleWrap}>
+                    <Text style={styles.visitorRowName}>
+                        {item.visitor_name || 'Unnamed Visitor'}
+                    </Text>
+                    {!!item.contact_no && (
+                        <View style={styles.visitorContactRow}>
+                            <MaterialIcons name="phone" size={14} color={COLORS.muted} />
+                            <Text style={styles.visitorContactText}>{item.contact_no}</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
+                    <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
+                        {statusLabel}
+                    </Text>
                 </View>
             </View>
 
-            {/* Status badge */}
-            <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
-                <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
-                    {statusLabel}
-                </Text>
+            <View style={styles.visitorDetailsGrid}>
+                <VisitorDetail icon="event" label="Date" value={visitDate} />
+                <VisitorDetail icon="schedule" label="Time" value={visitTime} />
+                <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
+                <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
             </View>
         </View>
     );
