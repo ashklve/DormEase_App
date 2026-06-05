@@ -28,6 +28,7 @@ const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 const ANNOUNCEMENT_TABS = ['All', 'Unread', 'Pinned', 'Archive'];
 const READ_STORAGE_KEY = 'tenant_read_announcements';
 const ARCHIVED_STORAGE_KEY = 'tenant_archived_announcements';
+const PINNED_STORAGE_KEY = 'tenant_pinned_announcements';
 
 const priorityColors = {
   High: { bg: '#FFD7C7', text: '#EB9C7D' },
@@ -369,9 +370,11 @@ const AnnouncementCard = ({
   item,
   onPress,
   isRead,
+  isPinned,
   isMenuOpen,
   onMenuPress,
   onMarkAsRead,
+  onTogglePin,
   onArchive,
 }) => {
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
@@ -386,6 +389,11 @@ const AnnouncementCard = ({
           <View style={[styles.priorityBadge, { backgroundColor: p.bg }]}>
             <Text style={[styles.priorityText, { color: p.text }]}>{item.priority}</Text>
           </View>
+          {isPinned && (
+            <View style={styles.cardPinnedBadge}>
+              <MaterialIcons name="push-pin" size={15} color={COLORS.primary} />
+            </View>
+          )}
           <View style={styles.dotsWrap}>
             <TouchableOpacity
               style={styles.dotsBtn}
@@ -462,6 +470,17 @@ const AnnouncementCard = ({
             style={cardMenuStyles.menuItem}
             onPressIn={(event) => {
               event?.stopPropagation?.();
+              onTogglePin(item);
+            }}
+            onPress={(event) => event?.stopPropagation?.()}
+          >
+            <Text style={cardMenuStyles.menuText}>{isPinned ? 'Unpin' : 'Pin'}</Text>
+            <MaterialIcons name="push-pin" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={cardMenuStyles.menuItem}
+            onPressIn={(event) => {
+              event?.stopPropagation?.();
               onArchive(item);
             }}
             onPress={(event) => event?.stopPropagation?.()}
@@ -516,6 +535,7 @@ export default function AnnouncementsScreen() {
   const [actionMenuItem, setActionMenuItem] = useState(null);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState([]);
   const [archivedAnnouncementIds, setArchivedAnnouncementIds] = useState([]);
+  const [pinnedAnnouncementIds, setPinnedAnnouncementIds] = useState([]);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -524,12 +544,14 @@ export default function AnnouncementsScreen() {
   useEffect(() => {
     const loadAnnouncementPreferences = async () => {
       try {
-        const [storedReadIds, storedArchivedIds] = await Promise.all([
+        const [storedReadIds, storedArchivedIds, storedPinnedIds] = await Promise.all([
           AsyncStorage.getItem(READ_STORAGE_KEY),
           AsyncStorage.getItem(ARCHIVED_STORAGE_KEY),
+          AsyncStorage.getItem(PINNED_STORAGE_KEY),
         ]);
         setReadAnnouncementIds(parseStoredAnnouncementIds(storedReadIds));
         setArchivedAnnouncementIds(parseStoredAnnouncementIds(storedArchivedIds));
+        setPinnedAnnouncementIds(parseStoredAnnouncementIds(storedPinnedIds));
       } catch (error) {
         console.error('announcement preferences error:', error);
       }
@@ -606,6 +628,29 @@ export default function AnnouncementsScreen() {
     }
   }, [archivedAnnouncementIds]);
 
+  const togglePinAnnouncement = useCallback(async (item) => {
+    const itemKey = getAnnouncementKey(item);
+    const alreadyPinned = item.pinned || pinnedAnnouncementIds.includes(itemKey);
+    const nextPinnedIds = alreadyPinned
+      ? pinnedAnnouncementIds.filter((id) => id !== itemKey)
+      : Array.from(new Set([...pinnedAnnouncementIds, itemKey]));
+
+    setPinnedAnnouncementIds(nextPinnedIds);
+    setAnnouncements((current) =>
+      current.map((a) =>
+        getAnnouncementKey(a) === itemKey ? { ...a, pinned: !alreadyPinned } : a
+      )
+    );
+    setActionMenuItem(null);
+    if (!alreadyPinned) setActiveTab('Pinned');
+
+    try {
+      await AsyncStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(nextPinnedIds));
+    } catch (error) {
+      console.error('save pinned announcement failed:', error);
+    }
+  }, [pinnedAnnouncementIds]);
+
   const isAnnouncementRead = useCallback(
     (announcement) =>
       announcement.read || readAnnouncementIds.includes(getAnnouncementKey(announcement)),
@@ -618,14 +663,23 @@ export default function AnnouncementsScreen() {
     [archivedAnnouncementIds]
   );
 
+  const isAnnouncementPinned = useCallback(
+    (announcement) =>
+      announcement.pinned || pinnedAnnouncementIds.includes(getAnnouncementKey(announcement)),
+    [pinnedAnnouncementIds]
+  );
+
   const periodFilteredAnnouncements = useMemo(() => {
     const referenceDate = getFilterReferenceDate(announcements);
     return announcements.filter((a) => isInSelectedPeriod(a, selectedFilter, referenceDate));
   }, [announcements, selectedFilter]);
 
   const activeAnnouncements = useMemo(
-    () => periodFilteredAnnouncements.filter((a) => !isAnnouncementArchived(a)),
-    [isAnnouncementArchived, periodFilteredAnnouncements]
+    () =>
+      periodFilteredAnnouncements
+        .filter((a) => !isAnnouncementArchived(a))
+        .sort((left, right) => Number(isAnnouncementPinned(right)) - Number(isAnnouncementPinned(left))),
+    [isAnnouncementArchived, isAnnouncementPinned, periodFilteredAnnouncements]
   );
 
   const archivedAnnouncements = useMemo(
@@ -636,16 +690,16 @@ export default function AnnouncementsScreen() {
   const tabCounts = useMemo(() => ({
     All: activeAnnouncements.length,
     Unread: activeAnnouncements.filter((a) => !isAnnouncementRead(a)).length,
-    Pinned: activeAnnouncements.filter((a) => a.pinned).length,
+    Pinned: activeAnnouncements.filter((a) => isAnnouncementPinned(a)).length,
     Archive: archivedAnnouncements.length,
-  }), [activeAnnouncements, archivedAnnouncements, isAnnouncementRead]);
+  }), [activeAnnouncements, archivedAnnouncements, isAnnouncementPinned, isAnnouncementRead]);
 
   const visibleAnnouncements = useMemo(() => {
     if (activeTab === 'Unread') return activeAnnouncements.filter((a) => !isAnnouncementRead(a));
-    if (activeTab === 'Pinned') return activeAnnouncements.filter((a) => a.pinned);
+    if (activeTab === 'Pinned') return activeAnnouncements.filter((a) => isAnnouncementPinned(a));
     if (activeTab === 'Archive') return archivedAnnouncements;
     return activeAnnouncements;
-  }, [activeAnnouncements, activeTab, archivedAnnouncements, isAnnouncementRead]);
+  }, [activeAnnouncements, activeTab, archivedAnnouncements, isAnnouncementPinned, isAnnouncementRead]);
 
   return (
     <SafeAreaView
@@ -740,6 +794,7 @@ export default function AnnouncementsScreen() {
                   key={getAnnouncementKey(item)}
                   item={item}
                   isRead={isAnnouncementRead(item)}
+                  isPinned={isAnnouncementPinned(item)}
                   isMenuOpen={
                     Boolean(actionMenuItem) &&
                     getAnnouncementKey(actionMenuItem) === getAnnouncementKey(item)
@@ -747,6 +802,7 @@ export default function AnnouncementsScreen() {
                   onPress={() => openDetail(item)}
                   onMenuPress={toggleActionMenu}
                   onMarkAsRead={markAnnouncementAsRead}
+                  onTogglePin={togglePinAnnouncement}
                   onArchive={archiveAnnouncement}
                 />
               ))

@@ -38,8 +38,27 @@ const PRIORITY_STYLE = {
     low: { bg: '#D4EDDA', text: '#155724' },
 };
 
+// accent bar color per status (matches badge text color)
+const STATUS_ACCENT = {
+    pending: '#856404',
+    'in progress': '#004085',
+    resolved: '#28A745',
+    closed: '#616161',
+};
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
+// category icon map (MaterialIcons)
+const CATEGORY_ICON = {
+    'Plumbing': 'water',
+    'Electrical': 'electrical-services',
+    'HVAC / Air Conditioning': 'ac-unit',
+    'Appliance Repair': 'kitchen',
+    'Carpentry / Furniture': 'weekend',
+    'Pest Control': 'pest-control',
+    'Cleaning': 'cleaning-services',
+    'Internet / Cable': 'wifi',
+    'Others': 'build',
+};
+
 const ISSUE_LABELS = {
     plumbing: 'Plumbing',
     electrical: 'Electrical',
@@ -58,7 +77,6 @@ const formatDate = (value) => {
     if (!value) return '-';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
-
     return date.toLocaleDateString('en-US', {
         month: '2-digit',
         day: '2-digit',
@@ -70,7 +88,6 @@ const formatDateTime = (value) => {
     if (!value) return '-';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
-
     return date.toLocaleString('en-US', {
         month: '2-digit',
         day: '2-digit',
@@ -100,6 +117,7 @@ const mapMaintenanceRequest = (request) => ({
         : [],
 });
 
+// ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -148,6 +166,7 @@ const RequestCard = ({ item }) => {
     const priorityKey = item.priority?.toLowerCase();
     const ss = STATUS_STYLE[statusKey] ?? STATUS_STYLE.pending;
     const ps = PRIORITY_STYLE[priorityKey] ?? PRIORITY_STYLE.moderate;
+    const accentColor = STATUS_ACCENT[statusKey] ?? COLORS.primary;
 
     const statusLabel = item.status
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
@@ -156,19 +175,16 @@ const RequestCard = ({ item }) => {
         ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1)
         : 'Moderate';
 
-    // accent bar color matches status
-    const accentColor = ss.text;
+    const categoryIcon = CATEGORY_ICON[item.category] ?? 'build';
 
     return (
         <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
 
-            {/* ── Status + Priority badges ── */}
-            <View style={styles.badgeRow}>
-                <View style={[styles.badge, { backgroundColor: ss.bg }]}>
-                    <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: ps.bg }]}>
-                    <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
+            {/* ── Category chip ── */}
+            <View style={styles.categoryChipRow}>
+                <View style={styles.categoryChip}>
+                    <MaterialIcons name={categoryIcon} size={12} color={COLORS.primary} />
+                    <Text style={styles.categoryChipText}>{item.category}</Text>
                 </View>
             </View>
 
@@ -182,38 +198,47 @@ const RequestCard = ({ item }) => {
                 </TouchableOpacity>
             </View>
 
-            {/* ── Category ── */}
-            <Text style={styles.cardCategory}>{item.category}</Text>
+            {/* ── Status + Priority badges ── */}
+            <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: ss.bg }]}>
+                    <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: ps.bg }]}>
+                    <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
+                </View>
+            </View>
 
-            {/* ── Expandable body ── */}
+            {/* ── Expandable admin notes ── */}
             {expanded && (
-                <>
+                <View style={styles.notesBlock}>
+                    <View style={styles.notesBlockHeader}>
+                        <MaterialIcons name="sticky-note-2" size={12} color={COLORS.muted} />
+                        <Text style={styles.notesLabel}>Admin Notes</Text>
+                    </View>
                     {item.admin_notes && item.admin_notes.length > 0 ? (
-                        <>
-                            <Text style={styles.notesLabel}>Notes by Admin:</Text>
-                            {item.admin_notes.map((note, idx) => (
-                                <View key={idx} style={styles.noteItem}>
-                                    <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
-                                    <Text style={styles.noteText}>
-                                        {note.bold
-                                            ? <Text style={styles.noteBold}>{note.text}</Text>
-                                            : note.text
-                                        }
-                                    </Text>
-                                </View>
-                            ))}
-                        </>
+                        item.admin_notes.map((note, idx) => (
+                            <View key={idx} style={styles.noteItem}>
+                                <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
+                                <Text style={styles.noteText}>
+                                    {note.bold
+                                        ? <Text style={styles.noteBold}>{note.text}</Text>
+                                        : note.text
+                                    }
+                                </Text>
+                            </View>
+                        ))
                     ) : (
-                        <Text style={[styles.notesLabel, { fontStyle: 'italic' }]}>
-                            No admin notes yet.
-                        </Text>
+                        <Text style={styles.noNotesText}>No admin notes yet.</Text>
                     )}
-                </>
+                </View>
             )}
 
             {/* ── Footer: req ID + date ── */}
             <View style={styles.cardFooter}>
-                <Text style={styles.reqId}>{item.req_id}</Text>
+                <View style={styles.reqIdRow}>
+                    <MaterialIcons name="tag" size={12} color={COLORS.muted} />
+                    <Text style={styles.reqId}>{item.req_id.replace('#', '')}</Text>
+                </View>
                 <View style={styles.footerDateRow}>
                     <Ionicons name="calendar-outline" size={13} color={COLORS.muted} />
                     <Text style={styles.footerDate}>{item.date_submitted}</Text>
@@ -240,8 +265,10 @@ export default function MaintenanceHistoryScreen() {
     const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
     // ── Derived stats
+    const totalCount = requests.length;
     const pendingCount = requests.filter(r => r.status?.toLowerCase() === 'pending').length;
     const resolvedCount = requests.filter(r => r.status?.toLowerCase() === 'resolved').length;
+    const progressCount = requests.filter(r => r.status?.toLowerCase() === 'in progress').length;
 
     // ── Filtered list
     const filtered = requests.filter((r) => {
@@ -250,7 +277,7 @@ export default function MaintenanceHistoryScreen() {
         return statusMatch && priorityMatch;
     });
 
-    // ── Fetch (replace mock with real API)
+    // ── Fetch
     const fetchRequests = useCallback(async () => {
         try {
             const res = await client.get('/maintenance', { timeout: 15000 });
@@ -282,7 +309,7 @@ export default function MaintenanceHistoryScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* ── Top Row ── */}
+            {/* ── Top Row (ORIGINAL - untouched) ── */}
             <View style={styles.topRow}>
                 <TouchableOpacity
                     style={styles.backBtn}
@@ -301,7 +328,7 @@ export default function MaintenanceHistoryScreen() {
                 </View>
             </View>
 
-            {/* ── Header ── */}
+            {/* ── Header (ORIGINAL - untouched) ── */}
             <View style={styles.headerSection}>
                 <View style={styles.headerTitleRow}>
                     <View style={styles.headerIconBadge}>
@@ -334,30 +361,47 @@ export default function MaintenanceHistoryScreen() {
                         />
                     }
                 >
-                    {/* ── Stats ── */}
+                    {/* ── Stats Row ── */}
                     <View style={styles.statsRow}>
-                        <View style={styles.statCard}>
-                            <Text style={styles.statLabel}>Pending Requests</Text>
-                            <Text style={styles.statValue}>{pendingCount}</Text>
+                        <View style={[styles.statCard, styles.statCardPending]}>
+                            <View style={styles.statIconWrap}>
+                                <MaterialIcons name="hourglass-empty" size={16} color="#856404" />
+                            </View>
+                            <Text style={styles.statLabel}>Pending</Text>
+                            <Text style={[styles.statValue, { color: '#856404' }]}>{pendingCount}</Text>
+                            <Text style={styles.statSub}>Awaiting action</Text>
                         </View>
-                        <View style={styles.statCard}>
-                            <Text style={styles.statLabel}>Resolved Requests</Text>
-                            <Text style={styles.statValue}>{resolvedCount}</Text>
+                        <View style={[styles.statCard, styles.statCardProgress]}>
+                            <View style={[styles.statIconWrap, styles.statIconProgress]}>
+                                <MaterialIcons name="autorenew" size={16} color="#004085" />
+                            </View>
+                            <Text style={styles.statLabel}>In Progress</Text>
+                            <Text style={[styles.statValue, { color: '#004085' }]}>{progressCount}</Text>
+                            <Text style={styles.statSub}>Being handled</Text>
+                        </View>
+                        <View style={[styles.statCard, styles.statCardResolved]}>
+                            <View style={[styles.statIconWrap, styles.statIconResolved]}>
+                                <MaterialIcons name="check-circle-outline" size={16} color="#28A745" />
+                            </View>
+                            <Text style={styles.statLabel}>Resolved</Text>
+                            <Text style={[styles.statValue, { color: '#28A745' }]}>{resolvedCount}</Text>
+                            <Text style={styles.statSub}>All done</Text>
                         </View>
                     </View>
 
                     {/* ── Filter Row ── */}
                     <View style={styles.filterRow}>
-                        {/* Filter button */}
+                        {/* Status dropdown */}
                         <View style={styles.dropdownWrapper}>
                             <TouchableOpacity
                                 style={styles.filterBtn}
-                                onPress={() => { setShowStatusDropdown(!showStatusDropdown); setShowPriorityDropdown(false); }}
+                                onPress={() => {
+                                    setShowStatusDropdown(!showStatusDropdown);
+                                    setShowPriorityDropdown(false);
+                                }}
                             >
                                 <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
-                                <Text style={styles.filterBtnText}>
-                                    {activeStatus}
-                                </Text>
+                                <Text style={styles.filterBtnText}>{activeStatus}</Text>
                                 <MaterialIcons
                                     name={showStatusDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                                     size={16}
@@ -394,11 +438,14 @@ export default function MaintenanceHistoryScreen() {
                             )}
                         </View>
 
-                        {/* Priority selector */}
+                        {/* Priority dropdown */}
                         <View style={styles.dropdownWrapper}>
                             <TouchableOpacity
                                 style={styles.priorityBtn}
-                                onPress={() => { setShowPriorityDropdown(!showPriorityDropdown); setShowStatusDropdown(false); }}
+                                onPress={() => {
+                                    setShowPriorityDropdown(!showPriorityDropdown);
+                                    setShowStatusDropdown(false);
+                                }}
                             >
                                 <Ionicons name="flag-outline" size={14} color={COLORS.primary} />
                                 <Text style={styles.priorityBtnText}>{activePriority}</Text>
@@ -418,7 +465,10 @@ export default function MaintenanceHistoryScreen() {
                                                 styles.filterDropdownItem,
                                                 activePriority === priority && styles.filterDropdownItemActive,
                                             ]}
-                                            onPress={() => { setActivePriority(priority); setShowPriorityDropdown(false); }}
+                                            onPress={() => {
+                                                setActivePriority(priority);
+                                                setShowPriorityDropdown(false);
+                                            }}
                                         >
                                             <Text style={[
                                                 styles.filterDropdownText,
@@ -434,12 +484,19 @@ export default function MaintenanceHistoryScreen() {
                                 </View>
                             )}
                         </View>
+
+                        {/* Result count */}
+                        <Text style={styles.resultCount}>
+                            {filtered.length} {filtered.length === 1 ? 'request' : 'requests'}
+                        </Text>
                     </View>
 
                     {/* ── Request Cards ── */}
                     {filtered.length === 0 ? (
                         <View style={styles.emptyContainer}>
-                            <MaterialIcons name="history" size={48} color={COLORS.primaryLight} />
+                            <View style={styles.emptyIconWrap}>
+                                <MaterialIcons name="history" size={32} color={COLORS.primary} />
+                            </View>
                             <Text style={styles.emptyText}>No requests found</Text>
                             <Text style={styles.emptySubText}>
                                 Try changing the filter or check back later.
@@ -464,7 +521,6 @@ export default function MaintenanceHistoryScreen() {
                 <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
-
         </SafeAreaView>
     );
 }
