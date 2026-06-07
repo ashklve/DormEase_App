@@ -18,7 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Asset } from 'expo-asset';
 import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import styles from '../../src/constants/payment-detailstyles';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 import { COLORS } from '../../src/constants/colors';
@@ -132,8 +132,8 @@ export default function PaymentDetailScreen() {
 
         setDownloadingQr(true);
         try {
-            const permission = await MediaLibrary.requestPermissionsAsync();
-            if (!permission.granted) {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
                 Alert.alert('Permission Required', 'Please allow media access to save the QR code.');
                 return;
             }
@@ -149,7 +149,9 @@ export default function PaymentDetailScreen() {
                 targetFile.delete();
             }
             sourceFile.copy(targetFile);
-            await MediaLibrary.saveToLibraryAsync(targetFile.uri);
+
+            const savedAsset = await MediaLibrary.createAssetAsync(targetFile.uri);
+            await MediaLibrary.createAlbumAsync('DormEase', savedAsset, false);
 
             Alert.alert('QR Downloaded', `${methodLabel} QR code was saved to your gallery.`);
         } catch (err) {
