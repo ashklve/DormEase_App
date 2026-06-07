@@ -28,53 +28,18 @@ const FILE_BASE_URL = client.defaults.baseURL.replace(/\/api\/?$/, '');
 
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
-// ── Purpose options per certificate type ─────────────────────────────────────
-const PURPOSE_OPTIONS = {
-    cert_residency: [
-        'School / scholarship requirement',
-        'Employment requirement',
-        'Bank or loan application',
-        'Government ID or document processing',
-        'Travel or visa application',
-        'Others',
-    ],
-    receipt_copy: [
-        'Proof of payment for records',
-        'Required by employer or institution',
-        'Tax filing or audit',
-        'Dispute or billing concern',
-        'Others',
-    ],
-    lease_copy: [
-        'Lost my copy',
-        'Required by employer or institution',
-        'Bank or loan application',
-        'Legal or court requirement',
-        'Others',
-    ],
-    clearance: [
-        'Employment clearance',
-        'School requirement',
-        'End-of-lease processing',
-        'Government or legal requirement',
-        'Others',
-    ],
-    good_conduct: [
-        'Employment application',
-        'School or scholarship application',
-        'Travel or visa requirement',
-        'Government processing',
-        'Others',
-    ],
-};
-
-// Fallback options for any certificate type not explicitly listed above
-const DEFAULT_PURPOSE_OPTIONS = [
-    'School / scholarship requirement',
-    'Employment requirement',
-    'Personal use',
-    'Legal or government requirement',
-    'Others',
+const PREDEFINED_PURPOSES = [
+    'Scholarship Application',
+    'School Requirement / Enrollment',
+    'Employment / Job Application',
+    'Travel / Visa Application',
+    'Bank / Loan Requirement',
+    'Government Requirement (SSS, PhilHealth, Pag-IBIG, etc.)',
+    'Barangay / Local Government Requirement',
+    'Insurance Claim',
+    'Court / Legal Proceeding',
+    'Personal Record Keeping',
+    'Other',
 ];
 
 // ── NavItem ───────────────────────────────────────────────────────────────────
@@ -110,17 +75,17 @@ export default function DocumentsScreen() {
     const drawerRef = useRef(null);
 
     // UI state
-    const [formsExpanded, setFormsExpanded] = useState(true);
-    const [selectedOption, setSelectedOption] = useState(null);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false);
+    const [formsExpanded,     setFormsExpanded]     = useState(true);
+    const [selectedOption,    setSelectedOption]    = useState(null);
+    const [dropdownOpen,      setDropdownOpen]      = useState(false);
+    const [purposeDropOpen,   setPurposeDropOpen]   = useState(false);
+    const [selectedPurpose,   setSelectedPurpose]   = useState(null);
+    const [customPurpose,     setCustomPurpose]     = useState('');
 
     // Form fields
-    const [fullName, setFullName] = useState('');
-    const [contactNo, setContactNo] = useState('');
-    const [roomNo, setRoomNo] = useState('');
-    const [purpose, setPurpose] = useState('');   // selected option label
-    const [purposeOther, setPurposeOther] = useState('');   // free-text when "Others"
+    const [fullName,       setFullName]       = useState('');
+    const [contactNo,      setContactNo]      = useState('');
+    const [roomNo,         setRoomNo]         = useState('');
     const [deliveryMethod, setDeliveryMethod] = useState('digital');
     const [uploadedFile, setUploadedFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
@@ -196,6 +161,9 @@ export default function DocumentsScreen() {
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm = selectedOption?.category === CATEGORY.FORM;
 
+    // Resolve the final purpose string
+    const resolvedPurpose = selectedPurpose === 'Other' ? customPurpose : (selectedPurpose ?? '');
+
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
             Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
@@ -220,16 +188,15 @@ export default function DocumentsScreen() {
         setSelectedOption(item);
         setDropdownOpen(false);
         setUploadedFile(null);
-        setPurpose('');
-        setPurposeOther('');
-        setPurposeDropdownOpen(false);
+        setSelectedPurpose(null);
+        setCustomPurpose('');
         setDeliveryMethod('digital');
     };
 
-    const handleSelectPurpose = (option) => {
-        setPurpose(option);
-        setPurposeOther('');
-        setPurposeDropdownOpen(false);
+    const handleSelectPurpose = (p) => {
+        setSelectedPurpose(p);
+        setPurposeDropOpen(false);
+        if (p !== 'Other') setCustomPurpose('');
     };
 
     const handleSubmit = async () => {
@@ -245,12 +212,8 @@ export default function DocumentsScreen() {
             Alert.alert('Missing File', 'Please upload your completed form before submitting.');
             return;
         }
-        if (isCertificate && !purpose) {
-            Alert.alert('Missing Field', 'Please select a purpose for your request.');
-            return;
-        }
-        if (isCertificate && isOtherPurpose && !purposeOther.trim()) {
-            Alert.alert('Missing Field', 'Please describe your purpose in the text field.');
+        if (isCertificate && !resolvedPurpose.trim()) {
+            Alert.alert('Missing Field', 'Please select or enter a purpose for your request.');
             return;
         }
 
@@ -266,7 +229,7 @@ export default function DocumentsScreen() {
             formData.append('category', selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose', resolvedPurpose);
+                formData.append('purpose',         resolvedPurpose.trim());
                 formData.append('delivery_method', deliveryMethod);
             }
 
@@ -288,9 +251,8 @@ export default function DocumentsScreen() {
             setRoomNo(userInfo?.room_number ?? '');
             setSelectedOption(null);
             setUploadedFile(null);
-            setPurpose('');
-            setPurposeOther('');
-            setPurposeDropdownOpen(false);
+            setSelectedPurpose(null);
+            setCustomPurpose('');
             setDeliveryMethod('digital');
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
@@ -497,7 +459,10 @@ export default function DocumentsScreen() {
                         <TouchableOpacity
                             style={styles.pickerWrapper}
                             activeOpacity={0.8}
-                            onPress={() => setDropdownOpen((v) => !v)}
+                            onPress={() => {
+                                setDropdownOpen((v) => !v);
+                                setPurposeDropOpen(false);
+                            }}
                         >
                             <Text
                                 style={[
@@ -599,50 +564,46 @@ export default function DocumentsScreen() {
                         {/* Certificate request flow */}
                         {isCertificate && (
                             <>
-                                {/* ── Purpose dropdown ── */}
-                                <Text style={styles.fieldLabel}>Purpose of Request</Text>
+                                {/* Purpose dropdown */}
+                                <Text style={styles.fieldLabel}>Purpose / Reason for Request</Text>
 
                                 <TouchableOpacity
                                     style={styles.pickerWrapper}
                                     activeOpacity={0.8}
-                                    onPress={() => setPurposeDropdownOpen((v) => !v)}
+                                    onPress={() => {
+                                        setPurposeDropOpen((v) => !v);
+                                        setDropdownOpen(false);
+                                    }}
                                 >
                                     <Text
                                         style={[
                                             styles.pickerText,
-                                            purpose && styles.pickerTextSelected,
+                                            selectedPurpose && styles.pickerTextSelected,
                                         ]}
                                         numberOfLines={1}
                                     >
-                                        {purpose || 'Select a purpose...'}
+                                        {selectedPurpose ?? 'Select a purpose...'}
                                     </Text>
                                     <MaterialIcons
-                                        name={purposeDropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                        name={purposeDropOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                                         size={20}
                                         color={COLORS.muted}
                                     />
                                 </TouchableOpacity>
 
-                                {purposeDropdownOpen && (
-                                    <View
-                                        style={[styles.dropdownList, { height: 220 }]}
-                                        onTouchStart={(e) => e.stopPropagation()}
-                                    >
-                                        <ScrollView
-                                            nestedScrollEnabled
-                                            showsVerticalScrollIndicator={false}
-                                            keyboardShouldPersistTaps="handled"
-                                        >
-                                            {purposeOptions.map((option) => {
-                                                const active = purpose === option;
+                                {purposeDropOpen && (
+                                    <View style={styles.dropdownList}>
+                                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                            {PREDEFINED_PURPOSES.map((p) => {
+                                                const active = selectedPurpose === p;
                                                 return (
                                                     <TouchableOpacity
-                                                        key={option}
+                                                        key={p}
                                                         style={[
                                                             styles.dropdownListItem,
                                                             active && styles.dropdownListItemActive,
                                                         ]}
-                                                        onPress={() => handleSelectPurpose(option)}
+                                                        onPress={() => handleSelectPurpose(p)}
                                                     >
                                                         <Text
                                                             style={[
@@ -650,7 +611,7 @@ export default function DocumentsScreen() {
                                                                 active && styles.dropdownListItemTextActive,
                                                             ]}
                                                         >
-                                                            {option}
+                                                            {p}
                                                         </Text>
                                                         {active && (
                                                             <MaterialIcons
@@ -666,26 +627,20 @@ export default function DocumentsScreen() {
                                     </View>
                                 )}
 
-                                {/* ── "Others" free-text input ── */}
-                                {isOtherPurpose && (
+                                {/* Show free-text input only when "Other" is selected */}
+                                {selectedPurpose === 'Other' && (
                                     <TextInput
-                                        style={[
-                                            styles.input,
-                                            { marginTop: 6, textAlignVertical: 'top' },
-                                        ]}
-                                        placeholder="Please describe your purpose…"
+                                        style={[styles.input, { marginTop: 8, textAlignVertical: 'top' }]}
+                                        placeholder="Please describe your purpose..."
                                         placeholderTextColor={COLORS.muted}
-                                        value={purposeOther}
-                                        onChangeText={setPurposeOther}
+                                        value={customPurpose}
+                                        onChangeText={setCustomPurpose}
                                         multiline
                                         numberOfLines={3}
                                     />
                                 )}
 
-                                {/* ── Delivery method ── */}
-                                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-                                    Preferred delivery method
-                                </Text>
+                                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Preferred delivery method</Text>
 
                                 <TouchableOpacity
                                     style={styles.radioRow}
