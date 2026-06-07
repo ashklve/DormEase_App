@@ -69,10 +69,10 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
-    const router        = useRouter();
+    const router = useRouter();
     const { avatarUri } = useUser();
-    const insets        = useSafeAreaInsets();
-    const drawerRef     = useRef(null);
+    const insets = useSafeAreaInsets();
+    const drawerRef = useRef(null);
 
     // UI state
     const [formsExpanded,     setFormsExpanded]     = useState(true);
@@ -87,23 +87,23 @@ export default function DocumentsScreen() {
     const [contactNo,      setContactNo]      = useState('');
     const [roomNo,         setRoomNo]         = useState('');
     const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [uploadedFile,   setUploadedFile]   = useState(null);
-    const [submitting,     setSubmitting]     = useState(false);
-    const [userInfo,       setUserInfo]       = useState(null);
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
 
     // Data state
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [docsLoading,       setDocsLoading]       = useState(true);
+    const [docsLoading, setDocsLoading] = useState(true);
 
     // ── dropdownSections computed from state
     const dropdownSections = [
         {
             sectionLabel: 'Upload a Filled Form',
             items: downloadableForms.map(f => ({
-                id:       String(f.id),
-                label:    f.label,
-                url:      f.url,
-                icon:     'insert-drive-file',
+                id: String(f.id),
+                label: f.label,
+                url: f.url,
+                icon: 'insert-drive-file',
                 category: CATEGORY.FORM,
             })),
         },
@@ -111,13 +111,24 @@ export default function DocumentsScreen() {
             sectionLabel: 'Request a Certificate / Document',
             items: [
                 { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
-                { id: 'receipt_copy',   label: 'Official Receipt Copy',     category: CATEGORY.CERTIFICATE },
-                { id: 'lease_copy',     label: 'Lease Contract Copy',       category: CATEGORY.CERTIFICATE },
-                { id: 'clearance',      label: 'Clearance Certificate',     category: CATEGORY.CERTIFICATE },
-                { id: 'good_conduct',   label: 'Good Conduct Certificate',  category: CATEGORY.CERTIFICATE },
+                { id: 'receipt_copy', label: 'Official Receipt Copy', category: CATEGORY.CERTIFICATE },
+                { id: 'lease_copy', label: 'Lease Contract Copy', category: CATEGORY.CERTIFICATE },
+                { id: 'clearance', label: 'Clearance Certificate', category: CATEGORY.CERTIFICATE },
+                { id: 'good_conduct', label: 'Good Conduct Certificate', category: CATEGORY.CERTIFICATE },
             ],
         },
     ];
+
+    // ── Purpose options derived from selected certificate ─────────────────────
+    const purposeOptions =
+        selectedOption?.category === CATEGORY.CERTIFICATE
+            ? (PURPOSE_OPTIONS[selectedOption.id] ?? DEFAULT_PURPOSE_OPTIONS)
+            : [];
+
+    const isOtherPurpose = purpose === 'Others';
+
+    // Final purpose value to submit (resolved free-text if "Others")
+    const resolvedPurpose = isOtherPurpose ? purposeOther.trim() : purpose;
 
     // ── Pre-fill from logged-in tenant profile ────────────────────────────────
     useEffect(() => {
@@ -127,7 +138,7 @@ export default function DocumentsScreen() {
             setFullName(`${u.first_name ?? ''} ${u.last_name ?? ''}`.trim());
             setContactNo(u.contact_number ?? '');
             setRoomNo(u.room_number ?? '');
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     // ── Fetch downloadable forms ──────────────────────────────────────────────
@@ -148,7 +159,7 @@ export default function DocumentsScreen() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
-    const isForm        = selectedOption?.category === CATEGORY.FORM;
+    const isForm = selectedOption?.category === CATEGORY.FORM;
 
     // Resolve the final purpose string
     const resolvedPurpose = selectedPurpose === 'Other' ? customPurpose : (selectedPurpose ?? '');
@@ -209,13 +220,13 @@ export default function DocumentsScreen() {
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('full_name',     fullName.trim());
-            formData.append('contact_no',    contactNo.trim());
-            formData.append('room_no',       roomNo.trim());
-            formData.append('request_type',  selectedOption.id);
+            formData.append('full_name', fullName.trim());
+            formData.append('contact_no', contactNo.trim());
+            formData.append('room_no', roomNo.trim());
+            formData.append('request_type', selectedOption.id);
             formData.append('request_label', selectedOption.label);
             formData.append('document_type', selectedOption.label);
-            formData.append('category',      selectedOption.category);
+            formData.append('category', selectedOption.category);
 
             if (isCertificate) {
                 formData.append('purpose',         resolvedPurpose.trim());
@@ -224,7 +235,7 @@ export default function DocumentsScreen() {
 
             if (isForm && uploadedFile) {
                 formData.append('attachment', {
-                    uri:  uploadedFile.uri,
+                    uri: uploadedFile.uri,
                     name: uploadedFile.name,
                     type: uploadedFile.mimeType ?? 'application/pdf',
                 });
@@ -309,6 +320,7 @@ export default function DocumentsScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
+                    nestedScrollEnabled
                 >
 
                     {/* ── SECTION 1: Downloadable Forms ── */}

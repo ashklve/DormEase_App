@@ -89,6 +89,7 @@ export default StyleSheet.create({
     color: COLORS.muted,
     fontSize: moderateScale(14),
     marginTop: verticalScale(40),
+    marginBottom: verticalScale(14),
   },
 
   // ── scroll content ────────────────────────────────────────────────────────
@@ -106,20 +107,45 @@ export default StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    paddingVertical: verticalScale(12),
-    paddingHorizontal: scale(14),
+    borderRadius: 14,
+    paddingVertical: verticalScale(13),
+    paddingHorizontal: scale(13),
+    borderWidth: 0.5,
+    borderColor: COLORS.border,
+  },
+  statCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(10),
+  },
+  statIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statTrendBadge: {
+    borderRadius: 100,
+    paddingHorizontal: scale(8),
+    paddingVertical: 3,
+  },
+  statTrendText: {
+    fontSize: moderateScale(10),
+    fontWeight: '600',
+  },
+  statValue: {
+    fontSize: moderateScale(26),
+    fontWeight: '700',
+    color: COLORS.dark,
+    lineHeight: moderateScale(28),
   },
   statLabel: {
     fontSize: moderateScale(11),
     color: COLORS.muted,
-    fontWeight: '500',
-    marginBottom: verticalScale(4),
-  },
-  statValue: {
-    fontSize: moderateScale(22),
-    fontWeight: '700',
-    color: COLORS.dark,
+    fontWeight: '400',
+    marginTop: verticalScale(2),
   },
 
   // ── section title ─────────────────────────────────────────────────────────
@@ -131,71 +157,143 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── registered visitor card ───────────────────────────────────────────────
-  visitorCard: {
-    backgroundColor: COLORS.card,
+  // ── collapsible container ─────────────────────────────────────────────────
+  collapseContainer: {
     marginHorizontal: scale(20),
-    borderRadius: 12,
-    padding: scale(14),
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(14),
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
   },
-  visitorCardTop: {
+  collapseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(6),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(11),
   },
-  approvedBadge: {
-    backgroundColor: '#D4EDDA',
-    borderRadius: 6,
+  collapseHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  collapseCountBadge: {
+    backgroundColor: '#FBEAF0',
+    borderRadius: 100,
+    paddingHorizontal: scale(10),
     paddingVertical: 3,
-    paddingHorizontal: 10,
   },
-  approvedBadgeText: {
+  collapseCountText: {
     fontSize: moderateScale(11),
-    fontWeight: '600',
-    color: '#28A745',
+    fontWeight: '700',
+    color: '#993556',
   },
-  eyeBtn: {
-    padding: 4,
+  collapseHeaderLabel: {
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: COLORS.dark,
+  },
+  collapseListDivider: {
+    height: 0.5,
+    backgroundColor: COLORS.border,
   },
 
-  // check out button inside visitor card
-  checkoutBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: verticalScale(4),
-    paddingHorizontal: scale(12),
+  // ── visitor row (inside collapsible) ─────────────────────────────────────
+  visitorRow: {
+    backgroundColor: COLORS.card,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(14),
   },
-  checkoutBtnText: {
-    color: '#FFFFFF',
-    fontSize: moderateScale(11),
-    fontWeight: '600',
+  visitorRowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: COLORS.border,
   },
-
-  visitorName: {
+  visitorRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(10),
+    marginBottom: verticalScale(12),
+  },
+  visitorAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FBEAF0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  visitorAvatarText: {
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    color: '#993556',
+  },
+  visitorRowTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  visitorRowName: {
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: COLORS.dark,
-    marginBottom: verticalScale(2),
-  },
-
-  // purpose line shown under visitor name
-  visitorPurpose: {
-    fontSize: moderateScale(12),
-    color: COLORS.muted,
+    lineHeight: moderateScale(20),
     marginBottom: verticalScale(4),
   },
-
-  visitorDateRow: {
+  visitorContactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
-  visitorDate: {
+  visitorContactText: {
     fontSize: moderateScale(12),
-    color: COLORS.primary,
-    fontWeight: '500',
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+  visitorRowBadge: {
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: scale(9),
+    flexShrink: 0,
+  },
+  visitorRowBadgeText: {
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+  },
+  visitorDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
+  visitorDetailItem: {
+    width: '48%',
+    minHeight: verticalScale(52),
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(7),
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: '#F0DDE5',
+    borderRadius: 10,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(9),
+  },
+  visitorDetailTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  visitorDetailLabel: {
+    fontSize: moderateScale(10),
+    color: COLORS.muted,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  visitorDetailValue: {
+    fontSize: moderateScale(12),
+    color: COLORS.dark,
+    fontWeight: '700',
+    lineHeight: moderateScale(16),
   },
 
   // ── register form section ─────────────────────────────────────────────────
@@ -215,7 +313,7 @@ export default StyleSheet.create({
     marginBottom: verticalScale(12),
   },
 
-  // ── text inputs — pink border ─────────────────────────────────────────────
+  // ── text inputs ───────────────────────────────────────────────────────────
   input: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
@@ -228,7 +326,7 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── dropdown trigger — pink border ────────────────────────────────────────
+  // ── dropdown trigger ──────────────────────────────────────────────────────
   pickerWrapper: {
     backgroundColor: COLORS.bg,
     borderRadius: 10,
@@ -249,11 +347,7 @@ export default StyleSheet.create({
     color: COLORS.dark,
   },
 
-  // ── dropdown list
-  // NOTE: overflow is NOT set to 'hidden' here — that kills nestedScrollEnabled
-  // on Android. The maxHeight + borderRadius give the rounded clipped look
-  // without breaking the inner ScrollView.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── dropdown list ─────────────────────────────────────────────────────────
   dropdownList: {
     backgroundColor: COLORS.card,
     borderRadius: 10,

@@ -78,6 +78,55 @@ export default StyleSheet.create({
     color: COLORS.primary,
   },
 
+  // ── tab bar ───────────────────────────────────────────────────────────────
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: scale(20),
+    marginBottom: verticalScale(14),
+    backgroundColor: '#F0EDF5',
+    borderRadius: 12,
+    padding: 4,
+    position: 'relative',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    width: '50%',
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: verticalScale(9),
+    gap: 5,
+    zIndex: 1,
+  },
+  tabIcon: {
+    // icon sits inline with label
+  },
+  tabLabel: {
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: COLORS.muted,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+  },
+
+  // ── tab content wrapper ───────────────────────────────────────────────────
+  tabContentWrapper: {
+    flex: 1,
+  },
+
   // ── loading / empty ───────────────────────────────────────────────────────
   loadingContainer: {
     flex: 1,
@@ -245,32 +294,56 @@ export default StyleSheet.create({
     overflow: 'hidden',
     marginBottom: verticalScale(20),
   },
+  historyRowWrapper: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EEF3',
+  },
+  historyRowWrapperLast: {
+    borderBottomWidth: 0,
+  },
   historyRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: verticalScale(12),
     paddingHorizontal: scale(14),
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5EEF3',
   },
-  historyRowLast: {
-    borderBottomWidth: 0,
+  historyRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  historyIconCircle: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyMonth: {
     fontSize: moderateScale(13),
     color: COLORS.dark,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginBottom: 2,
   },
   historyRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  historyArrowButton: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyAmount: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: COLORS.dark,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   historyBadge: {
     flexDirection: 'row',
@@ -278,15 +351,114 @@ export default StyleSheet.create({
     gap: 4,
   },
   historyBadgeDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: COLORS.success,
   },
   historyBadgeText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     color: COLORS.success,
     fontWeight: '600',
+  },
+  // dropdown
+  historyDropdown: {
+    overflow: 'hidden',
+    backgroundColor: COLORS.card,
+  },
+  historyDropdownInner: {
+    marginHorizontal: scale(12),
+    marginBottom: verticalScale(12),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
+    gap: verticalScale(10),
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.lightPink,
+  },
+  transactionTitle: {
+    textAlign: 'center',
+    fontSize: moderateScale(18),
+    color: COLORS.primary,
+    fontWeight: '800',
+    marginBottom: verticalScale(6),
+  },
+  historyDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: scale(12),
+  },
+  historyDetailRowStrong: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: scale(12),
+    marginBottom: verticalScale(4),
+  },
+  historyDetailLabel: {
+    fontSize: moderateScale(13),
+    color: COLORS.dark,
+    fontWeight: '600',
+    flex: 0.8,
+  },
+  historyDetailValue: {
+    fontSize: moderateScale(13),
+    color: COLORS.darkText,
+    fontWeight: '700',
+    textAlign: 'right',
+    flex: 1.25,
+    flexShrink: 1,
+  },
+  historyDetailLabelStrong: {
+    fontSize: moderateScale(14),
+    color: COLORS.dark,
+    fontWeight: '800',
+    flex: 0.8,
+  },
+  historyDetailValueStrong: {
+    fontSize: moderateScale(14),
+    color: COLORS.darkText,
+    fontWeight: '800',
+    textAlign: 'right',
+    flex: 1.35,
+    flexShrink: 1,
+  },
+  historyDetailDivider: {
+    height: 1,
+    backgroundColor: COLORS.primaryLight,
+    marginTop: verticalScale(4),
+  },
+  historyAmountPaidRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: scale(12),
+    marginTop: verticalScale(2),
+  },
+  historyAmountPaidLabel: {
+    flex: 1,
+    fontSize: moderateScale(15),
+    color: COLORS.dark,
+    fontWeight: '800',
+  },
+  historyAmountPaidValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: scale(8),
+    flex: 1,
+  },
+  historyPesoSymbol: {
+    fontSize: moderateScale(17),
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  historyAmountPaidValue: {
+    fontSize: moderateScale(17),
+    color: COLORS.darkText,
+    fontWeight: '800',
   },
 
   // ── pay bill button ───────────────────────────────────────────────────────

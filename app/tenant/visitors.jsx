@@ -13,6 +13,7 @@ import {
     Platform,
     Alert,
     Modal,
+    Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,27 +49,37 @@ const PURPOSE_OPTIONS = [
     'Others',
 ];
 
-// ── Status badge color map ────────────────────────────────────────────────────
 const STATUS_STYLE = {
-    approved: { bg: '#D4EDDA', text: '#28A745' },
-    pending: { bg: '#FFF3CD', text: '#D4A017' },
-    inside: { bg: '#CCE5FF', text: '#004085' },
+    approved: { bg: '#D4EDDA', text: '#1A6B32' },
+    pending: { bg: '#FFF3CD', text: '#8A6200' },
+    inside: { bg: '#CCE5FF', text: '#003E80' },
     rejected: { bg: '#F8D7DA', text: '#721C24' },
-    completed: { bg: '#E2E3E5', text: '#383D41' },
+    completed: { bg: '#E2E3E5', text: '#3C3F42' },
 };
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
 const formatDisplayDate = (d) =>
     d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-
 const formatSQLDate = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 const formatDisplayTime = (d) =>
     d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
 const formatSQLTime = (d) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
+
+// ── Short date for list rows (e.g. "Jun 4")
+const formatShortDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const formatVisitorTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours = '0', minutes = '0'] = String(timeStr).split(':');
+    const d = new Date();
+    d.setHours(Number(hours), Number(minutes), 0, 0);
+    return formatDisplayTime(d);
+};
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
@@ -95,70 +106,143 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Visitor Card ──────────────────────────────────────────────────────────────
-// Tenant can only VIEW their registered visitors — no checkout, no ID photo
-const VisitorCard = ({ item }) => {
-    const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
+// ── Initials helper ───────────────────────────────────────────────────────────
+const getInitials = (name = '') =>
+    name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+
+const VisitorDetail = ({ icon, label, value }) => {
+    if (!value) return null;
 
     return (
-        <View style={styles.visitorCard}>
+        <View style={styles.visitorDetailItem}>
+            <MaterialIcons name={icon} size={15} color={COLORS.primary} />
+            <View style={styles.visitorDetailTextWrap}>
+                <Text style={styles.visitorDetailLabel}>{label}</Text>
+                <Text style={styles.visitorDetailValue}>{value}</Text>
+            </View>
+        </View>
+    );
+};
 
-            {/* ── Status badge ── */}
-            <View style={styles.visitorCardTop}>
-                <View style={[styles.approvedBadge, { backgroundColor: s.bg }]}>
-                    <Text style={[styles.approvedBadgeText, { color: s.text }]}>
-                        {item.status
-                            ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
-                            : 'Pending'}
+// ── Compact Visitor Row ───────────────────────────────────────────────────────
+const VisitorRow = ({ item, isLast }) => {
+    const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
+    const statusLabel = item.status
+        ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
+        : 'Pending';
+
+    const visitDate = formatShortDate(item.date_of_visit);
+    const visitTime = formatVisitorTime(item.time_of_visit);
+
+    return (
+        <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
+            <View style={styles.visitorRowHeader}>
+                <View style={styles.visitorAvatar}>
+                    <Text style={styles.visitorAvatarText}>
+                        {getInitials(item.visitor_name)}
+                    </Text>
+                </View>
+
+                <View style={styles.visitorRowTitleWrap}>
+                    <Text style={styles.visitorRowName}>
+                        {item.visitor_name || 'Unnamed Visitor'}
+                    </Text>
+                    {!!item.contact_no && (
+                        <View style={styles.visitorContactRow}>
+                            <MaterialIcons name="phone" size={14} color={COLORS.muted} />
+                            <Text style={styles.visitorContactText}>{item.contact_no}</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
+                    <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
+                        {statusLabel}
                     </Text>
                 </View>
             </View>
 
-            {/* ── Visitor name ── */}
-            <Text style={styles.visitorName}>{item.visitor_name}</Text>
-
-            {/* ── Registered by tenant ── */}
-            {item.tenant_name ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons name="person-circle-outline" size={13} color={COLORS.muted} />
-                    <Text style={{ fontSize: 12, color: COLORS.muted }}>
-                        Registered by {item.tenant_name}
-                    </Text>
-                </View>
-            ) : null}
-
-            {/* ── Purpose ── */}
-            {item.purpose ? (
-                <Text style={styles.visitorPurpose}>{item.purpose}</Text>
-            ) : null}
-
-            {/* ── Date / time ── */}
-            <View style={styles.visitorDateRow}>
-                <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
-                <Text style={styles.visitorDate}>
-                    {item.date_of_visit}
-                    {item.time_of_visit ? `  ·  ${item.time_of_visit}` : ''}
-                </Text>
+            <View style={styles.visitorDetailsGrid}>
+                <VisitorDetail icon="event" label="Date" value={visitDate} />
+                <VisitorDetail icon="schedule" label="Time" value={visitTime} />
+                <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
+                <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
             </View>
+        </View>
+    );
+};
 
-            {/* ── ID type label only — no photo ── */}
-            {item.id_type ? (
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 5,
-                    marginTop: 8,
-                    paddingTop: 8,
-                    borderTopWidth: 1,
-                    borderTopColor: '#f0eaed',
-                }}>
-                    <Ionicons name="card-outline" size={14} color={COLORS.primary} />
-                    <Text style={{ fontSize: 12, color: COLORS.grayText, fontWeight: '500' }}>
-                        {item.id_type}
-                    </Text>
+// ── Collapsible Visitor List ──────────────────────────────────────────────────
+const CollapsibleVisitorList = ({ visitors }) => {
+    const [open, setOpen] = useState(true);
+    const animHeight = useRef(new Animated.Value(1)).current;
+    const animOpacity = useRef(new Animated.Value(1)).current;
+    const chevronAnim = useRef(new Animated.Value(1)).current;
+
+    const toggle = () => {
+        const toOpen = !open;
+        setOpen(toOpen);
+        Animated.parallel([
+            Animated.timing(animHeight, {
+                toValue: toOpen ? 1 : 0,
+                duration: 280,
+                useNativeDriver: false,
+            }),
+            Animated.timing(animOpacity, {
+                toValue: toOpen ? 1 : 0,
+                duration: 220,
+                useNativeDriver: false,
+            }),
+            Animated.timing(chevronAnim, {
+                toValue: toOpen ? 1 : 0,
+                duration: 260,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    };
+
+    const chevronRotate = chevronAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['180deg', '0deg'],
+    });
+
+    return (
+        <View style={styles.collapseContainer}>
+            <TouchableOpacity
+                style={styles.collapseHeader}
+                onPress={toggle}
+                activeOpacity={0.7}
+            >
+                <View style={styles.collapseHeaderLeft}>
+                    <View style={styles.collapseCountBadge}>
+                        <Text style={styles.collapseCountText}>
+                            {visitors.length} {visitors.length === 1 ? 'visitor' : 'visitors'}
+                        </Text>
+                    </View>
+                    <Text style={styles.collapseHeaderLabel}>All entries</Text>
                 </View>
-            ) : null}
+                <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+                    <MaterialIcons name="keyboard-arrow-up" size={20} color={COLORS.muted} />
+                </Animated.View>
+            </TouchableOpacity>
 
+            <Animated.View style={{
+                opacity: animOpacity,
+                maxHeight: animHeight.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 9999],
+                }),
+                overflow: 'hidden',
+            }}>
+                <View style={styles.collapseListDivider} />
+                {visitors.map((item, index) => (
+                    <VisitorRow
+                        key={item.id}
+                        item={item}
+                        isLast={index === visitors.length - 1}
+                    />
+                ))}
+            </Animated.View>
         </View>
     );
 };
@@ -210,7 +294,6 @@ export default function VisitorsScreen() {
     const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
-    // ── API data
     const [visitors, setVisitors] = useState([]);
     const [visitorsToday, setVisitorsToday] = useState(0);
     const [activePasses, setActivePasses] = useState(0);
@@ -218,7 +301,6 @@ export default function VisitorsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // ── Form state
     const [fullName, setFullName] = useState('');
     const [contactNo, setContactNo] = useState('');
     const [purpose, setPurpose] = useState('');
@@ -227,13 +309,11 @@ export default function VisitorsScreen() {
     const [idTypeOpen, setIdTypeOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
 
-    // ── Date & Time
     const [selectedDateTime, setSelectedDateTime] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [tempDateTime, setTempDateTime] = useState(new Date());
 
-    // ── Fetch visitors ────────────────────────────────────────────────────────
     const fetchVisitors = async () => {
         try {
             const res = await client.get('/visitors');
@@ -261,7 +341,6 @@ export default function VisitorsScreen() {
         fetchVisitors();
     }, []);
 
-    // ── Android pickers ───────────────────────────────────────────────────────
     const onAndroidDateChange = (event, date) => {
         setShowDatePicker(false);
         if (event.type === 'dismissed' || !date) return;
@@ -282,7 +361,6 @@ export default function VisitorsScreen() {
         });
     };
 
-    // ── iOS pickers ───────────────────────────────────────────────────────────
     const onIOSChange = (event, date) => { if (date) setTempDateTime(date); };
 
     const openDatePicker = () => {
@@ -313,7 +391,6 @@ export default function VisitorsScreen() {
         setShowTimePicker(false);
     };
 
-    // ── Image picker ──────────────────────────────────────────────────────────
     const handleUpload = async () => {
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -333,13 +410,11 @@ export default function VisitorsScreen() {
         }
     };
 
-    // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!fullName.trim()) {
             Alert.alert('Validation', 'Full name is required.');
             return;
         }
-
         setSubmitting(true);
         try {
             const formData = new FormData();
@@ -364,7 +439,6 @@ export default function VisitorsScreen() {
             setVisitors((prev) => [res.data.visitor, ...prev]);
             setVisitorsToday((prev) => prev + 1);
 
-            // Reset form
             setFullName('');
             setContactNo('');
             setPurpose('');
@@ -385,7 +459,6 @@ export default function VisitorsScreen() {
         }
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -395,7 +468,7 @@ export default function VisitorsScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={20}
             >
-                {/* ── Top Row ── */}
+                {/* Top Row */}
                 <View style={styles.topRow}>
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -414,7 +487,7 @@ export default function VisitorsScreen() {
                     </View>
                 </View>
 
-                {/* ── Header ── */}
+                {/* Header */}
                 <View style={styles.headerSection}>
                     <View style={styles.headerTitleRow}>
                         <View style={styles.headerIconBadge}>
@@ -425,7 +498,6 @@ export default function VisitorsScreen() {
                     <Text style={styles.headerSub}>Register and track your visitors</Text>
                 </View>
 
-                {/* ── Content ── */}
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -449,29 +521,40 @@ export default function VisitorsScreen() {
                             />
                         }
                     >
-                        {/* ── Stats ── */}
+                        {/* Stats */}
                         <View style={styles.statsRow}>
                             <View style={styles.statCard}>
-                                <Text style={styles.statLabel}>Visitors Today</Text>
+                                <View style={styles.statCardTop}>
+                                    <View style={[styles.statIconBadge, { backgroundColor: '#FBEAF0' }]}>
+                                        <Ionicons name="people-outline" size={17} color={COLORS.primary} />
+                                    </View>
+                                    <View style={[styles.statTrendBadge, { backgroundColor: '#E1F5EE' }]}>
+                                        <Text style={[styles.statTrendText, { color: '#0F6E56' }]}>today</Text>
+                                    </View>
+                                </View>
                                 <Text style={styles.statValue}>{visitorsToday}</Text>
+                                <Text style={styles.statLabel}>Visitors today</Text>
                             </View>
                             <View style={styles.statCard}>
-                                <Text style={styles.statLabel}>Active Passes</Text>
+                                <View style={styles.statCardTop}>
+                                    <View style={[styles.statIconBadge, { backgroundColor: '#E1F5EE' }]}>
+                                        <Ionicons name="card-outline" size={17} color="#0F6E56" />
+                                    </View>
+                                    <View style={[styles.statTrendBadge, { backgroundColor: '#F1EFE8' }]}>
+                                        <Text style={[styles.statTrendText, { color: '#5F5E5A' }]}>active</Text>
+                                    </View>
+                                </View>
                                 <Text style={styles.statValue}>{activePasses}</Text>
+                                <Text style={styles.statLabel}>Active passes</Text>
                             </View>
                         </View>
 
-                        {/* ── Registered Visitors ── */}
+                        {/* ── Registered Visitors (above the form) ── */}
                         <Text style={styles.sectionTitle}>Registered Visitors</Text>
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
                         ) : (
-                            visitors.map((item) => (
-                                <VisitorCard
-                                    key={item.id}
-                                    item={item}
-                                />
-                            ))
+                            <CollapsibleVisitorList visitors={visitors} />
                         )}
 
                         {/* ── Register New Visitor Form ── */}
@@ -494,7 +577,7 @@ export default function VisitorsScreen() {
                                 keyboardType="phone-pad"
                             />
 
-                            {/* Purpose of Visit */}
+                            {/* Purpose */}
                             <TouchableOpacity
                                 style={styles.pickerWrapper}
                                 activeOpacity={0.8}
@@ -509,28 +592,19 @@ export default function VisitorsScreen() {
                                     color={COLORS.muted}
                                 />
                             </TouchableOpacity>
-
                             {purposeOpen && (
                                 <View style={styles.dropdownList}>
                                     <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                                         {PURPOSE_OPTIONS.map((item) => (
                                             <TouchableOpacity
                                                 key={item}
-                                                style={[
-                                                    styles.dropdownListItem,
-                                                    purpose === item && styles.dropdownListItemActive,
-                                                ]}
+                                                style={[styles.dropdownListItem, purpose === item && styles.dropdownListItemActive]}
                                                 onPress={() => { setPurpose(item); setPurposeOpen(false); }}
                                             >
-                                                <Text style={[
-                                                    styles.dropdownListItemText,
-                                                    purpose === item && styles.dropdownListItemTextActive,
-                                                ]}>
+                                                <Text style={[styles.dropdownListItemText, purpose === item && styles.dropdownListItemTextActive]}>
                                                     {item}
                                                 </Text>
-                                                {purpose === item && (
-                                                    <MaterialIcons name="check" size={16} color={COLORS.primary} />
-                                                )}
+                                                {purpose === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -552,28 +626,19 @@ export default function VisitorsScreen() {
                                     color={COLORS.muted}
                                 />
                             </TouchableOpacity>
-
                             {idTypeOpen && (
                                 <View style={styles.dropdownList}>
                                     <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                                         {ID_TYPES.map((item) => (
                                             <TouchableOpacity
                                                 key={item}
-                                                style={[
-                                                    styles.dropdownListItem,
-                                                    idType === item && styles.dropdownListItemActive,
-                                                ]}
+                                                style={[styles.dropdownListItem, idType === item && styles.dropdownListItemActive]}
                                                 onPress={() => { setIdType(item); setIdTypeOpen(false); }}
                                             >
-                                                <Text style={[
-                                                    styles.dropdownListItemText,
-                                                    idType === item && styles.dropdownListItemTextActive,
-                                                ]}>
+                                                <Text style={[styles.dropdownListItemText, idType === item && styles.dropdownListItemTextActive]}>
                                                     {item}
                                                 </Text>
-                                                {idType === item && (
-                                                    <MaterialIcons name="check" size={16} color={COLORS.primary} />
-                                                )}
+                                                {idType === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -585,70 +650,37 @@ export default function VisitorsScreen() {
                                 <Text style={styles.uploadHint}>10 MB Maximum file size (.png / .jpg)</Text>
                                 <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
                                     <MaterialIcons name="upload" size={16} color={COLORS.dark} />
-                                    <Text
-                                        style={styles.uploadBtnText}
-                                        numberOfLines={1}
-                                        ellipsizeMode="middle"
-                                    >
-                                        {uploadedFile
-                                            ? uploadedFile.split('/').pop()
-                                            : 'Upload ID'}
+                                    <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
+                                        {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
 
-                            {/* ── Date & Time Row ── */}
+                            {/* Date & Time */}
                             <View style={styles.dateTimeRow}>
                                 <View style={[styles.dateTimeField, { flex: 1, marginRight: 8 }]}>
                                     <Text style={styles.dateTimeLabel}>Date of Visit</Text>
-                                    <TouchableOpacity
-                                        style={styles.dateTimeInput}
-                                        onPress={openDatePicker}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.dateTimeText}>
-                                            {formatDisplayDate(selectedDateTime)}
-                                        </Text>
+                                    <TouchableOpacity style={styles.dateTimeInput} onPress={openDatePicker} activeOpacity={0.7}>
+                                        <Text style={styles.dateTimeText}>{formatDisplayDate(selectedDateTime)}</Text>
                                         <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
                                     </TouchableOpacity>
                                 </View>
-
                                 <View style={[styles.dateTimeField, { flex: 1 }]}>
                                     <Text style={styles.dateTimeLabel}>Time of Visit</Text>
-                                    <TouchableOpacity
-                                        style={styles.dateTimeInput}
-                                        onPress={openTimePicker}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.dateTimeText}>
-                                            {formatDisplayTime(selectedDateTime)}
-                                        </Text>
+                                    <TouchableOpacity style={styles.dateTimeInput} onPress={openTimePicker} activeOpacity={0.7}>
+                                        <Text style={styles.dateTimeText}>{formatDisplayTime(selectedDateTime)}</Text>
                                         <MaterialIcons name="access-time" size={16} color={COLORS.primary} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
-                            {/* ── Android inline pickers ── */}
                             {Platform.OS === 'android' && showDatePicker && (
-                                <DateTimePicker
-                                    value={selectedDateTime}
-                                    mode="date"
-                                    display="default"
-                                    minimumDate={new Date()}
-                                    onChange={onAndroidDateChange}
-                                />
+                                <DateTimePicker value={selectedDateTime} mode="date" display="default" minimumDate={new Date()} onChange={onAndroidDateChange} />
                             )}
                             {Platform.OS === 'android' && showTimePicker && (
-                                <DateTimePicker
-                                    value={selectedDateTime}
-                                    mode="time"
-                                    display="default"
-                                    is24Hour={false}
-                                    onChange={onAndroidTimeChange}
-                                />
+                                <DateTimePicker value={selectedDateTime} mode="time" display="default" is24Hour={false} onChange={onAndroidTimeChange} />
                             )}
 
-                            {/* Submit */}
                             <TouchableOpacity
                                 style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
                                 activeOpacity={0.85}
@@ -661,15 +693,14 @@ export default function VisitorsScreen() {
                                 }
                             </TouchableOpacity>
                         </View>
+
+
                     </ScrollView>
                 )}
             </KeyboardAvoidingView>
 
-            {/* ── Bottom Nav ── */}
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
+            {/* Bottom Nav */}
+            <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" isActive={true} onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
@@ -677,31 +708,14 @@ export default function VisitorsScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* ── Drawer ── */}
             <DrawerMenu ref={drawerRef} />
 
-            {/* ── iOS Date Picker Modal ── */}
             {Platform.OS === 'ios' && (
-                <IOSPickerModal
-                    visible={showDatePicker}
-                    mode="date"
-                    value={tempDateTime}
-                    onChange={onIOSChange}
-                    onDone={confirmIOSDate}
-                />
+                <IOSPickerModal visible={showDatePicker} mode="date" value={tempDateTime} onChange={onIOSChange} onDone={confirmIOSDate} />
             )}
-
-            {/* ── iOS Time Picker Modal ── */}
             {Platform.OS === 'ios' && (
-                <IOSPickerModal
-                    visible={showTimePicker}
-                    mode="time"
-                    value={tempDateTime}
-                    onChange={onIOSChange}
-                    onDone={confirmIOSTime}
-                />
+                <IOSPickerModal visible={showTimePicker} mode="time" value={tempDateTime} onChange={onIOSChange} onDone={confirmIOSTime} />
             )}
-
         </SafeAreaView>
     );
 }

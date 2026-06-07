@@ -15,7 +15,10 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Asset } from 'expo-asset';
+import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import styles from '../../src/constants/payment-detailstyles';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 import { COLORS } from '../../src/constants/colors';
@@ -32,6 +35,11 @@ const QR_IMAGES = {
     gcash: require('../../assets/qr_gcash.jpg'),
     maya: require('../../assets/qr_maya.png'),
     bank: require('../../assets/qr_bank.png'),
+};
+const QR_FILE_NAMES = {
+    gcash: 'dormease-gcash-qr.jpg',
+    maya: 'dormease-maya-qr.png',
+    bank: 'dormease-bank-qr.png',
 };
 
 const QR_HINTS = {
@@ -92,6 +100,7 @@ export default function PaymentDetailScreen() {
     const [refNumber, setRefNumber] = useState('');
     const [refFocused, setRefFocused] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [downloadingQr, setDownloadingQr] = useState(false);
 
     // ── Upload proof of payment ───────────────────────────────────────────────
     const handleUploadProof = async () => {
@@ -109,6 +118,45 @@ export default function PaymentDetailScreen() {
             if (!result.canceled) setProofUri(result.assets[0].uri);
         } catch (err) {
             console.error('upload proof error:', err);
+        }
+    };
+
+    const handleDownloadQr = async () => {
+        const qrImage = QR_IMAGES[paymentMethod];
+        const fileName = QR_FILE_NAMES[paymentMethod] ?? `dormease-${paymentMethod}-qr.png`;
+
+        if (!qrImage) {
+            Alert.alert('QR Not Available', 'No QR code is available for this payment method.');
+            return;
+        }
+
+        setDownloadingQr(true);
+        try {
+            const permission = await MediaLibrary.requestPermissionsAsync();
+            if (!permission.granted) {
+                Alert.alert('Permission Required', 'Please allow media access to save the QR code.');
+                return;
+            }
+
+            const asset = Asset.fromModule(qrImage);
+            await asset.downloadAsync();
+
+            const sourceUri = asset.localUri ?? asset.uri;
+            const sourceFile = new File(sourceUri);
+            const targetFile = new File(Paths.cache, fileName);
+
+            if (targetFile.exists) {
+                targetFile.delete();
+            }
+            sourceFile.copy(targetFile);
+            await MediaLibrary.saveToLibraryAsync(targetFile.uri);
+
+            Alert.alert('QR Downloaded', `${methodLabel} QR code was saved to your gallery.`);
+        } catch (err) {
+            console.error('download qr error:', err);
+            Alert.alert('Download Failed', 'Unable to save the QR code. Please try again.');
+        } finally {
+            setDownloadingQr(false);
         }
     };
 
@@ -212,6 +260,7 @@ export default function PaymentDetailScreen() {
                     ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
+                    automaticallyAdjustKeyboardInsets={true}
                 >
                     {/* ── Billing Summary ── */}
                     {billing && (
@@ -271,8 +320,17 @@ export default function PaymentDetailScreen() {
                                 <Text style={styles.stepTitle}>Step 1: Scan QR Code</Text>
                                 <View style={styles.qrCard}>
                                     {/* Download icon top-right */}
-                                    <TouchableOpacity style={styles.qrDownloadBtn}>
-                                        <Ionicons name="download-outline" size={20} color={COLORS.primary} />
+                                    <TouchableOpacity
+                                        style={styles.qrDownloadBtn}
+                                        onPress={handleDownloadQr}
+                                        disabled={downloadingQr}
+                                        activeOpacity={0.75}
+                                    >
+                                        {downloadingQr ? (
+                                            <ActivityIndicator size="small" color={COLORS.primary} />
+                                        ) : (
+                                            <Ionicons name="download-outline" size={20} color={COLORS.primary} />
+                                        )}
                                     </TouchableOpacity>
                                     <Image
                                         source={QR_IMAGES[paymentMethod]}
@@ -330,8 +388,7 @@ export default function PaymentDetailScreen() {
                                     onChangeText={setRefNumber}
                                     onFocus={() => setRefFocused(true)}
                                     onBlur={() => setRefFocused(false)}
-                                    keyboardType="default"
-                                    autoCapitalize="characters"
+                                    keyboardType="phone-pad"
                                 />
                             </View>
                         </>

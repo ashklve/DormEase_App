@@ -83,12 +83,17 @@ const FilterChip = ({ label, active, onPress }) => (
             {
                 backgroundColor: active ? COLORS.primary : COLORS.card,
                 borderColor: active ? COLORS.primary : COLORS.border,
+                minWidth: 70,
+                alignItems: 'center',
             },
         ]}
         onPress={onPress}
         activeOpacity={0.75}
     >
-        <Text style={[styles.filterChipText, { color: active ? COLORS.white : COLORS.muted }]}>
+        <Text style={[
+            styles.filterChipText,
+            { color: active ? COLORS.white : COLORS.dark }
+        ]}>
             {label}
         </Text>
     </TouchableOpacity>
@@ -327,24 +332,48 @@ export default function TenantRecordsScreen() {
                     ))}
                 </View>
             )}
-
-            {/* filter chips */}
-            {!loading && records.length > 0 && (
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
-                >
-                    {FILTERS.map(f => (
-                        <FilterChip
-                            key={f.key}
-                            label={f.label}
-                            active={activeFilter === f.key}
-                            onPress={() => setActiveFilter(f.key)}
-                        />
-                    ))}
-                </ScrollView>
-            )}
+                    {/* filter chips */}
+                    {!loading && records.length > 0 && (
+                        <View style={{ height: 44, marginBottom: 8 }}>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{
+                                    paddingHorizontal: 20,
+                                    alignItems: 'center',
+                                    flexDirection: 'row',
+                                }}
+                            >
+                                {FILTERS.map(f => (
+                                    <TouchableOpacity
+                                        key={f.key}
+                                        onPress={() => setActiveFilter(f.key)}
+                                        activeOpacity={0.75}
+                                        style={{
+                                            height: 34,
+                                            paddingHorizontal: 16,
+                                            borderRadius: 20,
+                                            borderWidth: 1.5,
+                                            marginRight: 8,
+                                            flexShrink: 0,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            backgroundColor: activeFilter === f.key ? COLORS.primary : COLORS.card,
+                                            borderColor: activeFilter === f.key ? COLORS.primary : COLORS.border,
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 12,
+                                            fontWeight: '600',
+                                            color: activeFilter === f.key ? COLORS.white : COLORS.dark,
+                                        }}>
+                                            {f.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
 
             {/* body */}
             {loading ? (
