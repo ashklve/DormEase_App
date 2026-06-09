@@ -17,7 +17,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router';
 import styles from '../../src/constants/water-billstyles';
 import { COLORS } from '../../src/constants/colors';
-import DrawerMenu from '../../src/components/DrawerMenu';
+import { clearSession } from '../../api/auth';
+import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -25,7 +26,6 @@ import NotificationBell from '../../src/components/NotificationBell';
 const defaultPhoto = require('../../assets/def_icon.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -50,7 +50,6 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
     paid: { dot: '#28A745', text: '#28A745' },
     unpaid: { dot: '#DC3545', text: '#DC3545' },
@@ -62,7 +61,6 @@ const STATUS_COLORS = {
 const StatusBadge = ({ status }) => {
     const key = status?.toLowerCase() ?? 'unpaid';
     const colors = STATUS_COLORS[key] ?? STATUS_COLORS.unpaid;
-
     return (
         <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: colors.dot }]} />
@@ -71,7 +69,6 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-// ── Breakdown Row ─────────────────────────────────────────────────────────────
 const BreakdownRow = ({ label, value, accent, isLast }) => (
     <View style={[styles.breakdownRow, isLast && styles.breakdownRowLast]}>
         <Text style={styles.breakdownLabel}>{label}</Text>
@@ -94,29 +91,18 @@ const formatPaymentMethod = (method) => {
     return labels[key] ?? method;
 };
 
-// ── History Row (expandable) ──────────────────────────────────────────────────
-const HistoryRow = ({
-    month,
-    amount,
-    status,
-    referenceNo,
-    paymentDate,
-    paymentMethod,
-    isLast,
-}) => {
+const HistoryRow = ({ month, amount, status, referenceNo, paymentDate, paymentMethod, isLast }) => {
     const [expanded, setExpanded] = useState(false);
     const detailAnim = useRef(new Animated.Value(0)).current;
 
     const toggle = () => {
         setExpanded((current) => {
             const next = !current;
-
             Animated.timing(detailAnim, {
                 toValue: next ? 1 : 0,
                 duration: 260,
                 useNativeDriver: false,
             }).start();
-
             return next;
         });
     };
@@ -124,24 +110,14 @@ const HistoryRow = ({
     const key = status?.toLowerCase() ?? 'unpaid';
     const colors = STATUS_COLORS[key] ?? STATUS_COLORS.unpaid;
     const fallbackText = 'Not available';
-    const dropdownMaxHeight = detailAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 260],
-    });
-    const dropdownOpacity = detailAnim.interpolate({
-        inputRange: [0, 0.25, 1],
-        outputRange: [0, 0, 1],
-    });
-    const dropdownTranslateY = detailAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-8, 0],
-    });
+
+    const dropdownMaxHeight = detailAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 260] });
+    const dropdownOpacity = detailAnim.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0, 1] });
+    const dropdownTranslateY = detailAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] });
 
     return (
         <View style={[styles.historyRowWrapper, isLast && styles.historyRowWrapperLast]}>
-            {/* Main row */}
             <View style={styles.historyRow}>
-                {/* Left: icon + month */}
                 <View style={styles.historyRowLeft}>
                     <View style={styles.historyIconCircle}>
                         <MaterialIcons name="receipt-long" size={18} color={COLORS.white} />
@@ -150,22 +126,16 @@ const HistoryRow = ({
                         <Text style={styles.historyMonth}>{month}</Text>
                         <View style={styles.historyBadge}>
                             <View style={[styles.historyBadgeDot, { backgroundColor: colors.dot }]} />
-                            <Text style={[styles.historyBadgeText, { color: colors.text }]}>
-                                {status}
-                            </Text>
+                            <Text style={[styles.historyBadgeText, { color: colors.text }]}>{status}</Text>
                         </View>
                     </View>
                 </View>
-
-                {/* Right: amount + arrow */}
                 <View style={styles.historyRight}>
                     <Text style={styles.historyAmount}>{amount}</Text>
                     <TouchableOpacity
                         style={styles.historyArrowButton}
                         onPress={toggle}
                         activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={expanded ? 'Hide transaction details' : 'Show transaction details'}
                     >
                         <MaterialIcons
                             name={expanded ? 'keyboard-arrow-down' : 'chevron-right'}
@@ -176,26 +146,13 @@ const HistoryRow = ({
                 </View>
             </View>
 
-            {/* Dropdown details */}
             <Animated.View style={[styles.historyDropdown, { maxHeight: dropdownMaxHeight }]}>
-                <Animated.View
-                    style={[
-                        styles.historyDropdownInner,
-                        {
-                            opacity: dropdownOpacity,
-                            transform: [{ translateY: dropdownTranslateY }],
-                        },
-                    ]}
-                >
+                <Animated.View style={[styles.historyDropdownInner, { opacity: dropdownOpacity, transform: [{ translateY: dropdownTranslateY }] }]}>
                     <Text style={styles.transactionTitle}>Transaction Details</Text>
-
                     <View style={styles.historyDetailRowStrong}>
                         <Text style={styles.historyDetailLabelStrong}>Reference No.</Text>
-                        <Text style={styles.historyDetailValueStrong}>
-                            {referenceNo ?? fallbackText}
-                        </Text>
+                        <Text style={styles.historyDetailValueStrong}>{referenceNo ?? fallbackText}</Text>
                     </View>
-
                     <View style={styles.historyDetailRow}>
                         <Text style={styles.historyDetailLabel}>Payment Date</Text>
                         <Text style={styles.historyDetailValue}>{paymentDate ?? fallbackText}</Text>
@@ -204,16 +161,12 @@ const HistoryRow = ({
                         <Text style={styles.historyDetailLabel}>Payment Mode</Text>
                         <Text style={styles.historyDetailValue}>{paymentMethod ?? fallbackText}</Text>
                     </View>
-
                     <View style={styles.historyDetailDivider} />
-
                     <View style={styles.historyAmountPaidRow}>
                         <Text style={styles.historyAmountPaidLabel}>Amount Paid</Text>
                         <View style={styles.historyAmountPaidValueWrap}>
                             <Text style={styles.historyPesoSymbol}>₱</Text>
-                            <Text style={styles.historyAmountPaidValue}>
-                                {String(amount).replace('₱', '')}
-                            </Text>
+                            <Text style={styles.historyAmountPaidValue}>{String(amount).replace('₱', '')}</Text>
                         </View>
                     </View>
                 </Animated.View>
@@ -222,123 +175,90 @@ const HistoryRow = ({
     );
 };
 
-// ── Tab Bar ───────────────────────────────────────────────────────────────────
 const TabBar = ({ activeTab, onTabChange, indicatorAnim }) => {
-    const indicatorLeft = indicatorAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0%', '50%'],
-    });
-
+    const indicatorLeft = indicatorAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
     return (
         <View style={styles.tabBar}>
-            {/* Animated sliding indicator */}
             <Animated.View style={[styles.tabIndicator, { left: indicatorLeft }]} />
-
-            <TouchableOpacity
-                style={styles.tabItem}
-                onPress={() => onTabChange(0)}
-                activeOpacity={0.8}
-            >
-                <MaterialIcons
-                    name="receipt"
-                    size={16}
-                    color={activeTab === 0 ? COLORS.primary : COLORS.muted}
-                    style={styles.tabIcon}
-                />
-                <Text style={[styles.tabLabel, activeTab === 0 && styles.tabLabelActive]}>
-                    Bills
-                </Text>
+            <TouchableOpacity style={styles.tabItem} onPress={() => onTabChange(0)} activeOpacity={0.8}>
+                <MaterialIcons name="receipt" size={16} color={activeTab === 0 ? COLORS.primary : COLORS.muted} style={styles.tabIcon} />
+                <Text style={[styles.tabLabel, activeTab === 0 && styles.tabLabelActive]}>Bills</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.tabItem}
-                onPress={() => onTabChange(1)}
-                activeOpacity={0.8}
-            >
-                <MaterialIcons
-                    name="history"
-                    size={16}
-                    color={activeTab === 1 ? COLORS.primary : COLORS.muted}
-                    style={styles.tabIcon}
-                />
-                <Text style={[styles.tabLabel, activeTab === 1 && styles.tabLabelActive]}>
-                    Payment History
-                </Text>
+            <TouchableOpacity style={styles.tabItem} onPress={() => onTabChange(1)} activeOpacity={0.8}>
+                <MaterialIcons name="history" size={16} color={activeTab === 1 ? COLORS.primary : COLORS.muted} style={styles.tabIcon} />
+                <Text style={[styles.tabLabel, activeTab === 1 && styles.tabLabelActive]}>Payment History</Text>
             </TouchableOpacity>
         </View>
     );
 };
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
+    <TouchableOpacity style={styles.drawerItem} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.drawerItemLeft}>
+            {iconLib === 'MaterialIcons'
+                ? <MaterialIcons name={iconName} size={20} color={COLORS.white} />
+                : <Ionicons name={iconName} size={20} color={COLORS.white} />
+            }
+            <Text style={styles.drawerItemText}>{label}</Text>
+        </View>
+        {hasChevron && <Ionicons name="chevron-forward" size={18} color={COLORS.white} />}
+    </TouchableOpacity>
+);
+
 export default function WaterBillScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
-    const drawerRef = useRef(null);
+
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [documentsExpanded, setDocumentsExpanded] = useState(false);
+    const drawerAnim = useRef(new Animated.Value(-400)).current;
+
+    const openDrawer = () => {
+        setDrawerOpen(true);
+        Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+    };
+    const closeDrawer = () => {
+        Animated.timing(drawerAnim, { toValue: -400, duration: 250, useNativeDriver: true })
+            .start(() => setDrawerOpen(false));
+    };
+    const drawerNavigate = (route) => { closeDrawer(); router.push(route); };
+
+    const username = user
+        ? '@' + `${user.first_name ?? ''}${user.last_name ?? ''}`.replace(/\s+/g, '').toLowerCase()
+        : '';
+    const roomCode = user?.room_number ? `R${user.room_number}-01` : '';
+    const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
 
-    // Animated values for tab transitions
     const indicatorAnim = useRef(new Animated.Value(0)).current;
     const contentOpacity = useRef(new Animated.Value(1)).current;
     const contentTranslateX = useRef(new Animated.Value(0)).current;
 
-    // Billing data state
     const [billing, setBilling] = useState(null);
     const [breakdown, setBreakdown] = useState(null);
     const [history, setHistory] = useState([]);
 
-    // ── Tab change handler ────────────────────────────────────────────────────
     const handleTabChange = (index) => {
         if (index === activeTab) return;
-
         const direction = index > activeTab ? 1 : -1;
-
-        // Fade + slide out current content
         Animated.parallel([
-            Animated.timing(contentOpacity, {
-                toValue: 0,
-                duration: 120,
-                useNativeDriver: true,
-            }),
-            Animated.timing(contentTranslateX, {
-                toValue: -direction * 24,
-                duration: 120,
-                useNativeDriver: true,
-            }),
+            Animated.timing(contentOpacity, { toValue: 0, duration: 120, useNativeDriver: true }),
+            Animated.timing(contentTranslateX, { toValue: -direction * 24, duration: 120, useNativeDriver: true }),
         ]).start(() => {
             setActiveTab(index);
-
-            // Reset position for incoming content
             contentTranslateX.setValue(direction * 24);
-
-            // Slide indicator
-            Animated.spring(indicatorAnim, {
-                toValue: index,
-                useNativeDriver: false,
-                tension: 60,
-                friction: 10,
-            }).start();
-
-            // Fade + slide in new content
+            Animated.spring(indicatorAnim, { toValue: index, useNativeDriver: false, tension: 60, friction: 10 }).start();
             Animated.parallel([
-                Animated.timing(contentOpacity, {
-                    toValue: 1,
-                    duration: 180,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(contentTranslateX, {
-                    toValue: 0,
-                    duration: 180,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(contentOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+                Animated.timing(contentTranslateX, { toValue: 0, duration: 180, useNativeDriver: true }),
             ]).start();
         });
     };
 
-    // ── Fetch water bill data ─────────────────────────────────────────────────
     const fetchWaterBill = async () => {
         try {
             const res = await client.get('/water-bill');
@@ -373,7 +293,8 @@ export default function WaterBillScreen() {
         fetchWaterBill();
     }, []);
 
-    // ── Pay Bill — navigate to bills-payment screen ──────────────────────────
+    const isUnpaid = ['unpaid', 'overdue'].includes(billing?.status?.toLowerCase());
+
     const handlePayBill = () => {
         if (!billing || !isUnpaid) return;
         router.push({
@@ -385,19 +306,12 @@ export default function WaterBillScreen() {
         });
     };
 
-    const isUnpaid = ['unpaid', 'overdue'].includes(billing?.status?.toLowerCase());
-
-    // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* ── Top Row ── */}
             <View style={styles.topRow}>
-                <TouchableOpacity
-                    style={styles.backBtn}
-                    onPress={() => drawerRef.current?.open()}
-                >
+                <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
@@ -411,7 +325,6 @@ export default function WaterBillScreen() {
                 </View>
             </View>
 
-            {/* ── Header ── */}
             <View style={styles.headerSection}>
                 <View style={styles.headerTitleRow}>
                     <View style={styles.headerIconBadge}>
@@ -422,81 +335,44 @@ export default function WaterBillScreen() {
                 <Text style={styles.headerSub}>View your current share and payment status</Text>
             </View>
 
-            {/* ── Tab Bar ── */}
-            <TabBar
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                indicatorAnim={indicatorAnim}
-            />
+            <TabBar activeTab={activeTab} onTabChange={handleTabChange} indicatorAnim={indicatorAnim} />
 
-            {/* ── Content ── */}
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
             ) : (
-                <Animated.View
-                    style={[
-                        styles.tabContentWrapper,
-                        {
-                            opacity: contentOpacity,
-                            transform: [{ translateX: contentTranslateX }],
-                        },
-                    ]}
-                >
+                <Animated.View style={[styles.tabContentWrapper, { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] }]}>
                     <ScrollView
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={[
-                            styles.scrollContent,
-                            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-                        ]}
+                        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
                         refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[COLORS.primary]}
-                                tintColor={COLORS.primary}
-                            />
+                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
                         }
                     >
-                        {/* ── TAB 0: Bills ── */}
                         {activeTab === 0 && (
                             <>
-                                {/* Current Billing Card */}
                                 {billing ? (
                                     <View style={styles.billingCard}>
                                         <View style={styles.billingCardHeader}>
-                                            <Text style={styles.billingCardLabel}>
-                                                Current Billing
-                                            </Text>
+                                            <Text style={styles.billingCardLabel}>Current Billing</Text>
                                             {billing.as_of ? (
-                                                <Text style={styles.billingCardDate}>
-                                                    as of {billing.as_of}
-                                                </Text>
+                                                <Text style={styles.billingCardDate}>as of {billing.as_of}</Text>
                                             ) : null}
                                         </View>
-
                                         <View style={styles.billingRow}>
                                             <Text style={styles.billingRowLabel}>Amount Due:</Text>
-                                            <Text style={styles.billingAmountDue}>
-                                                ₱{billing.amount_due ?? '0.00'}
-                                            </Text>
+                                            <Text style={styles.billingAmountDue}>₱{billing.amount_due ?? '0.00'}</Text>
                                         </View>
-
                                         <View style={styles.billingRow}>
                                             <Text style={styles.billingRowLabel}>Due Date:</Text>
-                                            <Text style={styles.billingRowValue}>
-                                                {billing.due_date ?? '—'}
-                                            </Text>
+                                            <Text style={styles.billingRowValue}>{billing.due_date ?? '—'}</Text>
                                         </View>
-
                                         <View style={styles.billingDivider} />
-
                                         <View style={styles.statusRow}>
                                             <Text style={styles.statusLabel}>Status:</Text>
                                             <StatusBadge status={billing.status ?? 'Unpaid'} />
                                         </View>
-
                                         <Text style={styles.billingNote}>
                                             Based on floor consumption and shared usage.
                                         </Text>
@@ -505,64 +381,35 @@ export default function WaterBillScreen() {
                                     <Text style={styles.emptyText}>No current billing available.</Text>
                                 )}
 
-                                {/* Billing Breakdown */}
                                 {breakdown ? (
                                     <>
                                         <Text style={styles.sectionTitle}>Billing Breakdown</Text>
                                         <View style={styles.breakdownCard}>
-                                            <BreakdownRow
-                                                label="Floor Consumption"
-                                                value={`${breakdown.floor_consumption ?? '0'} m³`}
-                                            />
-                                            <BreakdownRow
-                                                label="Water Rate"
-                                                value={`₱${breakdown.water_rate ?? '0'} per m³`}
-                                            />
-                                            <BreakdownRow
-                                                label="Total Floor Bill"
-                                                value={`₱${breakdown.total_floor_bill ?? '0.00'}`}
-                                            />
-                                            <BreakdownRow
-                                                label="Rooms Sharing"
-                                                value={`${breakdown.rooms_sharing ?? '0'}`}
-                                            />
-                                            <BreakdownRow
-                                                label="Your Room Share"
-                                                value={`₱${breakdown.room_share ?? '0.00'}`}
-                                                accent
-                                            />
-                                            <BreakdownRow
-                                                label="Occupants in Room"
-                                                value={`${breakdown.occupants ?? '0'}`}
-                                                isLast
-                                            />
+                                            <BreakdownRow label="Floor Consumption" value={`${breakdown.floor_consumption ?? '0'} m³`} />
+                                            <BreakdownRow label="Water Rate" value={`₱${breakdown.water_rate ?? '0'} per m³`} />
+                                            <BreakdownRow label="Total Floor Bill" value={`₱${breakdown.total_floor_bill ?? '0.00'}`} />
+                                            <BreakdownRow label="Rooms Sharing" value={`${breakdown.rooms_sharing ?? '0'}`} />
+                                            <BreakdownRow label="Your Room Share" value={`₱${breakdown.room_share ?? '0.00'}`} accent />
+                                            <BreakdownRow label="Occupants in Room" value={`${breakdown.occupants ?? '0'}`} isLast />
                                         </View>
                                     </>
                                 ) : null}
 
-                                {/* Pay Bill Button */}
                                 {billing ? (
                                     <View style={styles.payBtnWrapper}>
                                         <TouchableOpacity
-                                            style={[
-                                                styles.payBtn,
-                                                !isUnpaid && styles.payBtnDisabled,
-                                                { alignSelf: 'center', width: '70%' },
-                                            ]}
+                                            style={[styles.payBtn, !isUnpaid && styles.payBtnDisabled, { alignSelf: 'center', width: '70%' }]}
                                             onPress={handlePayBill}
                                             disabled={!isUnpaid}
                                             activeOpacity={0.85}
                                         >
-                                            <Text style={styles.payBtnText}>
-                                                {isUnpaid ? 'Pay Bill' : 'Already Paid'}
-                                            </Text>
+                                            <Text style={styles.payBtnText}>{isUnpaid ? 'Pay Bill' : 'Already Paid'}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : null}
                             </>
                         )}
 
-                        {/* ── TAB 1: Payment History ── */}
                         {activeTab === 1 && (
                             <>
                                 {history.length > 0 ? (
@@ -575,35 +422,9 @@ export default function WaterBillScreen() {
                                                     month={item.month}
                                                     amount={`₱${item.amount}`}
                                                     status={item.status}
-                                                    referenceNo={firstAvailable(
-                                                        item.reference_no,
-                                                        item.reference_number,
-                                                        item.ref_no,
-                                                        item.transaction_reference,
-                                                        item.transaction_id,
-                                                        item.payment?.reference_no,
-                                                        item.payment?.reference_number
-                                                    )}
-                                                    paymentDate={firstAvailable(
-                                                        item.payment_date,
-                                                        item.date_paid,
-                                                        item.paid_at,
-                                                        item.transaction_date,
-                                                        item.created_at,
-                                                        item.payment?.payment_date,
-                                                        item.payment?.paid_at
-                                                    )}
-                                                    paymentMethod={formatPaymentMethod(
-                                                        firstAvailable(
-                                                            item.payment_method,
-                                                            item.method,
-                                                            item.payment_mode,
-                                                            item.payment_type,
-                                                            item.payment?.payment_method,
-                                                            item.payment?.method,
-                                                            item.payment?.payment_mode
-                                                        )
-                                                    )}
+                                                    referenceNo={firstAvailable(item.reference_no, item.reference_number, item.ref_no, item.transaction_reference, item.transaction_id, item.payment?.reference_no, item.payment?.reference_number)}
+                                                    paymentDate={firstAvailable(item.payment_date, item.date_paid, item.paid_at, item.transaction_date, item.created_at, item.payment?.payment_date, item.payment?.paid_at)}
+                                                    paymentMethod={formatPaymentMethod(firstAvailable(item.payment_method, item.method, item.payment_mode, item.payment_type, item.payment?.payment_method, item.payment?.method, item.payment?.payment_mode))}
                                                     isLast={index === history.length - 1}
                                                 />
                                             ))}
@@ -618,46 +439,76 @@ export default function WaterBillScreen() {
                 </Animated.View>
             )}
 
-            {/* ── Bottom Nav ── */}
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
-                <NavItem
-                    iconName="home"
-                    label="Home"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/dashboard')}
-                />
-                <NavItem
-                    iconName="person-outline"
-                    label="Visitor"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/visitors')}
-                />
-                <NavItem
-                    iconName="warning"
-                    label="Emergency"
-                    isCenter
-                    onPress={() => router.push('/tenant/emergency')}
-                />
-                <NavItem
-                    iconName="water-drop"
-                    label="Water Bill"
-                    isActive={true}
-                    onPress={() => router.push('/tenant/water-bill')}
-                />
-                <NavItem
-                    iconName="account-circle"
-                    label="Profile"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/profile')}
-                />
+            <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+                <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
+                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
+                <NavItem iconName="water-drop" label="Water Bill" isActive={true} onPress={() => router.push('/tenant/water-bill')} />
+                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* ── Drawer ── */}
-            <DrawerMenu ref={drawerRef} />
+            {drawerOpen && (
+                <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={closeDrawer} />
+            )}
 
+            <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
+                <View style={styles.drawerTop}>
+                    <Image source={photoSource} style={styles.drawerAvatar} />
+                    <Text style={styles.drawerUsername}>{username}</Text>
+                    <Text style={styles.drawerRoom}>{roomCode}</Text>
+                </View>
+
+                <TouchableOpacity style={styles.drawerCloseBtn} onPress={closeDrawer}>
+                    <Ionicons name="close" size={18} color={COLORS.white} />
+                </TouchableOpacity>
+
+                <View style={styles.drawerDivider} />
+
+                <DrawerItem iconName="home-outline" label="Dashboard" onPress={() => drawerNavigate('/tenant/dashboard')} />
+                <DrawerItem iconName="megaphone-outline" label="Announcements" onPress={() => drawerNavigate('/tenant/announcements')} />
+
+                <TouchableOpacity style={styles.drawerItem} onPress={() => setDocumentsExpanded(!documentsExpanded)} activeOpacity={0.7}>
+                    <View style={styles.drawerItemLeft}>
+                        <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
+                        <Text style={styles.drawerItemText}>Documents</Text>
+                    </View>
+                    <Ionicons name={documentsExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.white} />
+                </TouchableOpacity>
+                {documentsExpanded && (
+                    <>
+                        <TouchableOpacity style={styles.drawerSubItem} onPress={() => drawerNavigate('/tenant/documents')}>
+                            <Text style={styles.drawerSubItemText}>Document Request</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.drawerSubItem} onPress={() => drawerNavigate('/tenant/records')}>
+                            <Text style={styles.drawerSubItemText}>Tenant Records</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                <DrawerItem iconName="build" iconLib="MaterialIcons" label="Maintenance" onPress={() => drawerNavigate('/tenant/maintenance')} />
+                <DrawerItem iconName="warning-outline" label="Emergency" onPress={() => drawerNavigate('/tenant/emergency')} />
+                <DrawerItem iconName="people-outline" label="Visitor" onPress={() => drawerNavigate('/tenant/visitors')} />
+                <DrawerItem iconName="receipt-outline" label="Billing" onPress={() => drawerNavigate('/tenant/water-bill')} />
+                <DrawerItem iconName="settings-outline" label="Settings" onPress={() => drawerNavigate('/tenant/settings')} />
+
+                <View style={styles.drawerDivider} />
+
+                <TouchableOpacity
+                    style={styles.drawerLogout}
+                    onPress={async () => {
+                        closeDrawer();
+                        dashboardCache.loaded = false;
+                        dashboardCache.announcements = [];
+                        dashboardCache.currentBill = '0.00';
+                        dashboardCache.pendingRequests = 0;
+                        await clearSession();
+                        setTimeout(() => router.replace('/auth/login'), 260);
+                    }}
+                >
+                    <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
+                    <Text style={styles.drawerLogoutText}>Logout</Text>
+                </TouchableOpacity>
+            </Animated.View>
         </SafeAreaView>
     );
 }
