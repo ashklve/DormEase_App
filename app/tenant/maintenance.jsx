@@ -25,6 +25,7 @@ import {
     stop,
 } from 'react-native-vosk';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import client from '../../api/client';
 import styles, { COLORS } from '../../src/constants/maintenancestyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -303,16 +304,23 @@ export default function MaintenanceScreen() {
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
+            quality: 1,
             allowsEditing: false,
         });
 
         if (!result.canceled && result.assets?.length > 0) {
             const asset = result.assets[0];
+
+            const compressed = await ImageManipulator.manipulateAsync(
+                asset.uri,
+                [{ resize: { width: 1024 } }],
+                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
             setPhoto({
-                uri: asset.uri,
+                uri: compressed.uri,
                 fileName: asset.fileName ?? `photo_${Date.now()}.jpg`,
-                type: asset.mimeType ?? 'image/jpeg',
+                type: 'image/jpeg',
             });
         }
     };
