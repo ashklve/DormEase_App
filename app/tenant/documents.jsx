@@ -77,7 +77,7 @@ const DEFAULT_PURPOSE_OPTIONS = [
     'Others',
 ];
 
-// ── NavItem ───────────────────────────────────────────────────────────────────
+// nav item
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -102,7 +102,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Screen ────────────────────────────────────────────────────────────────────
+// ── Screen 
 export default function DocumentsScreen() {
     const router = useRouter();
     const { avatarUri } = useUser();
@@ -116,21 +116,19 @@ export default function DocumentsScreen() {
     const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false);
 
     // Form fields
-    const [fullName, setFullName] = useState('');
-    const [contactNo, setContactNo] = useState('');
-    const [roomNo, setRoomNo] = useState('');
-    const [purpose, setPurpose] = useState('');   // selected option label
-    const [purposeOther, setPurposeOther] = useState('');   // free-text when "Others"
-    const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [submitting, setSubmitting] = useState(false);
-    const [userInfo, setUserInfo] = useState(null);
+    const [fullName,        setFullName]        = useState('');
+    const [contactNo,       setContactNo]       = useState('');
+    const [roomNo,          setRoomNo]          = useState('');
+  
+    const [deliveryMethods, setDeliveryMethods] = useState(new Set(['digital']));
+    const [uploadedFile,    setUploadedFile]    = useState(null);
+    const [submitting,      setSubmitting]      = useState(false);
+    const [userInfo,        setUserInfo]        = useState(null);
 
     // Data state
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [docsLoading, setDocsLoading] = useState(true);
+    const [docsLoading,       setDocsLoading]       = useState(true);
 
-    // ── dropdownSections computed from state
     const dropdownSections = [
         {
             sectionLabel: 'Upload a Filled Form',
@@ -145,27 +143,36 @@ export default function DocumentsScreen() {
         {
             sectionLabel: 'Request a Certificate / Document',
             items: [
-                { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
-                { id: 'receipt_copy', label: 'Official Receipt Copy', category: CATEGORY.CERTIFICATE },
-                { id: 'lease_copy', label: 'Lease Contract Copy', category: CATEGORY.CERTIFICATE },
-                { id: 'clearance', label: 'Clearance Certificate', category: CATEGORY.CERTIFICATE },
-                { id: 'good_conduct', label: 'Good Conduct Certificate', category: CATEGORY.CERTIFICATE },
+                { id: 'cert_residency', label: 'Certificate of Residency',   category: CATEGORY.CERTIFICATE },
+                { id: 'lease_copy',     label: 'Lease Contract Copy',         category: CATEGORY.CERTIFICATE },
+                { id: 'receipt_copy',   label: 'Acknowledgement Receipt',     category: CATEGORY.CERTIFICATE },
             ],
         },
     ];
 
-    // ── Purpose options derived from selected certificate ─────────────────────
-    const purposeOptions =
-        selectedOption?.category === CATEGORY.CERTIFICATE
-            ? (PURPOSE_OPTIONS[selectedOption.id] ?? DEFAULT_PURPOSE_OPTIONS)
-            : [];
+    const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
+    const isForm        = selectedOption?.category === CATEGORY.FORM;
 
-    const isOtherPurpose = purpose === 'Others';
+    const resolvedPurpose = selectedPurpose === 'Other'
+        ? customPurpose
+        : (selectedPurpose ?? '');
 
-    // Final purpose value to submit (resolved free-text if "Others")
-    const resolvedPurpose = isOtherPurpose ? purposeOther.trim() : purpose;
+    // ── Toggle a delivery method on/off 
+    const toggleDeliveryMethod = (method) => {
+        setDeliveryMethods(prev => {
+            const next = new Set(prev);
+            if (next.has(method)) {
+                // Prevent deselecting the last option
+                if (next.size === 1) return prev;
+                next.delete(method);
+            } else {
+                next.add(method);
+            }
+            return next;
+        });
+    };
 
-    // ── Pre-fill from logged-in tenant profile ────────────────────────────────
+    // Pre-fill from logged-in tenant profile 
     useEffect(() => {
         client.get('/user').then((res) => {
             const u = res.data;
@@ -176,7 +183,7 @@ export default function DocumentsScreen() {
         }).catch(() => { });
     }, []);
 
-    // ── Fetch downloadable forms ──────────────────────────────────────────────
+    //  Fetch downloadable forms 
     useEffect(() => {
         const fetchForms = async () => {
             try {
@@ -192,10 +199,7 @@ export default function DocumentsScreen() {
         fetchForms();
     }, []);
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
-    const isForm = selectedOption?.category === CATEGORY.FORM;
-
+    //  Helpers 
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
             Alert.alert('Download Failed', `Could not open "${label}". Please try again.`)
@@ -220,10 +224,9 @@ export default function DocumentsScreen() {
         setSelectedOption(item);
         setDropdownOpen(false);
         setUploadedFile(null);
-        setPurpose('');
-        setPurposeOther('');
-        setPurposeDropdownOpen(false);
-        setDeliveryMethod('digital');
+        setSelectedPurpose(null);
+        setCustomPurpose('');
+        setDeliveryMethods(new Set(['digital']));
     };
 
     const handleSelectPurpose = (option) => {
@@ -257,22 +260,22 @@ export default function DocumentsScreen() {
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('full_name', fullName.trim());
-            formData.append('contact_no', contactNo.trim());
-            formData.append('room_no', roomNo.trim());
-            formData.append('request_type', selectedOption.id);
-            formData.append('request_label', selectedOption.label);
-            formData.append('document_type', selectedOption.label);
-            formData.append('category', selectedOption.category);
+            formData.append('full_name',      fullName.trim());
+            formData.append('contact_no',     contactNo.trim());
+            formData.append('room_no',        roomNo.trim());
+            formData.append('request_type',   selectedOption.id);
+            formData.append('request_label',  selectedOption.label);
+            formData.append('document_type',  selectedOption.label);
+            formData.append('category',       selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose', resolvedPurpose);
-                formData.append('delivery_method', deliveryMethod);
+                formData.append('purpose', resolvedPurpose.trim());
+                formData.append('delivery_method', [...deliveryMethods].join(','));
             }
 
             if (isForm && uploadedFile) {
                 formData.append('attachment', {
-                    uri: uploadedFile.uri,
+                    uri:  uploadedFile.uri,
                     name: uploadedFile.name,
                     type: uploadedFile.mimeType ?? 'application/pdf',
                 });
@@ -288,10 +291,9 @@ export default function DocumentsScreen() {
             setRoomNo(userInfo?.room_number ?? '');
             setSelectedOption(null);
             setUploadedFile(null);
-            setPurpose('');
-            setPurposeOther('');
-            setPurposeDropdownOpen(false);
-            setDeliveryMethod('digital');
+            setSelectedPurpose(null);
+            setCustomPurpose('');
+            setDeliveryMethods(new Set(['digital']));
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
         } catch (err) {
@@ -305,7 +307,39 @@ export default function DocumentsScreen() {
         }
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Checkbox row component 
+    const CheckboxRow = ({ method, label, sublabel, isLast }) => {
+        const checked = deliveryMethods.has(method);
+        return (
+            <TouchableOpacity
+                style={isLast ? styles.radioRowLast : styles.radioRow}
+                onPress={() => toggleDeliveryMethod(method)}
+                activeOpacity={0.7}
+            >
+                {/* Square checkbox */}
+                <View style={[
+                    styles.radioOuter,
+                    {
+                        borderRadius: 4,
+                        backgroundColor: checked ? COLORS.primary : 'transparent',
+                        borderColor: checked ? COLORS.primary : COLORS.muted,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }
+                ]}>
+                    {checked && (
+                        <MaterialIcons name="check" size={12} color={COLORS.white} />
+                    )}
+                </View>
+                <View>
+                    <Text style={styles.radioLabel}>{label}</Text>
+                    <Text style={styles.radioSub}>{sublabel}</Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    // Render 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -666,8 +700,7 @@ export default function DocumentsScreen() {
                                     </View>
                                 )}
 
-                                {/* ── "Others" free-text input ── */}
-                                {isOtherPurpose && (
+                                {selectedPurpose === 'Other' && (
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -682,36 +715,25 @@ export default function DocumentsScreen() {
                                     />
                                 )}
 
-                                {/* ── Delivery method ── */}
-                                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                                {/* delivery method */}
+                                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
                                     Preferred delivery method
                                 </Text>
+                                <Text style={[styles.radioSub, { marginBottom: 8, marginTop: -2 }]}>
+                                    You may select both options.
+                                </Text>
 
-                                <TouchableOpacity
-                                    style={styles.radioRow}
-                                    onPress={() => setDeliveryMethod('digital')}
-                                >
-                                    <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'digital' && <View style={styles.radioInner} />}
-                                    </View>
-                                    <View>
-                                        <Text style={styles.radioLabel}>Digital Copy (PDF)</Text>
-                                        <Text style={styles.radioSub}>Sent to your tenant records</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.radioRowLast}
-                                    onPress={() => setDeliveryMethod('printed')}
-                                >
-                                    <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'printed' && <View style={styles.radioInner} />}
-                                    </View>
-                                    <View>
-                                        <Text style={styles.radioLabel}>Printed Copy</Text>
-                                        <Text style={styles.radioSub}>Pick up at the admin office</Text>
-                                    </View>
-                                </TouchableOpacity>
+                                <CheckboxRow
+                                    method="digital"
+                                    label="Digital Copy (PDF)"
+                                    sublabel="Sent to your tenant records"
+                                />
+                                <CheckboxRow
+                                    method="printed"
+                                    label="Printed / Hard Copy"
+                                    sublabel="Pick up at the admin office"
+                                    isLast
+                                />
                             </>
                         )}
 
