@@ -20,6 +20,7 @@
         "NSMicrophoneUsageDescription": "DormEase uses your microphone to transcribe maintenance requests.",
         "NSPhotoLibraryUsageDescription": "DormEase needs photo library access to save QR codes and upload payment proofs.",
         "NSPhotoLibraryAddUsageDescription": "DormEase needs permission to save payment QR codes to your photo library.",
+        "NSCameraUsageDescription": "DormEase needs camera access to take photos of maintenance issues.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.dormease.app"
@@ -29,7 +30,9 @@
       "permissions": [
         "RECORD_AUDIO",
         "POST_NOTIFICATIONS",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/spicon.png",
@@ -63,7 +66,14 @@
         }
       ],
       "expo-asset",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "DormEase needs camera access to take photos of maintenance issues.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "router": {},
