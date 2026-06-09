@@ -9,7 +9,6 @@ export default StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
 
-  // ── top row ───────────────────────────────────────────────────────────────
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -46,7 +45,6 @@ export default StyleSheet.create({
     borderRadius: 18,
   },
 
-  // ── header ────────────────────────────────────────────────────────────────
   headerSection: {
     paddingHorizontal: scale(20),
     paddingTop: verticalScale(4),
@@ -78,7 +76,6 @@ export default StyleSheet.create({
     color: COLORS.primary,
   },
 
-  // ── tab bar ───────────────────────────────────────────────────────────────
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: scale(20),
@@ -110,9 +107,7 @@ export default StyleSheet.create({
     gap: 5,
     zIndex: 1,
   },
-  tabIcon: {
-    // icon sits inline with label
-  },
+  tabIcon: {},
   tabLabel: {
     fontSize: moderateScale(13),
     fontWeight: '600',
@@ -122,12 +117,10 @@ export default StyleSheet.create({
     color: COLORS.primary,
   },
 
-  // ── tab content wrapper ───────────────────────────────────────────────────
   tabContentWrapper: {
     flex: 1,
   },
 
-  // ── loading / empty ───────────────────────────────────────────────────────
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -140,13 +133,11 @@ export default StyleSheet.create({
     marginTop: verticalScale(40),
   },
 
-  // ── scroll content ────────────────────────────────────────────────────────
   scrollContent: {
     paddingBottom: verticalScale(100),
     paddingTop: verticalScale(4),
   },
 
-  // ── current billing card ──────────────────────────────────────────────────
   billingCard: {
     marginHorizontal: scale(20),
     borderRadius: 14,
@@ -231,7 +222,6 @@ export default StyleSheet.create({
     marginTop: verticalScale(10),
   },
 
-  // ── section title ─────────────────────────────────────────────────────────
   sectionTitle: {
     fontSize: moderateScale(15),
     fontWeight: '700',
@@ -240,7 +230,6 @@ export default StyleSheet.create({
     marginBottom: verticalScale(10),
   },
 
-  // ── breakdown table ───────────────────────────────────────────────────────
   breakdownCard: {
     marginHorizontal: scale(20),
     borderRadius: 12,
@@ -284,7 +273,6 @@ export default StyleSheet.create({
     fontSize: moderateScale(9),
   },
 
-  // ── payment history ───────────────────────────────────────────────────────
   historyCard: {
     marginHorizontal: scale(20),
     borderRadius: 12,
@@ -361,7 +349,6 @@ export default StyleSheet.create({
     color: COLORS.success,
     fontWeight: '600',
   },
-  // dropdown
   historyDropdown: {
     overflow: 'hidden',
     backgroundColor: COLORS.card,
@@ -461,7 +448,6 @@ export default StyleSheet.create({
     fontWeight: '800',
   },
 
-  // ── pay bill button ───────────────────────────────────────────────────────
   payBtnWrapper: {
     paddingHorizontal: scale(20),
     marginBottom: verticalScale(10),
@@ -486,7 +472,6 @@ export default StyleSheet.create({
     opacity: 0.5,
   },
 
-  // ── bottom nav ────────────────────────────────────────────────────────────
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -525,6 +510,105 @@ export default StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
+  },
+
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 10,
+  },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '75%',
+    maxWidth: 320,
+    backgroundColor: COLORS.primary,
+    zIndex: 20,
+    paddingTop: verticalScale(60),
+  },
+  drawerTop: {
+    alignItems: 'flex-start',
+    paddingHorizontal: scale(20),
+    marginBottom: verticalScale(16),
+  },
+  drawerAvatar: {
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    marginBottom: verticalScale(10),
+  },
+  drawerUsername: {
+    color: COLORS.white,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
+  },
+  drawerRoom: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: moderateScale(13),
+    marginTop: verticalScale(2),
+  },
+  drawerCloseBtn: {
+    position: 'absolute',
+    top: verticalScale(16),
+    right: scale(16),
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginHorizontal: scale(20),
+    marginVertical: verticalScale(8),
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(14),
+  },
+  drawerItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  drawerItemText: {
+    color: COLORS.white,
+    fontSize: moderateScale(15),
+    fontWeight: '500',
+  },
+  drawerSubItem: {
+    paddingLeft: scale(52),
+    paddingRight: scale(20),
+    paddingVertical: verticalScale(10),
+  },
+  drawerSubItemText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: moderateScale(14),
+  },
+  drawerLogout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(14),
+    gap: scale(12),
+  },
+  drawerLogoutText: {
+    color: COLORS.white,
+    fontSize: moderateScale(15),
+    fontWeight: '500',
   },
 
 });

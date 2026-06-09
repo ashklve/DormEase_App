@@ -24,11 +24,20 @@ import NotificationBell from '../../src/components/NotificationBell';
 import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
-const FILE_BASE_URL = client.defaults.baseURL.replace(/\/api\/?$/, '');
 
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
-// ── NavItem ───────────────────────────────────────────────────────────────────
+const PREDEFINED_PURPOSES = [
+    'School / Scholarship Requirement',
+    'Employment Requirement',
+    'Bank or Loan Application',
+    'Government ID or Document Processing',
+    'Travel or Visa Application',
+    'Legal or Court Requirement',
+    'Personal Record Keeping',
+    'Other',
+];
+
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -53,41 +62,43 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Screen ────────────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
-    const router        = useRouter();
+    const router = useRouter();
     const { avatarUri } = useUser();
-    const insets        = useSafeAreaInsets();
-    const drawerRef     = useRef(null);
+    const insets = useSafeAreaInsets();
+    const drawerRef = useRef(null);
 
-    // UI state
-    const [formsExpanded,  setFormsExpanded]  = useState(true);
-    const [selectedOption, setSelectedOption] = useState(null);
-    const [dropdownOpen,   setDropdownOpen]   = useState(false);
-
-    // Form fields
-    const [fullName,       setFullName]       = useState('');
-    const [contactNo,      setContactNo]      = useState('');
-    const [roomNo,         setRoomNo]         = useState('');
-    const [purpose,        setPurpose]        = useState('');
-    const [deliveryMethod, setDeliveryMethod] = useState('digital');
-    const [uploadedFile,   setUploadedFile]   = useState(null);
-    const [submitting,     setSubmitting]     = useState(false);
-    const [userInfo,       setUserInfo]       = useState(null);
-
-    // Data state
+    const [formsExpanded,   setFormsExpanded]   = useState(true);
+    const [selectedOption,  setSelectedOption]  = useState(null);
+    const [dropdownOpen,    setDropdownOpen]    = useState(false);
+    const [purposeDropOpen, setPurposeDropOpen] = useState(false);
+    const [selectedPurpose, setSelectedPurpose] = useState(null);
+    const [customPurpose,   setCustomPurpose]   = useState('');
+    const [fullName,        setFullName]        = useState('');
+    const [contactNo,       setContactNo]       = useState('');
+    const [roomNo,          setRoomNo]          = useState('');
+    const [deliveryMethods, setDeliveryMethods] = useState(new Set(['digital']));
+    const [uploadedFile,    setUploadedFile]    = useState(null);
+    const [submitting,      setSubmitting]      = useState(false);
+    const [userInfo,        setUserInfo]        = useState(null);
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [docsLoading,       setDocsLoading]       = useState(true);
+    const [docsLoading,     setDocsLoading]     = useState(true);
 
-    // ── dropdownSections computed from state
+    const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
+    const isForm        = selectedOption?.category === CATEGORY.FORM;
+
+    const resolvedPurpose = selectedPurpose === 'Other'
+        ? customPurpose.trim()
+        : (selectedPurpose ?? '');
+
     const dropdownSections = [
         {
             sectionLabel: 'Upload a Filled Form',
             items: downloadableForms.map(f => ({
-                id:       String(f.id),
-                label:    f.label,
-                url:      f.url,
-                icon:     'insert-drive-file',
+                id: String(f.id),
+                label: f.label,
+                url: f.url,
+                icon: 'insert-drive-file',
                 category: CATEGORY.FORM,
             })),
         },
@@ -95,15 +106,25 @@ export default function DocumentsScreen() {
             sectionLabel: 'Request a Certificate / Document',
             items: [
                 { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
-                { id: 'receipt_copy',   label: 'Official Receipt Copy',     category: CATEGORY.CERTIFICATE },
-                { id: 'lease_copy',     label: 'Lease Contract Copy',       category: CATEGORY.CERTIFICATE },
-                { id: 'clearance',      label: 'Clearance Certificate',     category: CATEGORY.CERTIFICATE },
-                { id: 'good_conduct',   label: 'Good Conduct Certificate',  category: CATEGORY.CERTIFICATE },
+                { id: 'lease_copy',     label: 'Lease Contract Copy',      category: CATEGORY.CERTIFICATE },
+                { id: 'receipt_copy',   label: 'Acknowledgement Receipt',  category: CATEGORY.CERTIFICATE },
             ],
         },
     ];
 
-    // ── Pre-fill from logged-in tenant profile ────────────────────────────────
+    const toggleDeliveryMethod = (method) => {
+        setDeliveryMethods(prev => {
+            const next = new Set(prev);
+            if (next.has(method)) {
+                if (next.size === 1) return prev;
+                next.delete(method);
+            } else {
+                next.add(method);
+            }
+            return next;
+        });
+    };
+
     useEffect(() => {
         client.get('/user').then((res) => {
             const u = res.data;
@@ -114,7 +135,6 @@ export default function DocumentsScreen() {
         }).catch(() => {});
     }, []);
 
-    // ── Fetch downloadable forms ──────────────────────────────────────────────
     useEffect(() => {
         const fetchForms = async () => {
             try {
@@ -122,17 +142,12 @@ export default function DocumentsScreen() {
                 const res = await client.get('/tenant/forms');
                 setDownloadableForms(res.data ?? []);
             } catch {
-                // silently fail
             } finally {
                 setDocsLoading(false);
             }
         };
         fetchForms();
     }, []);
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
-    const isForm        = selectedOption?.category === CATEGORY.FORM;
 
     const handleDownload = (url, label) => {
         Linking.openURL(url).catch(() =>
@@ -157,9 +172,17 @@ export default function DocumentsScreen() {
     const handleSelectOption = (item) => {
         setSelectedOption(item);
         setDropdownOpen(false);
+        setPurposeDropOpen(false);
         setUploadedFile(null);
-        setPurpose('');
-        setDeliveryMethod('digital');
+        setSelectedPurpose(null);
+        setCustomPurpose('');
+        setDeliveryMethods(new Set(['digital']));
+    };
+
+    const handleSelectPurpose = (p) => {
+        setSelectedPurpose(p);
+        setPurposeDropOpen(false);
+        if (p !== 'Other') setCustomPurpose('');
     };
 
     const handleSubmit = async () => {
@@ -175,21 +198,29 @@ export default function DocumentsScreen() {
             Alert.alert('Missing File', 'Please upload your completed form before submitting.');
             return;
         }
+        if (isCertificate && !selectedPurpose) {
+            Alert.alert('Missing Field', 'Please select a purpose for your request.');
+            return;
+        }
+        if (isCertificate && selectedPurpose === 'Other' && !customPurpose.trim()) {
+            Alert.alert('Missing Field', 'Please describe your purpose in the text field.');
+            return;
+        }
 
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('full_name',     fullName.trim());
-            formData.append('contact_no',    contactNo.trim());
-            formData.append('room_no',       roomNo.trim());
-            formData.append('request_type',  selectedOption.id);
-            formData.append('request_label', selectedOption.label);
-            formData.append('document_type', selectedOption.label);
-            formData.append('category',      selectedOption.category);
+            formData.append('full_name',       fullName.trim());
+            formData.append('contact_no',      contactNo.trim());
+            formData.append('room_no',         roomNo.trim());
+            formData.append('request_type',    selectedOption.id);
+            formData.append('request_label',   selectedOption.label);
+            formData.append('document_type',   selectedOption.label);
+            formData.append('category',        selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose',         purpose.trim());
-                formData.append('delivery_method', deliveryMethod);
+                formData.append('purpose',         resolvedPurpose);
+                formData.append('delivery_method', [...deliveryMethods].join(','));
             }
 
             if (isForm && uploadedFile) {
@@ -204,14 +235,14 @@ export default function DocumentsScreen() {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            // Reset form but restore user info fields
             setFullName(userInfo ? `${userInfo.first_name ?? ''} ${userInfo.last_name ?? ''}`.trim() : '');
             setContactNo(userInfo?.contact_number ?? '');
             setRoomNo(userInfo?.room_number ?? '');
             setSelectedOption(null);
             setUploadedFile(null);
-            setPurpose('');
-            setDeliveryMethod('digital');
+            setSelectedPurpose(null);
+            setCustomPurpose('');
+            setDeliveryMethods(new Set(['digital']));
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
         } catch (err) {
@@ -225,7 +256,36 @@ export default function DocumentsScreen() {
         }
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    const CheckboxRow = ({ method, label, sublabel, isLast }) => {
+        const checked = deliveryMethods.has(method);
+        return (
+            <TouchableOpacity
+                style={isLast ? styles.radioRowLast : styles.radioRow}
+                onPress={() => toggleDeliveryMethod(method)}
+                activeOpacity={0.7}
+            >
+                <View style={[
+                    styles.radioOuter,
+                    {
+                        borderRadius: 4,
+                        backgroundColor: checked ? COLORS.primary : 'transparent',
+                        borderColor: checked ? COLORS.primary : COLORS.muted,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }
+                ]}>
+                    {checked && (
+                        <MaterialIcons name="check" size={12} color={COLORS.white} />
+                    )}
+                </View>
+                <View>
+                    <Text style={styles.radioLabel}>{label}</Text>
+                    <Text style={styles.radioSub}>{sublabel}</Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -235,7 +295,6 @@ export default function DocumentsScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={20}
             >
-                {/* top row */}
                 <View style={styles.topRow}>
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -243,7 +302,6 @@ export default function DocumentsScreen() {
                     >
                         <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                     </TouchableOpacity>
-
                     <View style={styles.topRowRight}>
                         <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                         <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
@@ -255,7 +313,6 @@ export default function DocumentsScreen() {
                     </View>
                 </View>
 
-                {/* page header */}
                 <View style={styles.headerSection}>
                     <View style={styles.headerTitleRow}>
                         <View style={styles.headerIconBadge}>
@@ -268,7 +325,6 @@ export default function DocumentsScreen() {
                     </Text>
                 </View>
 
-                {/* body */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[
@@ -278,9 +334,8 @@ export default function DocumentsScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets
+                    nestedScrollEnabled
                 >
-
-                    {/* ── SECTION 1: Downloadable Forms ── */}
                     <View style={styles.sectionCard}>
                         <TouchableOpacity
                             style={styles.sectionHeaderRow}
@@ -317,11 +372,7 @@ export default function DocumentsScreen() {
                                 </View>
 
                                 {docsLoading ? (
-                                    <ActivityIndicator
-                                        size="small"
-                                        color={COLORS.primary}
-                                        style={{ marginVertical: 20 }}
-                                    />
+                                    <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
                                 ) : downloadableForms.length === 0 ? (
                                     <View style={styles.hintBox}>
                                         <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
@@ -359,7 +410,6 @@ export default function DocumentsScreen() {
                         )}
                     </View>
 
-                    {/* ── SECTION 2: Submit a Request ── */}
                     <View style={styles.sectionCard}>
                         <View style={styles.sectionHeaderRow}>
                             <View style={styles.sectionHeaderLeft}>
@@ -373,7 +423,6 @@ export default function DocumentsScreen() {
                             </View>
                         </View>
 
-                        {/* Tenant info fields */}
                         <TextInput
                             style={styles.input}
                             placeholder="Full Name"
@@ -410,19 +459,18 @@ export default function DocumentsScreen() {
 
                         <View style={styles.divider} />
 
-                        {/* Request type dropdown */}
                         <Text style={styles.fieldLabel}>What would you like to submit?</Text>
 
                         <TouchableOpacity
                             style={styles.pickerWrapper}
                             activeOpacity={0.8}
-                            onPress={() => setDropdownOpen((v) => !v)}
+                            onPress={() => {
+                                setDropdownOpen((v) => !v);
+                                setPurposeDropOpen(false);
+                            }}
                         >
                             <Text
-                                style={[
-                                    styles.pickerText,
-                                    selectedOption && styles.pickerTextSelected,
-                                ]}
+                                style={[styles.pickerText, selectedOption && styles.pickerTextSelected]}
                                 numberOfLines={1}
                             >
                                 {selectedOption?.label ?? 'Select a request type...'}
@@ -458,20 +506,14 @@ export default function DocumentsScreen() {
                                                             ]}
                                                             onPress={() => handleSelectOption(item)}
                                                         >
-                                                            <Text
-                                                                style={[
-                                                                    styles.dropdownListItemText,
-                                                                    active && styles.dropdownListItemTextActive,
-                                                                ]}
-                                                            >
+                                                            <Text style={[
+                                                                styles.dropdownListItemText,
+                                                                active && styles.dropdownListItemTextActive,
+                                                            ]}>
                                                                 {item.label}
                                                             </Text>
                                                             {active && (
-                                                                <MaterialIcons
-                                                                    name="check"
-                                                                    size={16}
-                                                                    color={COLORS.primary}
-                                                                />
+                                                                <MaterialIcons name="check" size={16} color={COLORS.primary} />
                                                             )}
                                                         </TouchableOpacity>
                                                     );
@@ -483,7 +525,6 @@ export default function DocumentsScreen() {
                             </View>
                         )}
 
-                        {/* Form upload flow */}
                         {isForm && (
                             <>
                                 <Text style={styles.fieldHint}>
@@ -515,46 +556,91 @@ export default function DocumentsScreen() {
                             </>
                         )}
 
-                        {/* Certificate request flow */}
                         {isCertificate && (
                             <>
-                                <TextInput
-                                    style={[styles.input, { marginTop: 4, textAlignVertical: 'top' }]}
-                                    placeholder="Purpose / Reason for Request"
-                                    placeholderTextColor={COLORS.muted}
-                                    value={purpose}
-                                    onChangeText={setPurpose}
-                                    multiline
-                                    numberOfLines={3}
+                                <Text style={styles.fieldLabel}>Purpose of Request</Text>
+
+                                <TouchableOpacity
+                                    style={styles.pickerWrapper}
+                                    activeOpacity={0.8}
+                                    onPress={() => {
+                                        setPurposeDropOpen((v) => !v);
+                                        setDropdownOpen(false);
+                                    }}
+                                >
+                                    <Text
+                                        style={[styles.pickerText, selectedPurpose && styles.pickerTextSelected]}
+                                        numberOfLines={1}
+                                    >
+                                        {selectedPurpose ?? 'Select a purpose...'}
+                                    </Text>
+                                    <MaterialIcons
+                                        name={purposeDropOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                        size={20}
+                                        color={COLORS.muted}
+                                    />
+                                </TouchableOpacity>
+
+                                {purposeDropOpen && (
+                                    <View style={[styles.dropdownList, { height: 220 }]}>
+                                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                                            {PREDEFINED_PURPOSES.map((p) => {
+                                                const active = selectedPurpose === p;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={p}
+                                                        style={[
+                                                            styles.dropdownListItem,
+                                                            active && styles.dropdownListItemActive,
+                                                        ]}
+                                                        onPress={() => handleSelectPurpose(p)}
+                                                    >
+                                                        <Text style={[
+                                                            styles.dropdownListItemText,
+                                                            active && styles.dropdownListItemTextActive,
+                                                        ]}>
+                                                            {p}
+                                                        </Text>
+                                                        {active && (
+                                                            <MaterialIcons name="check" size={16} color={COLORS.primary} />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </View>
+                                )}
+
+                                {selectedPurpose === 'Other' && (
+                                    <TextInput
+                                        style={[styles.input, { marginTop: 8, textAlignVertical: 'top' }]}
+                                        placeholder="Please describe your purpose..."
+                                        placeholderTextColor={COLORS.muted}
+                                        value={customPurpose}
+                                        onChangeText={setCustomPurpose}
+                                        multiline
+                                        numberOfLines={3}
+                                    />
+                                )}
+
+                                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
+                                    Preferred delivery method
+                                </Text>
+                                <Text style={[styles.radioSub, { marginBottom: 8, marginTop: -2 }]}>
+                                    You may select both options.
+                                </Text>
+
+                                <CheckboxRow
+                                    method="digital"
+                                    label="Digital Copy (PDF)"
+                                    sublabel="Sent to your tenant records"
                                 />
-
-                                <Text style={styles.fieldLabel}>Preferred delivery method</Text>
-
-                                <TouchableOpacity
-                                    style={styles.radioRow}
-                                    onPress={() => setDeliveryMethod('digital')}
-                                >
-                                    <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'digital' && <View style={styles.radioInner} />}
-                                    </View>
-                                    <View>
-                                        <Text style={styles.radioLabel}>Digital Copy (PDF)</Text>
-                                        <Text style={styles.radioSub}>Sent to your tenant records</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.radioRowLast}
-                                    onPress={() => setDeliveryMethod('printed')}
-                                >
-                                    <View style={styles.radioOuter}>
-                                        {deliveryMethod === 'printed' && <View style={styles.radioInner} />}
-                                    </View>
-                                    <View>
-                                        <Text style={styles.radioLabel}>Printed Copy</Text>
-                                        <Text style={styles.radioSub}>Pick up at the admin office</Text>
-                                    </View>
-                                </TouchableOpacity>
+                                <CheckboxRow
+                                    method="printed"
+                                    label="Printed / Hard Copy"
+                                    sublabel="Pick up at the admin office"
+                                    isLast
+                                />
                             </>
                         )}
 
@@ -573,45 +659,17 @@ export default function DocumentsScreen() {
                             </TouchableOpacity>
                         )}
                     </View>
-
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* bottom nav */}
             <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-                <NavItem
-                    iconName="home"
-                    label="Home"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/dashboard')}
-                />
-                <NavItem
-                    iconName="person-outline"
-                    label="Visitor"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/visitors')}
-                />
-                <NavItem
-                    iconName="warning"
-                    label="Emergency"
-                    isCenter
-                    onPress={() => router.push('/tenant/emergency')}
-                />
-                <NavItem
-                    iconName="water-drop"
-                    label="Water Bill"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/water-bill')}
-                />
-                <NavItem
-                    iconName="account-circle"
-                    label="Profile"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/profile')}
-                />
+                <NavItem iconName="home"           label="Home"      isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+                <NavItem iconName="person-outline" label="Visitor"   isActive={false} onPress={() => router.push('/tenant/visitors')} />
+                <NavItem iconName="warning"        label="Emergency" isCenter         onPress={() => router.push('/tenant/emergency')} />
+                <NavItem iconName="water-drop"     label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+                <NavItem iconName="account-circle" label="Profile"   isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* side drawer */}
             <DrawerMenu ref={drawerRef} />
         </SafeAreaView>
     );

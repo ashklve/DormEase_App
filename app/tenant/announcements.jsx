@@ -16,6 +16,7 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import client from '../../api/client';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -27,11 +28,15 @@ import { dashboardCache } from '../../src/cache/dashboardCache.js';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
+const ANNOUNCEMENT_TABS = ['All', 'Unread', 'Pinned', 'Archive'];
+const READ_STORAGE_KEY = 'tenant_read_announcements';
+const ARCHIVED_STORAGE_KEY = 'tenant_archived_announcements';
+const PINNED_STORAGE_KEY = 'tenant_pinned_announcements';
 
 const priorityColors = {
-  High:     { bg: '#FFD7C7', text: '#EB9C7D' },
+  High: { bg: '#FFD7C7', text: '#EB9C7D' },
   Moderate: { bg: '#FFF3CD', text: '#D4A017' },
-  Low:      { bg: '#E5ECF6', text: '#B5B7C0' },
+  Low: { bg: '#E5ECF6', text: '#B5B7C0' },
 };
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -260,10 +265,35 @@ const AnnouncementCard = ({ item, onPress }) => {
   const [aspectRatio, setAspectRatio] = useState(4 / 3);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.priorityBadge, { backgroundColor: p.bg }]}>
-          <Text style={[styles.priorityText, { color: p.text }]}>{item.priority}</Text>
+    // ── Wrapper View provides the positioning context for the floating menu ──
+    <View style={{ position: 'relative' }}>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.priorityBadge, { backgroundColor: p.bg }]}>
+            <Text style={[styles.priorityText, { color: p.text }]}>{item.priority}</Text>
+          </View>
+          {isPinned && (
+            <View style={styles.cardPinnedBadge}>
+              <MaterialIcons name="push-pin" size={15} color={COLORS.primary} />
+            </View>
+          )}
+          <View style={styles.dotsWrap}>
+            <TouchableOpacity
+              style={styles.dotsBtn}
+              onPress={(event) => {
+                event?.stopPropagation?.();
+                onMenuPress(item);
+              }}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <MaterialIcons name="more-horiz" size={26} color={COLORS.muted} />
+            </TouchableOpacity>
+            {!isRead && (
+              <View style={styles.cardUnreadDot}>
+                <Text style={styles.cardUnreadDotText}>!</Text>
+              </View>
+            )}
+          </View>
         </View>
         <TouchableOpacity style={styles.dotsBtn}>
           <MaterialIcons name="more-horiz" size={20} color={COLORS.muted} />
@@ -364,6 +394,24 @@ export default function AnnouncementsScreen() {
 
   useEffect(() => { fetchAnnouncements(); }, []);
 
+  useEffect(() => {
+    const loadAnnouncementPreferences = async () => {
+      try {
+        const [storedReadIds, storedArchivedIds, storedPinnedIds] = await Promise.all([
+          AsyncStorage.getItem(READ_STORAGE_KEY),
+          AsyncStorage.getItem(ARCHIVED_STORAGE_KEY),
+          AsyncStorage.getItem(PINNED_STORAGE_KEY),
+        ]);
+        setReadAnnouncementIds(parseStoredAnnouncementIds(storedReadIds));
+        setArchivedAnnouncementIds(parseStoredAnnouncementIds(storedArchivedIds));
+        setPinnedAnnouncementIds(parseStoredAnnouncementIds(storedPinnedIds));
+      } catch (error) {
+        console.error('announcement preferences error:', error);
+      }
+    };
+    loadAnnouncementPreferences();
+  }, []);
+
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
@@ -403,7 +451,13 @@ export default function AnnouncementsScreen() {
   }, [activeTab, periodFilteredAnnouncements]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={['bottom']}
+      onTouchStart={() => {
+        if (actionMenuItem) setActionMenuItem(null);
+      }}
+    >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       {loading ? (
@@ -456,7 +510,7 @@ export default function AnnouncementsScreen() {
             {['All', 'Unread', 'Pinned'].map((tab) => (
               <TouchableOpacity key={tab} style={styles.tab} onPress={() => setActiveTab(tab)}>
                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tab}{tab === 'All' ? ` ${periodFilteredAnnouncements.length}` : ''}
+                  {tab} {tabCounts[tab]}
                 </Text>
                 {activeTab === tab && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
@@ -492,7 +546,10 @@ export default function AnnouncementsScreen() {
                 {FILTER_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option}
-                    style={[styles.dropdownItem, selectedFilter === option && styles.dropdownItemActive]}
+                    style={[
+                      styles.dropdownItem,
+                      selectedFilter === option && styles.dropdownItemActive,
+                    ]}
                     onPress={() => { setSelectedFilter(option); setShowDropdown(false); }}
                   >
                     <Text style={[styles.dropdownItemText, selectedFilter === option && styles.dropdownItemTextActive]}>{option}</Text>

@@ -44,7 +44,12 @@ export default function NotificationBell({
         >
             <Ionicons name="notifications-outline" size={iconSize} color={iconColor} />
             {unreadCount > 0 && (
-                <View style={componentStyles.badge}>
+                <View
+                    style={[
+                        componentStyles.badge,
+                        badgeText.length > 1 && componentStyles.badgeWide,
+                    ]}
+                >
                     <Text style={componentStyles.badgeText}>{badgeText}</Text>
                 </View>
             )}
@@ -57,20 +62,25 @@ const componentStyles = StyleSheet.create({
         position: 'absolute',
         top: -7,
         right: -8,
-        minWidth: 18,
-        height: 18,
-        borderRadius: 9,
-        paddingHorizontal: 4,
+        minWidth: 19,
+        height: 19,
+        borderRadius: 10,
+        paddingHorizontal: 5,
         backgroundColor: '#E8175D',
         borderWidth: 1.5,
         borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
+    badgeWide: {
+        minWidth: 24,
+    },
     badgeText: {
         color: '#FFFFFF',
         fontSize: 10,
         fontWeight: '800',
-        lineHeight: 12,
+        lineHeight: 13,
+        includeFontPadding: false,
+        textAlign: 'center',
     },
 });

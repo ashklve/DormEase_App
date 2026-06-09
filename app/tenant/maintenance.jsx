@@ -756,9 +756,6 @@ export default function MaintenanceScreen() {
                                                 </Text>
                                             </View>
                                         ) : null}
-                                        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                            <MaterialIcons name="edit" size={15} color={COLORS.primary} />
-                                        </TouchableOpacity>
                                     </View>
                                 </View>
 
