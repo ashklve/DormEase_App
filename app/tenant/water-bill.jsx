@@ -22,6 +22,7 @@ import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
+import DrawerMenu from '../../src/components/DrawerMenu';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -192,37 +193,12 @@ const TabBar = ({ activeTab, onTabChange, indicatorAnim }) => {
     );
 };
 
-const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
-    <TouchableOpacity style={styles.drawerItem} onPress={onPress} activeOpacity={0.7}>
-        <View style={styles.drawerItemLeft}>
-            {iconLib === 'MaterialIcons'
-                ? <MaterialIcons name={iconName} size={20} color={COLORS.white} />
-                : <Ionicons name={iconName} size={20} color={COLORS.white} />
-            }
-            <Text style={styles.drawerItemText}>{label}</Text>
-        </View>
-        {hasChevron && <Ionicons name="chevron-forward" size={18} color={COLORS.white} />}
-    </TouchableOpacity>
-);
-
 export default function WaterBillScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
 
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [documentsExpanded, setDocumentsExpanded] = useState(false);
-    const drawerAnim = useRef(new Animated.Value(-400)).current;
-
-    const openDrawer = () => {
-        setDrawerOpen(true);
-        Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
-    };
-    const closeDrawer = () => {
-        Animated.timing(drawerAnim, { toValue: -400, duration: 250, useNativeDriver: true })
-            .start(() => setDrawerOpen(false));
-    };
-    const drawerNavigate = (route) => { closeDrawer(); router.push(route); };
+    const drawerRef = useRef(null);
 
     const username = user
         ? '@' + `${user.first_name ?? ''}${user.last_name ?? ''}`.replace(/\s+/g, '').toLowerCase()
@@ -311,7 +287,7 @@ export default function WaterBillScreen() {
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
@@ -447,68 +423,8 @@ export default function WaterBillScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {drawerOpen && (
-                <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={closeDrawer} />
-            )}
-
-            <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-                <View style={styles.drawerTop}>
-                    <Image source={photoSource} style={styles.drawerAvatar} />
-                    <Text style={styles.drawerUsername}>{username}</Text>
-                    <Text style={styles.drawerRoom}>{roomCode}</Text>
-                </View>
-
-                <TouchableOpacity style={styles.drawerCloseBtn} onPress={closeDrawer}>
-                    <Ionicons name="close" size={18} color={COLORS.white} />
-                </TouchableOpacity>
-
-                <View style={styles.drawerDivider} />
-
-                <DrawerItem iconName="home-outline" label="Dashboard" onPress={() => drawerNavigate('/tenant/dashboard')} />
-                <DrawerItem iconName="megaphone-outline" label="Announcements" onPress={() => drawerNavigate('/tenant/announcements')} />
-
-                <TouchableOpacity style={styles.drawerItem} onPress={() => setDocumentsExpanded(!documentsExpanded)} activeOpacity={0.7}>
-                    <View style={styles.drawerItemLeft}>
-                        <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
-                        <Text style={styles.drawerItemText}>Documents</Text>
-                    </View>
-                    <Ionicons name={documentsExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.white} />
-                </TouchableOpacity>
-                {documentsExpanded && (
-                    <>
-                        <TouchableOpacity style={styles.drawerSubItem} onPress={() => drawerNavigate('/tenant/documents')}>
-                            <Text style={styles.drawerSubItemText}>Document Request</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.drawerSubItem} onPress={() => drawerNavigate('/tenant/records')}>
-                            <Text style={styles.drawerSubItemText}>Tenant Records</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-
-                <DrawerItem iconName="build" iconLib="MaterialIcons" label="Maintenance" onPress={() => drawerNavigate('/tenant/maintenance')} />
-                <DrawerItem iconName="warning-outline" label="Emergency" onPress={() => drawerNavigate('/tenant/emergency')} />
-                <DrawerItem iconName="people-outline" label="Visitor" onPress={() => drawerNavigate('/tenant/visitors')} />
-                <DrawerItem iconName="receipt-outline" label="Billing" onPress={() => drawerNavigate('/tenant/water-bill')} />
-                <DrawerItem iconName="settings-outline" label="Settings" onPress={() => drawerNavigate('/tenant/settings')} />
-
-                <View style={styles.drawerDivider} />
-
-                <TouchableOpacity
-                    style={styles.drawerLogout}
-                    onPress={async () => {
-                        closeDrawer();
-                        dashboardCache.loaded = false;
-                        dashboardCache.announcements = [];
-                        dashboardCache.currentBill = '0.00';
-                        dashboardCache.pendingRequests = 0;
-                        await clearSession();
-                        setTimeout(() => router.replace('/auth/login'), 260);
-                    }}
-                >
-                    <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
-                    <Text style={styles.drawerLogoutText}>Logout</Text>
-                </TouchableOpacity>
-            </Animated.View>
+            {/* Drawer */}
+            <DrawerMenu ref={drawerRef} />
         </SafeAreaView>
     );
 }
