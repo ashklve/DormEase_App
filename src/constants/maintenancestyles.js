@@ -253,6 +253,78 @@ export default StyleSheet.create({
         minHeight: 90,
     },
 
+    // ── camera / photo section ────────────────────────────────────────────────
+    cameraBox: {
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        borderRadius: 12,
+        borderStyle: 'dashed',
+        paddingVertical: 24,
+        paddingHorizontal: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.bg,
+        minHeight: 130,
+    },
+    cameraIconCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    cameraBoxLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.dark,
+        marginBottom: 4,
+    },
+    cameraBoxHint: {
+        fontSize: 11,
+        color: COLORS.muted,
+    },
+    photoPreviewWrapper: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    photoPreview: {
+        width: '100%',
+        height: 200,
+        borderTopLeftRadius: 11,
+        borderTopRightRadius: 11,
+    },
+    photoActions: {
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+    },
+    photoActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        backgroundColor: COLORS.white,
+    },
+    photoActionBtnDestructive: {
+        backgroundColor: COLORS.primary,
+        borderLeftWidth: 1,
+        borderLeftColor: COLORS.border,
+    },
+    photoActionBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.primary,
+    },
+    photoActionBtnTextDestructive: {
+        color: COLORS.white,
+    },
+
     // ── detected issue card ───────────────────────────────────────────────────
     detectedCard: {
         backgroundColor: COLORS.card,

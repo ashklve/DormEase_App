@@ -11,7 +11,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
-    Modal,
     Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -25,6 +24,7 @@ import {
     start,
     stop,
 } from 'react-native-vosk';
+import * as ImagePicker from 'expo-image-picker';
 import client from '../../api/client';
 import styles, { COLORS } from '../../src/constants/maintenancestyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -32,8 +32,6 @@ import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
 
-
-// ── Mock user / avatar ────────────────────────────────────────────────────────
 const defaultPhoto = require('../../assets/def_icon.png');
 
 const SPEECH_LANGUAGE_OPTIONS = [
@@ -41,189 +39,15 @@ const SPEECH_LANGUAGE_OPTIONS = [
     { key: 'en', label: 'English', model: 'model-en-us' },
 ];
 
-// ── Dropdown options ──────────────────────────────────────────────────────────
-const CATEGORY_OPTIONS = [
-    'Plumbing',
-    'Electrical',
-    'HVAC / Air Conditioning',
-    'Appliance Repair',
-    'Carpentry / Furniture',
-    'Pest Control',
-    'Cleaning',
-    'Internet / Cable',
-    'Others',
-];
-
-const CATEGORY_TO_ISSUE = {
-    Plumbing: 'plumbing',
-    Electrical: 'electrical',
-    'HVAC / Air Conditioning': 'hvac',
-    'Appliance Repair': 'appliance',
-    'Carpentry / Furniture': 'carpentry',
-    'Pest Control': 'pest',
-    Cleaning: 'cleaning',
-    'Internet / Cable': 'internet',
-    Others: 'other',
-    plumbing: 'plumbing',
-    electrical: 'electrical',
-    hvac: 'hvac',
-    appliance: 'appliance',
-    carpentry: 'carpentry',
-    pest: 'pest',
-    cleaning: 'cleaning',
-    internet: 'internet',
-    other: 'other',
-};
-
-const PRIORITY_MAP = {
-    Plumbing: 'Moderate',
-    Electrical: 'High',
-    'HVAC / Air Conditioning': 'Moderate',
-    'Appliance Repair': 'Low',
-    'Carpentry / Furniture': 'Low',
-    'Pest Control': 'High',
-    Cleaning: 'Low',
-    'Internet / Cable': 'Moderate',
-    Others: 'Low',
-    plumbing: 'moderate',
-    electrical: 'urgent',
-    hvac: 'moderate',
-    appliance: 'low',
-    carpentry: 'low',
-    pest: 'urgent',
-    cleaning: 'low',
-    internet: 'moderate',
-    other: 'low',
-};
-
-const PRIORITY_STYLE = {
-    High: { bg: '#F8D7DA', text: '#721C24' },
-    Moderate: { bg: '#FFF3CD', text: '#856404' },
-    Low: { bg: '#D4EDDA', text: '#155724' },
-    urgent: { bg: '#F8D7DA', text: '#721C24' },
-    moderate: { bg: '#FFF3CD', text: '#856404' },
-    low: { bg: '#D4EDDA', text: '#155724' },
-};
-
-const ISSUE_RULES = [
-    { issue: 'plumbing', category: 'Plumbing', priority: 'moderate', words: ['leak', 'leaking', 'drip', 'dripping', 'water', 'faucet', 'sink', 'toilet', 'pipe', 'drain', 'shower', 'flush', 'clog', 'clogged', 'overflow', 'tagas', 'tumatagas', 'tumutulo', 'tulo', 'gripo', 'lababo', 'inidoro', 'kubeta', 'tubo', 'barado', 'bara', 'baha'] },
-    { issue: 'electrical', category: 'Electrical', priority: 'urgent', words: ['electric', 'electrical', 'power', 'outlet', 'socket', 'spark', 'wire', 'wiring', 'breaker', 'short circuit', 'brownout', 'light', 'lights', 'flicker', 'flickering', 'kuryente', 'ilaw', 'saksakan', 'kawad', 'pundi', 'kumukutitap', 'walang kuryente', 'walang ilaw'] },
-    { issue: 'hvac', category: 'HVAC / Air Conditioning', priority: 'moderate', words: ['aircon', 'air conditioning', 'ac', 'a c', 'cooling', 'hvac', 'fan', 'ventilation', 'hot room', 'air con', 'electric fan', 'mainit', 'mainit kwarto', 'hindi malamig', 'hindi lumalamig', 'mahina aircon', 'bentilador'] },
-    { issue: 'appliance', category: 'Appliance Repair', priority: 'low', words: ['appliance', 'fridge', 'refrigerator', 'stove', 'microwave', 'washer', 'washing machine', 'kettle', 'ref', 'kalan', 'takure', 'plantsa', 'rice cooker'] },
-    { issue: 'carpentry', category: 'Carpentry / Furniture', priority: 'low', words: ['door', 'cabinet', 'chair', 'table', 'bed', 'lock', 'window', 'drawer', 'furniture', 'hinge', 'wood', 'pinto', 'aparador', 'upuan', 'mesa', 'kama', 'kandado', 'bintana', 'bisagra', 'kahoy', 'sira pinto'] },
-    { issue: 'pest', category: 'Pest Control', priority: 'urgent', words: ['pest', 'cockroach', 'roach', 'ant', 'ants', 'rat', 'rats', 'mouse', 'mice', 'termite', 'insect', 'bug', 'mosquito', 'ipis', 'langgam', 'daga', 'anay', 'lamok', 'insekto', 'surot'] },
-    { issue: 'cleaning', category: 'Cleaning', priority: 'low', words: ['clean', 'cleaning', 'dirty', 'trash', 'garbage', 'smell', 'odor', 'stain', 'mold', 'mould', 'marumi', 'basura', 'mabaho', 'amoy', 'mantsa', 'amag', 'linis', 'kalat'] },
-    { issue: 'internet', category: 'Internet / Cable', priority: 'moderate', words: ['internet', 'wifi', 'wi fi', 'wi-fi', 'cable', 'router', 'connection', 'signal', 'network', 'mahina signal', 'walang internet', 'walang wifi', 'walang wi fi', 'mabagal internet', 'mabagal wifi', 'putol internet'] },
-];
-
-const PRIORITY_RULES = {
-    urgent: ['spark', 'sparking', 'short circuit', 'exposed wire', 'smoke', 'burning', 'fire', 'flood', 'flooding', 'overflow', 'overflowing', 'no power', 'no electricity', 'gas leak', 'sunog', 'nasusunog', 'usok', 'amoy sunog', 'baha', 'umaapaw', 'walang kuryente', 'may kuryente', 'kumukuryente', 'grounded'],
-    moderate: ['leak', 'leaking', 'clog', 'clogged', 'broken', 'not working', 'cannot use', 'tagas', 'tumatagas', 'tumutulo', 'barado', 'sira', 'hindi gumagana', 'di gumagana', 'hindi magamit', 'di magamit'],
-};
-
-const PRIORITY_WEIGHT = {
-    urgent: 3,
-    moderate: 2,
-    low: 1,
-};
-
-const normalizeMaintenanceText = (text) =>
-    String(text ?? '')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s\-]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-const expandIngForms = (word) => {
-    const forms = [word];
-    if (!word.endsWith('ing') || word.length <= 5) return forms;
-
-    const base = word.slice(0, -3);
-    if (/([b-df-hj-np-tv-z])\1$/.test(base)) {
-        forms.push(base.slice(0, -1));
-    }
-    forms.push(`${base}e`, base);
-
-    return [...new Set(forms)];
-};
-
-const matchesKeyword = (text, keyword) => {
-    if (text.includes(keyword)) return true;
-
-    const expandedWords = text.split(' ').map(expandIngForms);
-    let candidates = [''];
-
-    expandedWords.forEach((forms) => {
-        const next = [];
-        candidates.forEach((prefix) => {
-            forms.forEach((form) => {
-                next.push(prefix === '' ? form : `${prefix} ${form}`);
-            });
-        });
-        candidates = next.slice(0, 512);
-    });
-
-    return candidates.some((candidate) => candidate.includes(keyword));
-};
-
-const classifyPriority = (text, rule) => {
-    const priorityEntry = Object.entries(PRIORITY_RULES).find(([, words]) =>
-        words.some((word) => matchesKeyword(text, word))
-    );
-
-    return priorityEntry?.[0] ?? rule?.priority ?? 'low';
-};
-
-const classifyMaintenanceFromTranscript = (text) => {
-    const normalized = normalizeMaintenanceText(text);
-    let bestRule = null;
-    let bestScore = 0;
-    let bestPriorityWeight = 0;
-
-    ISSUE_RULES.forEach((rule) => {
-        const score = rule.words.filter((word) => matchesKeyword(normalized, word)).length;
-        if (score === 0) return;
-
-        const priorityWeight = PRIORITY_WEIGHT[rule.priority] ?? 0;
-        if (score > bestScore || (score === bestScore && priorityWeight > bestPriorityWeight)) {
-            bestRule = rule;
-            bestScore = score;
-            bestPriorityWeight = priorityWeight;
-        }
-    });
-
-    return {
-        category: bestRule?.category ?? '',
-        priority: classifyPriority(normalized, bestRule),
-    };
-};
-
-const detectCategoryFromTranscript = (text) => {
-    return classifyMaintenanceFromTranscript(text).category;
-};
-
-// ── History modal dummy data ──────────────────────────────────────────────────
-const HISTORY_ITEMS = [
-    { id: 1, category: 'Plumbing', description: 'Leaking faucet in bathroom', status: 'Resolved', date: '05/10/2026' },
-    { id: 2, category: 'Electrical', description: 'Flickering lights in living room', status: 'In Progress', date: '05/14/2026' },
-    { id: 3, category: 'Pest Control', description: 'Cockroach infestation in kitchen', status: 'Pending', date: '05/18/2026' },
-];
-
-const STATUS_STYLE = {
-    Resolved: { bg: '#D4EDDA', text: '#28A745' },
-    'In Progress': { bg: '#CCE5FF', text: '#004085' },
-    Pending: { bg: '#FFF3CD', text: '#856404' },
-};
-
-// ── Waveform animation component ──────────────────────────────────────────────
-const BAR_COUNT = 28;
-
 const fmtTimer = (secs) => {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 };
+
+// ── Waveform animation component ─────────────────────────────────────────────
+const BAR_COUNT = 28;
 
 const Waveform = ({ isRecording }) => {
     const anims = useRef(
@@ -305,44 +129,6 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── History Modal ─────────────────────────────────────────────────────────────
-const HistoryModal = ({ visible, onClose }) => (
-    <Modal transparent animationType="slide" visible={visible}>
-        <View style={styles.modalOverlay}>
-            <View style={styles.historyModal}>
-                <View style={styles.historyModalHeader}>
-                    <Text style={styles.historyModalTitle}>Request History</Text>
-                    <TouchableOpacity onPress={onClose}>
-                        <MaterialIcons name="close" size={22} color={COLORS.dark} />
-                    </TouchableOpacity>
-                </View>
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    {HISTORY_ITEMS.map((item) => {
-                        const s = STATUS_STYLE[item.status] ?? STATUS_STYLE.Pending;
-                        return (
-                            <View key={item.id} style={styles.historyCard}>
-                                <View style={styles.historyCardTop}>
-                                    <Text style={styles.historyCategory}>{item.category}</Text>
-                                    <View style={[styles.historyBadge, { backgroundColor: s.bg }]}>
-                                        <Text style={[styles.historyBadgeText, { color: s.text }]}>
-                                            {item.status}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <Text style={styles.historyDesc}>{item.description}</Text>
-                                <View style={styles.historyDateRow}>
-                                    <Ionicons name="calendar-outline" size={12} color={COLORS.muted} />
-                                    <Text style={styles.historyDate}>{item.date}</Text>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </ScrollView>
-            </View>
-        </View>
-    </Modal>
-);
-
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function MaintenanceScreen() {
     const router = useRouter();
@@ -352,8 +138,7 @@ export default function MaintenanceScreen() {
 
     // ── Form state
     const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('');
-    const [categoryOpen, setCategoryOpen] = useState(false);
+    const [photo, setPhoto] = useState(null); // { uri, fileName, type }
     const [submitting, setSubmitting] = useState(false);
 
     // ── Voice recorder state
@@ -369,15 +154,8 @@ export default function MaintenanceScreen() {
     const confirmedTranscriptRef = useRef('');
     const listenerRefs = useRef([]);
 
-    // ── History modal
-    const [showHistory, setShowHistory] = useState(false);
-
-    // ── Derived: detected issue
-    const classifiedMaintenance = classifyMaintenanceFromTranscript(description);
-    const detectedType = category || classifiedMaintenance.category || null;
-    const detectedPriority = classifiedMaintenance.category
-        ? classifiedMaintenance.priority
-        : (category ? PRIORITY_MAP[category] : null);
+    const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((o) => o.key === speechLanguage)
+        ?? SPEECH_LANGUAGE_OPTIONS[0];
 
     // ── Recording timer
     const stopRecordingTimer = useCallback(() => {
@@ -392,58 +170,44 @@ export default function MaintenanceScreen() {
         lastTimerTickRef.current = Date.now();
         timerRef.current = setInterval(() => {
             const now = Date.now();
-            if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) {
-                return;
-            }
-
+            if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) return;
             lastTimerTickRef.current = now;
-            setRecordSecs((seconds) => seconds + 1);
+            setRecordSecs((s) => s + 1);
         }, 1000);
     }, [stopRecordingTimer]);
 
     const clearVoskListeners = useCallback(() => {
-        listenerRefs.current.forEach((listener) => listener?.remove?.());
+        listenerRefs.current.forEach((l) => l?.remove?.());
         listenerRefs.current = [];
     }, []);
 
     const updateTranscript = useCallback((text) => {
-        const nextText = String(text ?? '').trim();
-        if (!nextText) return;
-
-        transcribedRef.current = nextText;
-        setDescription(nextText);
-
-        const detectedCategory = detectCategoryFromTranscript(nextText);
-        if (detectedCategory) setCategory(detectedCategory);
+        const next = String(text ?? '').trim();
+        if (!next) return;
+        transcribedRef.current = next;
+        setDescription(next);
     }, []);
 
     const mergeTranscriptChunk = useCallback((text) => {
         const chunk = String(text ?? '').trim();
         if (!chunk) return;
-
         const existing = confirmedTranscriptRef.current;
-        const nextText = existing ? `${existing} ${chunk}` : chunk;
-        confirmedTranscriptRef.current = nextText;
-        updateTranscript(nextText);
+        const next = existing ? `${existing} ${chunk}` : chunk;
+        confirmedTranscriptRef.current = next;
+        updateTranscript(next);
     }, [updateTranscript]);
 
     const applyPartialTranscript = useCallback((text) => {
         const partial = String(text ?? '').trim();
         if (!partial) return;
-
         const existing = confirmedTranscriptRef.current;
         updateTranscript(existing ? `${existing} ${partial}` : partial);
     }, [updateTranscript]);
 
-    const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((option) => option.key === speechLanguage)
-        ?? SPEECH_LANGUAGE_OPTIONS[0];
-
     const handleSpeechLanguageChange = (nextLanguage) => {
         if (isRecording || modelLoading || nextLanguage === speechLanguage) return;
-
         setSpeechLanguage(nextLanguage);
         setDescription('');
-        setCategory('');
         setHasRecording(false);
         setRecordSecs(0);
         transcribedRef.current = '';
@@ -452,23 +216,18 @@ export default function MaintenanceScreen() {
 
     useEffect(() => {
         let mounted = true;
-
         setModelLoaded(false);
         setModelLoading(true);
 
         ensureVoskModelLoaded(selectedSpeechLanguage.model)
-            .then(() => {
-                if (mounted) setModelLoaded(true);
-            })
-            .catch((error) => {
-                console.error('failed to load Vosk model:', error);
+            .then(() => { if (mounted) setModelLoaded(true); })
+            .catch((err) => {
+                console.error('failed to load Vosk model:', err);
                 if (mounted) {
                     Alert.alert('Voice Input Unavailable', `${selectedSpeechLanguage.label} speech recognition could not be loaded.`);
                 }
             })
-            .finally(() => {
-                if (mounted) setModelLoading(false);
-            });
+            .finally(() => { if (mounted) setModelLoading(false); });
 
         return () => {
             mounted = false;
@@ -488,7 +247,6 @@ export default function MaintenanceScreen() {
         transcribedRef.current = '';
         confirmedTranscriptRef.current = '';
         setDescription('');
-        setCategory('');
         setHasRecording(false);
         setIsRecording(true);
         startRecordingTimer();
@@ -522,23 +280,44 @@ export default function MaintenanceScreen() {
     const stopRecording = async () => {
         stopRecordingTimer();
         setIsRecording(false);
-
         try {
             await stop();
         } catch (error) {
             console.error('failed to stop Vosk recognizer:', error);
         }
-
         setHasRecording(Boolean(transcribedRef.current));
     };
 
     const handleToggleRecord = () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
+        if (isRecording) stopRecording();
+        else startRecording();
+    };
+
+    // ── Camera
+    const handleTakePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera access is needed to take a photo.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+            allowsEditing: false,
+        });
+
+        if (!result.canceled && result.assets?.length > 0) {
+            const asset = result.assets[0];
+            setPhoto({
+                uri: asset.uri,
+                fileName: asset.fileName ?? `photo_${Date.now()}.jpg`,
+                type: asset.mimeType ?? 'image/jpeg',
+            });
         }
     };
+
+    const handleRemovePhoto = () => setPhoto(null);
 
     // ── Submit
     const handleSubmit = async () => {
@@ -548,25 +327,30 @@ export default function MaintenanceScreen() {
         }
         setSubmitting(true);
         try {
-            const res = await client.post('/maintenance', {
-                description: description.trim(),
-                issue_type: CATEGORY_TO_ISSUE[detectedType] ?? undefined,
-                input_type: hasRecording ? 'voice' : 'text',
-                language: speechLanguage,
-            });
+            if (photo) {
+                const formData = new FormData();
+                formData.append('description', description.trim());
+                formData.append('input_type', hasRecording ? 'voice' : 'text');
+                formData.append('language', speechLanguage);
+                formData.append('photo', {
+                    uri: photo.uri,
+                    name: photo.fileName,
+                    type: photo.type,
+                });
+                await client.post('/maintenance', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            } else {
+                await client.post('/maintenance', {
+                    description: description.trim(),
+                    input_type: hasRecording ? 'voice' : 'text',
+                    language: speechLanguage,
+                });
+            }
 
-            const savedRequest = res.data?.request;
-            const issueType = savedRequest?.issue_type ?? 'other';
-            const urgencyLevel = savedRequest?.urgency_level ?? 'low';
-
-            setCategory(issueType);
-            Alert.alert(
-                'Success',
-                `Maintenance request submitted successfully.\nIssue: ${issueType}\nPriority: ${urgencyLevel}`
-            );
-
+            Alert.alert('Success', 'Maintenance request submitted successfully.');
             setDescription('');
-            setCategory('');
+            setPhoto(null);
             setHasRecording(false);
             setRecordSecs(0);
         } catch (err) {
@@ -575,7 +359,6 @@ export default function MaintenanceScreen() {
             const message = errors
                 ? Object.values(errors).flat().join('\n')
                 : (err.response?.data?.message ?? 'Failed to submit maintenance request.');
-
             Alert.alert('Error', message);
         } finally {
             setSubmitting(false);
@@ -646,6 +429,7 @@ export default function MaintenanceScreen() {
                         </View>
                         <Text style={styles.fieldHint}>Speak or type the details of the problem</Text>
 
+                        {/* Language selector */}
                         <View style={styles.languageSelector}>
                             {SPEECH_LANGUAGE_OPTIONS.map((option) => {
                                 const active = speechLanguage === option.key;
@@ -690,7 +474,13 @@ export default function MaintenanceScreen() {
                         </TouchableOpacity>
 
                         <Text style={styles.tapToSpeak}>
-                            {modelLoading ? `Loading ${selectedSpeechLanguage.label} Model...` : (isRecording ? 'Tap to stop recording' : (hasRecording ? 'Tap to re-record' : 'Tap to Speak'))}
+                            {modelLoading
+                                ? `Loading ${selectedSpeechLanguage.label} Model...`
+                                : isRecording
+                                    ? 'Tap to stop recording'
+                                    : hasRecording
+                                        ? 'Tap to re-record'
+                                        : 'Tap to Speak'}
                         </Text>
 
                         {/* Transcription result */}
@@ -720,96 +510,54 @@ export default function MaintenanceScreen() {
                         />
                     </View>
 
-                    {/* ── Detected Issue card ── */}
-                    {detectedType ? (
-                        <View style={styles.detectedCard}>
-                            <Text style={styles.detectedTitle}>Detected Issue</Text>
-                            <View style={styles.detectedTable}>
-                                {/* Type row */}
-                                <View style={styles.detectedRow}>
-                                    <Text style={styles.detectedKey}>Detected Type:</Text>
-                                    <View style={styles.detectedValueRow}>
-                                        <Text style={styles.detectedValue}>{detectedType}</Text>
-                                        <TouchableOpacity
-                                            onPress={() => setCategoryOpen(true)}
-                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                        >
-                                            <MaterialIcons name="edit" size={15} color={COLORS.primary} />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
+                    {/* ── Photo Section ── */}
+                    <View style={styles.formCard}>
+                        <Text style={styles.fieldLabel}>Attach a Photo</Text>
+                        <Text style={styles.fieldHint}>Optional — take a photo of the problem</Text>
 
-                                {/* Priority row */}
-                                <View style={[styles.detectedRow, { borderTopWidth: 1, borderTopColor: COLORS.border }]}>
-                                    <Text style={styles.detectedKey}>Priority:</Text>
-                                    <View style={styles.detectedValueRow}>
-                                        {detectedPriority ? (
-                                            <View style={[
-                                                styles.priorityPill,
-                                                { backgroundColor: PRIORITY_STYLE[detectedPriority]?.bg }
-                                            ]}>
-                                                <Text style={[
-                                                    styles.priorityPillText,
-                                                    { color: PRIORITY_STYLE[detectedPriority]?.text }
-                                                ]}>
-                                                    {detectedPriority}
-                                                </Text>
-                                            </View>
-                                        ) : null}
-                                    </View>
-                                </View>
-
-                            </View>
-                        </View>
-                    ) : (
-                        /* Category picker shown when no auto-detection */
-                        <View style={styles.formCard}>
-                            <Text style={styles.fieldLabel}>Category</Text>
-                            <TouchableOpacity
-                                style={styles.pickerWrapper}
-                                activeOpacity={0.8}
-                                onPress={() => setCategoryOpen(!categoryOpen)}
-                            >
-                                <Text style={[styles.pickerText, category && styles.pickerTextSelected]}>
-                                    {category || 'Select issue category'}
-                                </Text>
-                                <MaterialIcons
-                                    name={categoryOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                    size={20}
-                                    color={COLORS.muted}
+                        {photo ? (
+                            <View style={styles.photoPreviewWrapper}>
+                                <Image
+                                    source={{ uri: photo.uri }}
+                                    style={styles.photoPreview}
+                                    resizeMode="cover"
                                 />
-                            </TouchableOpacity>
-
-                        </View>
-                    )}
-
-                    {/* ── Category Dropdown (edit mode) ── */}
-                    {categoryOpen && (
-                        <View style={[styles.dropdownList, { marginHorizontal: 20 }]}>
-                            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                {CATEGORY_OPTIONS.map((item) => (
+                                {/* Retake + Remove actions */}
+                                <View style={styles.photoActions}>
                                     <TouchableOpacity
-                                        key={item}
-                                        style={[
-                                            styles.dropdownListItem,
-                                            category === item && styles.dropdownListItemActive,
-                                        ]}
-                                        onPress={() => { setCategory(item); setCategoryOpen(false); }}
+                                        style={styles.photoActionBtn}
+                                        activeOpacity={0.85}
+                                        onPress={handleTakePhoto}
                                     >
-                                        <Text style={[
-                                            styles.dropdownListItemText,
-                                            category === item && styles.dropdownListItemTextActive,
-                                        ]}>
-                                            {item}
-                                        </Text>
-                                        {category === item && (
-                                            <MaterialIcons name="check" size={16} color={COLORS.primary} />
-                                        )}
+                                        <MaterialIcons name="camera-alt" size={16} color={COLORS.primary} />
+                                        <Text style={styles.photoActionBtnText}>Retake</Text>
                                     </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
+                                    <TouchableOpacity
+                                        style={[styles.photoActionBtn, styles.photoActionBtnDestructive]}
+                                        activeOpacity={0.85}
+                                        onPress={handleRemovePhoto}
+                                    >
+                                        <MaterialIcons name="delete-outline" size={16} color={COLORS.white} />
+                                        <Text style={[styles.photoActionBtnText, styles.photoActionBtnTextDestructive]}>
+                                            Remove
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.cameraBox}
+                                activeOpacity={0.85}
+                                onPress={handleTakePhoto}
+                            >
+                                <View style={styles.cameraIconCircle}>
+                                    <MaterialIcons name="camera-alt" size={28} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.cameraBoxLabel}>Tap to open camera</Text>
+                                <Text style={styles.cameraBoxHint}>JPG · PNG · up to 5 MB</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
                     {/* ── Submit ── */}
                     <TouchableOpacity
@@ -840,9 +588,6 @@ export default function MaintenanceScreen() {
 
             {/* ── Drawer ── */}
             <DrawerMenu ref={drawerRef} />
-
-            {/* ── History Modal ── */}
-            <HistoryModal visible={showHistory} onClose={() => setShowHistory(false)} />
         </SafeAreaView>
     );
 }
