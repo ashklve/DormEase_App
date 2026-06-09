@@ -21,9 +21,10 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/visitorsstyles';
-import DrawerMenu from '../../src/components/DrawerMenu';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
+import { clearSession } from '../../api/auth';
+import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -66,7 +67,6 @@ const formatDisplayTime = (d) =>
 const formatSQLTime = (d) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
 
-// ── Short date for list rows (e.g. "Jun 4")
 const formatShortDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
@@ -106,13 +106,11 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Initials helper ───────────────────────────────────────────────────────────
 const getInitials = (name = '') =>
     name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
 
 const VisitorDetail = ({ icon, label, value }) => {
     if (!value) return null;
-
     return (
         <View style={styles.visitorDetailItem}>
             <MaterialIcons name={icon} size={15} color={COLORS.primary} />
@@ -130,7 +128,6 @@ const VisitorRow = ({ item, isLast }) => {
     const statusLabel = item.status
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
         : 'Pending';
-
     const visitDate = formatShortDate(item.date_of_visit);
     const visitTime = formatVisitorTime(item.time_of_visit);
 
@@ -142,7 +139,6 @@ const VisitorRow = ({ item, isLast }) => {
                         {getInitials(item.visitor_name)}
                     </Text>
                 </View>
-
                 <View style={styles.visitorRowTitleWrap}>
                     <Text style={styles.visitorRowName}>
                         {item.visitor_name || 'Unnamed Visitor'}
@@ -154,14 +150,12 @@ const VisitorRow = ({ item, isLast }) => {
                         </View>
                     )}
                 </View>
-
                 <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
                     <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
                         {statusLabel}
                     </Text>
                 </View>
             </View>
-
             <View style={styles.visitorDetailsGrid}>
                 <VisitorDetail icon="event" label="Date" value={visitDate} />
                 <VisitorDetail icon="schedule" label="Time" value={visitTime} />
@@ -183,21 +177,9 @@ const CollapsibleVisitorList = ({ visitors }) => {
         const toOpen = !open;
         setOpen(toOpen);
         Animated.parallel([
-            Animated.timing(animHeight, {
-                toValue: toOpen ? 1 : 0,
-                duration: 280,
-                useNativeDriver: false,
-            }),
-            Animated.timing(animOpacity, {
-                toValue: toOpen ? 1 : 0,
-                duration: 220,
-                useNativeDriver: false,
-            }),
-            Animated.timing(chevronAnim, {
-                toValue: toOpen ? 1 : 0,
-                duration: 260,
-                useNativeDriver: true,
-            }),
+            Animated.timing(animHeight, { toValue: toOpen ? 1 : 0, duration: 280, useNativeDriver: false }),
+            Animated.timing(animOpacity, { toValue: toOpen ? 1 : 0, duration: 220, useNativeDriver: false }),
+            Animated.timing(chevronAnim, { toValue: toOpen ? 1 : 0, duration: 260, useNativeDriver: true }),
         ]).start();
     };
 
@@ -208,11 +190,7 @@ const CollapsibleVisitorList = ({ visitors }) => {
 
     return (
         <View style={styles.collapseContainer}>
-            <TouchableOpacity
-                style={styles.collapseHeader}
-                onPress={toggle}
-                activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.collapseHeader} onPress={toggle} activeOpacity={0.7}>
                 <View style={styles.collapseHeaderLeft}>
                     <View style={styles.collapseCountBadge}>
                         <Text style={styles.collapseCountText}>
@@ -225,22 +203,14 @@ const CollapsibleVisitorList = ({ visitors }) => {
                     <MaterialIcons name="keyboard-arrow-up" size={20} color={COLORS.muted} />
                 </Animated.View>
             </TouchableOpacity>
-
             <Animated.View style={{
                 opacity: animOpacity,
-                maxHeight: animHeight.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 9999],
-                }),
+                maxHeight: animHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 9999] }),
                 overflow: 'hidden',
             }}>
                 <View style={styles.collapseListDivider} />
                 {visitors.map((item, index) => (
-                    <VisitorRow
-                        key={item.id}
-                        item={item}
-                        isLast={index === visitors.length - 1}
-                    />
+                    <VisitorRow key={item.id} item={item} isLast={index === visitors.length - 1} />
                 ))}
             </Animated.View>
         </View>
@@ -250,41 +220,31 @@ const CollapsibleVisitorList = ({ visitors }) => {
 // ── iOS DateTime Modal ────────────────────────────────────────────────────────
 const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
     <Modal transparent animationType="slide" visible={visible}>
-        <View style={{
-            flex: 1,
-            justifyContent: 'flex-end',
-            backgroundColor: 'rgba(0,0,0,0.3)',
-        }}>
-            <View style={{
-                backgroundColor: '#fff',
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-            }}>
-                <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'flex-end',
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#eee',
-                }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
                     <TouchableOpacity onPress={onDone}>
-                        <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>
-                            Done
-                        </Text>
+                        <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done</Text>
                     </TouchableOpacity>
                 </View>
-                <DateTimePicker
-                    value={value}
-                    mode={mode}
-                    display="spinner"
-                    onChange={onChange}
-                    style={{ height: 200 }}
-                    textColor="#000"
-                />
+                <DateTimePicker value={value} mode={mode} display="spinner" onChange={onChange} style={{ height: 200 }} textColor="#000" />
             </View>
         </View>
     </Modal>
+);
+
+// ── Drawer Item ───────────────────────────────────────────────────────────────
+const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
+    <TouchableOpacity style={drawerStyles.drawerItem} onPress={onPress} activeOpacity={0.7}>
+        <View style={drawerStyles.drawerItemLeft}>
+            {iconLib === 'MaterialIcons'
+                ? <MaterialIcons name={iconName} size={20} color="#fff" />
+                : <Ionicons name={iconName} size={20} color="#fff" />
+            }
+            <Text style={drawerStyles.drawerItemText}>{label}</Text>
+        </View>
+        {hasChevron && <Ionicons name="chevron-forward" size={18} color="#fff" />}
+    </TouchableOpacity>
 );
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
@@ -292,8 +252,30 @@ export default function VisitorsScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
-    const drawerRef = useRef(null);
 
+    // ── drawer state ──────────────────────────────────────────────────────────
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [documentsExpanded, setDocumentsExpanded] = useState(false);
+    const drawerAnim = useRef(new Animated.Value(-400)).current;
+
+    const openDrawer = () => {
+        setDrawerOpen(true);
+        Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+    };
+    const closeDrawer = () => {
+        Animated.timing(drawerAnim, { toValue: -400, duration: 250, useNativeDriver: true })
+            .start(() => setDrawerOpen(false));
+    };
+    const drawerNavigate = (route) => { closeDrawer(); router.push(route); };
+
+    // derived user display values — same logic as dashboard
+    const username = user
+        ? '@' + `${user.first_name ?? ''}${user.last_name ?? ''}`.replace(/\s+/g, '').toLowerCase()
+        : '';
+    const roomCode = user?.room_number ? `R${user.room_number}-01` : '';
+    const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
+
+    // ── visitors state ────────────────────────────────────────────────────────
     const [visitors, setVisitors] = useState([]);
     const [visitorsToday, setVisitorsToday] = useState(0);
     const [activePasses, setActivePasses] = useState(0);
@@ -363,15 +345,8 @@ export default function VisitorsScreen() {
 
     const onIOSChange = (event, date) => { if (date) setTempDateTime(date); };
 
-    const openDatePicker = () => {
-        setTempDateTime(new Date(selectedDateTime));
-        setShowDatePicker(true);
-    };
-
-    const openTimePicker = () => {
-        setTempDateTime(new Date(selectedDateTime));
-        setShowTimePicker(true);
-    };
+    const openDatePicker = () => { setTempDateTime(new Date(selectedDateTime)); setShowDatePicker(true); };
+    const openTimePicker = () => { setTempDateTime(new Date(selectedDateTime)); setShowTimePicker(true); };
 
     const confirmIOSDate = () => {
         setSelectedDateTime((prev) => {
@@ -470,10 +445,7 @@ export default function VisitorsScreen() {
             >
                 {/* Top Row */}
                 <View style={styles.topRow}>
-                    <TouchableOpacity
-                        style={styles.backBtn}
-                        onPress={() => drawerRef.current?.open()}
-                    >
+                    <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
                         <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                     </TouchableOpacity>
                     <View style={styles.topRowRight}>
@@ -549,7 +521,7 @@ export default function VisitorsScreen() {
                             </View>
                         </View>
 
-                        {/* ── Registered Visitors (above the form) ── */}
+                        {/* Registered Visitors */}
                         <Text style={styles.sectionTitle}>Registered Visitors</Text>
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
@@ -557,7 +529,7 @@ export default function VisitorsScreen() {
                             <CollapsibleVisitorList visitors={visitors} />
                         )}
 
-                        {/* ── Register New Visitor Form ── */}
+                        {/* Register New Visitor Form */}
                         <View style={styles.formSection}>
                             <Text style={styles.formSectionTitle}>Register New Visitor</Text>
 
@@ -586,11 +558,7 @@ export default function VisitorsScreen() {
                                 <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
                                     {purpose || 'Purpose of Visit'}
                                 </Text>
-                                <MaterialIcons
-                                    name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                    size={20}
-                                    color={COLORS.muted}
-                                />
+                                <MaterialIcons name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
                             </TouchableOpacity>
                             {purposeOpen && (
                                 <View style={styles.dropdownList}>
@@ -601,9 +569,7 @@ export default function VisitorsScreen() {
                                                 style={[styles.dropdownListItem, purpose === item && styles.dropdownListItemActive]}
                                                 onPress={() => { setPurpose(item); setPurposeOpen(false); }}
                                             >
-                                                <Text style={[styles.dropdownListItemText, purpose === item && styles.dropdownListItemTextActive]}>
-                                                    {item}
-                                                </Text>
+                                                <Text style={[styles.dropdownListItemText, purpose === item && styles.dropdownListItemTextActive]}>{item}</Text>
                                                 {purpose === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
                                             </TouchableOpacity>
                                         ))}
@@ -620,11 +586,7 @@ export default function VisitorsScreen() {
                                 <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
                                     {idType || 'ID Type'}
                                 </Text>
-                                <MaterialIcons
-                                    name={idTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                    size={20}
-                                    color={COLORS.muted}
-                                />
+                                <MaterialIcons name={idTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
                             </TouchableOpacity>
                             {idTypeOpen && (
                                 <View style={styles.dropdownList}>
@@ -635,9 +597,7 @@ export default function VisitorsScreen() {
                                                 style={[styles.dropdownListItem, idType === item && styles.dropdownListItemActive]}
                                                 onPress={() => { setIdType(item); setIdTypeOpen(false); }}
                                             >
-                                                <Text style={[styles.dropdownListItemText, idType === item && styles.dropdownListItemTextActive]}>
-                                                    {item}
-                                                </Text>
+                                                <Text style={[styles.dropdownListItemText, idType === item && styles.dropdownListItemTextActive]}>{item}</Text>
                                                 {idType === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
                                             </TouchableOpacity>
                                         ))}
@@ -693,8 +653,6 @@ export default function VisitorsScreen() {
                                 }
                             </TouchableOpacity>
                         </View>
-
-
                     </ScrollView>
                 )}
             </KeyboardAvoidingView>
@@ -708,8 +666,75 @@ export default function VisitorsScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            <DrawerMenu ref={drawerRef} />
+            {/* Drawer overlay */}
+            {drawerOpen && (
+                <TouchableOpacity style={drawerStyles.overlay} activeOpacity={1} onPress={closeDrawer} />
+            )}
 
+            {/* Drawer panel */}
+            <Animated.View style={[drawerStyles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
+                {/* user info */}
+                <View style={drawerStyles.drawerTop}>
+                    <Image source={photoSource} style={drawerStyles.drawerAvatar} />
+                    <Text style={drawerStyles.drawerUsername}>{username}</Text>
+                    <Text style={drawerStyles.drawerRoom}>{roomCode}</Text>
+                </View>
+
+                {/* close button */}
+                <TouchableOpacity style={drawerStyles.drawerCloseBtn} onPress={closeDrawer}>
+                    <Ionicons name="close" size={18} color="#fff" />
+                </TouchableOpacity>
+
+                <View style={drawerStyles.drawerDivider} />
+
+                <DrawerItem iconName="home-outline" label="Dashboard" onPress={() => drawerNavigate('/tenant/dashboard')} />
+                <DrawerItem iconName="megaphone-outline" label="Announcements" onPress={() => drawerNavigate('/tenant/announcements')} />
+
+                {/* Documents — expandable */}
+                <TouchableOpacity style={drawerStyles.drawerItem} onPress={() => setDocumentsExpanded(!documentsExpanded)} activeOpacity={0.7}>
+                    <View style={drawerStyles.drawerItemLeft}>
+                        <Ionicons name="document-text-outline" size={20} color="#fff" />
+                        <Text style={drawerStyles.drawerItemText}>Documents</Text>
+                    </View>
+                    <Ionicons name={documentsExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color="#fff" />
+                </TouchableOpacity>
+                {documentsExpanded && (
+                    <>
+                        <TouchableOpacity style={drawerStyles.drawerSubItem} onPress={() => drawerNavigate('/tenant/documents')}>
+                            <Text style={drawerStyles.drawerSubItemText}>Document Request</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={drawerStyles.drawerSubItem} onPress={() => drawerNavigate('/tenant/records')}>
+                            <Text style={drawerStyles.drawerSubItemText}>Tenant Records</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                <DrawerItem iconName="build" iconLib="MaterialIcons" label="Maintenance" onPress={() => drawerNavigate('/tenant/maintenance')} />
+                <DrawerItem iconName="warning-outline" label="Emergency" onPress={() => drawerNavigate('/tenant/emergency')} />
+                <DrawerItem iconName="people-outline" label="Visitor" onPress={() => drawerNavigate('/tenant/visitors')} />
+                <DrawerItem iconName="receipt-outline" label="Billing" onPress={() => drawerNavigate('/tenant/water-bill')} />
+                <DrawerItem iconName="settings-outline" label="Settings" onPress={() => drawerNavigate('/tenant/settings')} />
+
+                <View style={drawerStyles.drawerDivider} />
+
+                <TouchableOpacity
+                    style={drawerStyles.drawerLogout}
+                    onPress={async () => {
+                        closeDrawer();
+                        dashboardCache.loaded = false;
+                        dashboardCache.announcements = [];
+                        dashboardCache.currentBill = '0.00';
+                        dashboardCache.pendingRequests = 0;
+                        await clearSession();
+                        setTimeout(() => router.replace('/auth/login'), 260);
+                    }}
+                >
+                    <Ionicons name="log-out-outline" size={20} color="#fff" />
+                    <Text style={drawerStyles.drawerLogoutText}>Logout</Text>
+                </TouchableOpacity>
+            </Animated.View>
+
+            {/* iOS pickers */}
             {Platform.OS === 'ios' && (
                 <IOSPickerModal visible={showDatePicker} mode="date" value={tempDateTime} onChange={onIOSChange} onDone={confirmIOSDate} />
             )}
@@ -719,3 +744,100 @@ export default function VisitorsScreen() {
         </SafeAreaView>
     );
 }
+
+// ── Drawer-specific styles (mirrors dashboard.jsx) ────────────────────────────
+const drawerStyles = {
+    overlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        zIndex: 10,
+    },
+    drawer: {
+        position: 'absolute',
+        top: 0, left: 0, bottom: 0,
+        width: '75%',
+        maxWidth: 320,
+        backgroundColor: '#E91E8C',
+        zIndex: 20,
+        paddingTop: 60,
+    },
+    drawerTop: {
+        alignItems: 'flex-start',
+        paddingHorizontal: 20,
+        marginBottom: 16,
+    },
+    drawerAvatar: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.5)',
+        marginBottom: 10,
+    },
+    drawerUsername: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    drawerRoom: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 13,
+        marginTop: 2,
+    },
+    drawerCloseBtn: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    drawerDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        marginHorizontal: 20,
+        marginVertical: 8,
+    },
+    drawerItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+    },
+    drawerItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    drawerItemText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    drawerSubItem: {
+        paddingLeft: 52,
+        paddingRight: 20,
+        paddingVertical: 10,
+    },
+    drawerSubItemText: {
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 14,
+    },
+    drawerLogout: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        gap: 12,
+    },
+    drawerLogoutText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+};
