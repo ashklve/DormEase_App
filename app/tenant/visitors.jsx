@@ -26,6 +26,7 @@ import { useUser } from '../../src/context/UserContext';
 import { clearSession } from '../../api/auth';
 import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import NotificationBell from '../../src/components/NotificationBell';
+import DrawerMenu from '../../src/components/DrawerMenu';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -233,40 +234,14 @@ const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
     </Modal>
 );
 
-// ── Drawer Item ───────────────────────────────────────────────────────────────
-const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
-    <TouchableOpacity style={drawerStyles.drawerItem} onPress={onPress} activeOpacity={0.7}>
-        <View style={drawerStyles.drawerItemLeft}>
-            {iconLib === 'MaterialIcons'
-                ? <MaterialIcons name={iconName} size={20} color="#fff" />
-                : <Ionicons name={iconName} size={20} color="#fff" />
-            }
-            <Text style={drawerStyles.drawerItemText}>{label}</Text>
-        </View>
-        {hasChevron && <Ionicons name="chevron-forward" size={18} color="#fff" />}
-    </TouchableOpacity>
-);
-
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function VisitorsScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
 
-    // ── drawer state ──────────────────────────────────────────────────────────
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [documentsExpanded, setDocumentsExpanded] = useState(false);
-    const drawerAnim = useRef(new Animated.Value(-400)).current;
-
-    const openDrawer = () => {
-        setDrawerOpen(true);
-        Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
-    };
-    const closeDrawer = () => {
-        Animated.timing(drawerAnim, { toValue: -400, duration: 250, useNativeDriver: true })
-            .start(() => setDrawerOpen(false));
-    };
-    const drawerNavigate = (route) => { closeDrawer(); router.push(route); };
+    // ── drawer ref ────────────────────────────────────────────────────────────
+    const drawerRef = useRef(null);
 
     // derived user display values — same logic as dashboard
     const username = user
@@ -445,7 +420,7 @@ export default function VisitorsScreen() {
             >
                 {/* Top Row */}
                 <View style={styles.topRow}>
-                    <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
                         <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                     </TouchableOpacity>
                     <View style={styles.topRowRight}>
@@ -666,73 +641,8 @@ export default function VisitorsScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* Drawer overlay */}
-            {drawerOpen && (
-                <TouchableOpacity style={drawerStyles.overlay} activeOpacity={1} onPress={closeDrawer} />
-            )}
-
-            {/* Drawer panel */}
-            <Animated.View style={[drawerStyles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-                {/* user info */}
-                <View style={drawerStyles.drawerTop}>
-                    <Image source={photoSource} style={drawerStyles.drawerAvatar} />
-                    <Text style={drawerStyles.drawerUsername}>{username}</Text>
-                    <Text style={drawerStyles.drawerRoom}>{roomCode}</Text>
-                </View>
-
-                {/* close button */}
-                <TouchableOpacity style={drawerStyles.drawerCloseBtn} onPress={closeDrawer}>
-                    <Ionicons name="close" size={18} color="#fff" />
-                </TouchableOpacity>
-
-                <View style={drawerStyles.drawerDivider} />
-
-                <DrawerItem iconName="home-outline" label="Dashboard" onPress={() => drawerNavigate('/tenant/dashboard')} />
-                <DrawerItem iconName="megaphone-outline" label="Announcements" onPress={() => drawerNavigate('/tenant/announcements')} />
-
-                {/* Documents — expandable */}
-                <TouchableOpacity style={drawerStyles.drawerItem} onPress={() => setDocumentsExpanded(!documentsExpanded)} activeOpacity={0.7}>
-                    <View style={drawerStyles.drawerItemLeft}>
-                        <Ionicons name="document-text-outline" size={20} color="#fff" />
-                        <Text style={drawerStyles.drawerItemText}>Documents</Text>
-                    </View>
-                    <Ionicons name={documentsExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color="#fff" />
-                </TouchableOpacity>
-                {documentsExpanded && (
-                    <>
-                        <TouchableOpacity style={drawerStyles.drawerSubItem} onPress={() => drawerNavigate('/tenant/documents')}>
-                            <Text style={drawerStyles.drawerSubItemText}>Document Request</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={drawerStyles.drawerSubItem} onPress={() => drawerNavigate('/tenant/records')}>
-                            <Text style={drawerStyles.drawerSubItemText}>Tenant Records</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-
-                <DrawerItem iconName="build" iconLib="MaterialIcons" label="Maintenance" onPress={() => drawerNavigate('/tenant/maintenance')} />
-                <DrawerItem iconName="warning-outline" label="Emergency" onPress={() => drawerNavigate('/tenant/emergency')} />
-                <DrawerItem iconName="people-outline" label="Visitor" onPress={() => drawerNavigate('/tenant/visitors')} />
-                <DrawerItem iconName="receipt-outline" label="Billing" onPress={() => drawerNavigate('/tenant/water-bill')} />
-                <DrawerItem iconName="settings-outline" label="Settings" onPress={() => drawerNavigate('/tenant/settings')} />
-
-                <View style={drawerStyles.drawerDivider} />
-
-                <TouchableOpacity
-                    style={drawerStyles.drawerLogout}
-                    onPress={async () => {
-                        closeDrawer();
-                        dashboardCache.loaded = false;
-                        dashboardCache.announcements = [];
-                        dashboardCache.currentBill = '0.00';
-                        dashboardCache.pendingRequests = 0;
-                        await clearSession();
-                        setTimeout(() => router.replace('/auth/login'), 260);
-                    }}
-                >
-                    <Ionicons name="log-out-outline" size={20} color="#fff" />
-                    <Text style={drawerStyles.drawerLogoutText}>Logout</Text>
-                </TouchableOpacity>
-            </Animated.View>
+            {/* Drawer */}
+            <DrawerMenu ref={drawerRef} />
 
             {/* iOS pickers */}
             {Platform.OS === 'ios' && (
@@ -744,100 +654,3 @@ export default function VisitorsScreen() {
         </SafeAreaView>
     );
 }
-
-// ── Drawer-specific styles (mirrors dashboard.jsx) ────────────────────────────
-const drawerStyles = {
-    overlay: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        zIndex: 10,
-    },
-    drawer: {
-        position: 'absolute',
-        top: 0, left: 0, bottom: 0,
-        width: '75%',
-        maxWidth: 320,
-        backgroundColor: '#E91E8C',
-        zIndex: 20,
-        paddingTop: 60,
-    },
-    drawerTop: {
-        alignItems: 'flex-start',
-        paddingHorizontal: 20,
-        marginBottom: 16,
-    },
-    drawerAvatar: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.5)',
-        marginBottom: 10,
-    },
-    drawerUsername: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    drawerRoom: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 13,
-        marginTop: 2,
-    },
-    drawerCloseBtn: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    drawerDivider: {
-        height: 1,
-        backgroundColor: 'rgba(255,255,255,0.25)',
-        marginHorizontal: 20,
-        marginVertical: 8,
-    },
-    drawerItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-    },
-    drawerItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    drawerItemText: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '500',
-    },
-    drawerSubItem: {
-        paddingLeft: 52,
-        paddingRight: 20,
-        paddingVertical: 10,
-    },
-    drawerSubItemText: {
-        color: 'rgba(255,255,255,0.85)',
-        fontSize: 14,
-    },
-    drawerLogout: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        gap: 12,
-    },
-    drawerLogoutText: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '500',
-    },
-};
