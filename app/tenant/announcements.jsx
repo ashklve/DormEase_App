@@ -11,7 +11,6 @@ import {
   TouchableWithoutFeedback,
   RefreshControl,
   Dimensions,
-  Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +22,7 @@ import NotificationBell from '../../src/components/NotificationBell';
 import * as WebBrowser from 'expo-web-browser';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 import { useUser } from '../../src/context/UserContext';
-import { clearSession } from '../../api/auth';
-import { dashboardCache } from '../../src/cache/dashboardCache.js';
+import DrawerMenu from '../../src/components/DrawerMenu';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
@@ -58,111 +56,123 @@ const MONTH_INDEX_BY_NAME = {
 const parseAnnouncementDateValue = (value) => {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
   if (typeof value === 'number') {
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
+    const timestampDate = new Date(value);
+    return Number.isNaN(timestampDate.getTime()) ? null : timestampDate;
   }
 
   const dateText = String(value).trim();
-  const normalized = dateText
+  const normalizedDateText = dateText
     .replace(/\s+at\s+/i, ' ')
     .replace(/[•·]/g, ' ')
     .replace(/\s+/g, ' ');
 
-  const isoMatch = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (isoMatch) {
-    const d = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
-    return Number.isNaN(d.getTime()) ? null : d;
+  const isoDateMatch = normalizedDateText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoDateMatch) {
+    const [, year, month, day] = isoDateMatch;
+    const isoDate = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(isoDate.getTime()) ? null : isoDate;
   }
 
-  const monthNameMatch = normalized.match(
+  const monthNameMatch = normalizedDateText.match(
     /^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:,\s*(\d{4}))?/i
   );
   if (monthNameMatch) {
     const [, monthName, day, year] = monthNameMatch;
-    const d = new Date(
-      Number(year || new Date().getFullYear()),
+    const fallbackYear = year || String(new Date().getFullYear());
+    const monthDate = new Date(
+      Number(fallbackYear),
       MONTH_INDEX_BY_NAME[monthName.toLowerCase().replace('.', '')],
       Number(day)
     );
-    return Number.isNaN(d.getTime()) ? null : d;
+    return Number.isNaN(monthDate.getTime()) ? null : monthDate;
   }
 
-  const dayMonthMatch = normalized.match(
+  const dayMonthNameMatch = normalizedDateText.match(
     /^(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?(?:,?\s*(\d{4}))?/i
   );
-  if (dayMonthMatch) {
-    const [, day, monthName, year] = dayMonthMatch;
-    const d = new Date(
-      Number(year || new Date().getFullYear()),
+  if (dayMonthNameMatch) {
+    const [, day, monthName, year] = dayMonthNameMatch;
+    const fallbackYear = year || String(new Date().getFullYear());
+    const dayMonthDate = new Date(
+      Number(fallbackYear),
       MONTH_INDEX_BY_NAME[monthName.toLowerCase().replace('.', '')],
       Number(day)
     );
-    return Number.isNaN(d.getTime()) ? null : d;
+    return Number.isNaN(dayMonthDate.getTime()) ? null : dayMonthDate;
   }
 
-  const numericMatch = normalized.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
-  if (numericMatch) {
-    const [, first, second, year] = numericMatch;
+  const numericDateMatch = normalizedDateText.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (numericDateMatch) {
+    const [, first, second, year] = numericDateMatch;
     const fullYear = year.length === 2 ? `20${year}` : year;
-    const f = Number(first);
-    const s = Number(second);
-    const d = new Date(Number(fullYear), (f > 12 ? s : f) - 1, f > 12 ? f : s);
-    return Number.isNaN(d.getTime()) ? null : d;
+    const firstNumber = Number(first);
+    const secondNumber = Number(second);
+    const month = firstNumber > 12 ? secondNumber : firstNumber;
+    const day = firstNumber > 12 ? firstNumber : secondNumber;
+    const numericDate = new Date(Number(fullYear), month - 1, day);
+    return Number.isNaN(numericDate.getTime()) ? null : numericDate;
   }
 
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  const parsedDate = new Date(normalizedDateText);
+  if (!Number.isNaN(parsedDate.getTime())) return parsedDate;
+
+  return null;
 };
 
 const getAnnouncementDate = (announcement) => {
-  for (const field of [
+  const dateFields = [
     announcement?.created_at,
     announcement?.createdAt,
     announcement?.date,
     announcement?.updated_at,
-  ]) {
-    const d = parseAnnouncementDateValue(field);
-    if (d) return d;
+  ];
+  for (const dateField of dateFields) {
+    const parsedDate = parseAnnouncementDateValue(dateField);
+    if (parsedDate) return parsedDate;
   }
   return null;
 };
 
 const getFilterReferenceDate = (announcements) => {
-  const newest = announcements.reduce((acc, a) => {
-    const d = getAnnouncementDate(a);
-    if (!d) return acc;
-    if (!acc || d > acc) return d;
-    return acc;
+  const newestAnnouncementDate = announcements.reduce((newestDate, announcement) => {
+    const announcementDate = getAnnouncementDate(announcement);
+    if (!announcementDate) return newestDate;
+    if (!newestDate || announcementDate > newestDate) return announcementDate;
+    return newestDate;
   }, null);
-  return newest || new Date();
+  return newestAnnouncementDate || new Date();
 };
 
-const isSameDay = (a, b) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
+const isSameDay = (left, right) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
 
 const isInSelectedPeriod = (announcement, selectedFilter, referenceDate) => {
   if (selectedFilter === 'All Time') return true;
-  const d = getAnnouncementDate(announcement);
-  if (!d) return false;
 
-  if (selectedFilter === 'Today') return isSameDay(d, referenceDate);
+  const announcementDate = getAnnouncementDate(announcement);
+  if (!announcementDate) return false;
+
+  if (selectedFilter === 'Today') {
+    return isSameDay(announcementDate, referenceDate);
+  }
 
   if (selectedFilter === 'This Week') {
-    const start = new Date(referenceDate);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(referenceDate.getDate() - referenceDate.getDay());
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    return d >= start && d < end;
+    const startOfWeek = new Date(referenceDate);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(referenceDate.getDate() - referenceDate.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    return announcementDate >= startOfWeek && announcementDate < endOfWeek;
   }
 
   if (selectedFilter === 'This Month') {
     return (
-      d.getFullYear() === referenceDate.getFullYear() &&
-      d.getMonth() === referenceDate.getMonth()
+      announcementDate.getFullYear() === referenceDate.getFullYear() &&
+      announcementDate.getMonth() === referenceDate.getMonth()
     );
   }
 
@@ -181,8 +191,8 @@ const getAnnouncementKey = (announcement) =>
 const parseStoredAnnouncementIds = (storedIds) => {
   if (!storedIds) return [];
   try {
-    const parsed = JSON.parse(storedIds);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
+    const parsedIds = JSON.parse(storedIds);
+    return Array.isArray(parsedIds) ? parsedIds.map(String) : [];
   } catch {
     return [];
   }
@@ -191,15 +201,20 @@ const parseStoredAnnouncementIds = (storedIds) => {
 const AnnouncementDetail = ({ item, visible, onClose }) => {
   const [imageRatio, setImageRatio] = useState(null);
   const insets = useSafeAreaInsets();
+
   if (!item) return null;
 
   const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
+
   const attachments = item.attachments
     ? item.attachments
         .split(',')
         .map((a) => a.trim())
         .filter(Boolean)
-        .filter((path) => !IMAGE_EXTENSIONS.includes(path.split('.').pop().toLowerCase()))
+        .filter((path) => {
+          const ext = path.split('.').pop().toLowerCase();
+          return !IMAGE_EXTENSIONS.includes(ext);
+        })
     : [];
 
   const getFileName = (path) => path.split('/').pop();
@@ -208,7 +223,9 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
     const url = `${client.defaults.baseURL.replace('/api', '')}/storage/${path}`;
     const ext = path.split('.').pop().toLowerCase();
     if (ext === 'pdf') {
-      await WebBrowser.openBrowserAsync(`https://docs.google.com/viewer?url=${encodeURIComponent(url)}`);
+      await WebBrowser.openBrowserAsync(
+        `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`
+      );
     } else {
       await WebBrowser.openBrowserAsync(url);
     }
@@ -224,7 +241,12 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={onClose}
+    >
       <View
         style={[
           detailStyles.modalRoot,
@@ -259,7 +281,9 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
                   <Ionicons name="time-outline" size={12} color="#B5B7C0" />
                   <Text style={detailStyles.metaText}>{item.date}</Text>
                   <View style={[detailStyles.priorityBadge, { backgroundColor: p.bg }]}>
-                    <Text style={[detailStyles.priorityText, { color: p.text }]}>{item.priority}</Text>
+                    <Text style={[detailStyles.priorityText, { color: p.text }]}>
+                      {item.priority}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -298,7 +322,9 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
               <View style={detailStyles.attachSection}>
                 <View style={detailStyles.attachTitleRow}>
                   <Ionicons name="attach-outline" size={16} color={COLORS.primary} />
-                  <Text style={detailStyles.attachTitle}>Attachments ({attachments.length})</Text>
+                  <Text style={detailStyles.attachTitle}>
+                    Attachments ({attachments.length})
+                  </Text>
                 </View>
                 {attachments.map((path, i) => {
                   const icon = getFileIcon(path);
@@ -365,7 +391,10 @@ const AnnouncementCard = ({
           <View style={styles.dotsWrap}>
             <TouchableOpacity
               style={styles.dotsBtn}
-              onPress={(e) => { e?.stopPropagation?.(); onMenuPress(item); }}
+              onPress={(event) => {
+                event?.stopPropagation?.();
+                onMenuPress(item);
+              }}
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
               <MaterialIcons name="more-horiz" size={26} color={COLORS.muted} />
@@ -417,20 +446,26 @@ const AnnouncementCard = ({
       {isMenuOpen && (
         <View
           style={cardMenuStyles.menu}
-          onTouchStart={(e) => e?.stopPropagation?.()}
+          onTouchStart={(event) => event?.stopPropagation?.()}
         >
           <TouchableOpacity
             style={cardMenuStyles.menuItem}
-            onPressIn={(e) => { e?.stopPropagation?.(); onMarkAsRead(item); }}
-            onPress={(e) => e?.stopPropagation?.()}
+            onPressIn={(event) => {
+              event?.stopPropagation?.();
+              onMarkAsRead(item);
+            }}
+            onPress={(event) => event?.stopPropagation?.()}
           >
             <Text style={cardMenuStyles.menuText}>Mark as read</Text>
             <MaterialIcons name="done" size={18} color={COLORS.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={cardMenuStyles.menuItem}
-            onPressIn={(e) => { e?.stopPropagation?.(); onTogglePin(item); }}
-            onPress={(e) => e?.stopPropagation?.()}
+            onPressIn={(event) => {
+              event?.stopPropagation?.();
+              onTogglePin(item);
+            }}
+            onPress={(event) => event?.stopPropagation?.()}
           >
             <Text style={cardMenuStyles.menuText}>{isPinned ? 'Unpin' : 'Pin'}</Text>
             <MaterialIcons name="push-pin" size={18} color={COLORS.primary} />
@@ -438,8 +473,11 @@ const AnnouncementCard = ({
           {isArchived ? (
             <TouchableOpacity
               style={cardMenuStyles.menuItem}
-              onPressIn={(e) => { e?.stopPropagation?.(); onUnarchive(item); }}
-              onPress={(e) => e?.stopPropagation?.()}
+              onPressIn={(event) => {
+                event?.stopPropagation?.();
+                onUnarchive(item);
+              }}
+              onPress={(event) => event?.stopPropagation?.()}
             >
               <Text style={cardMenuStyles.menuText}>Unarchive</Text>
               <MaterialIcons name="unarchive" size={18} color={COLORS.primary} />
@@ -447,8 +485,11 @@ const AnnouncementCard = ({
           ) : (
             <TouchableOpacity
               style={cardMenuStyles.menuItem}
-              onPressIn={(e) => { e?.stopPropagation?.(); onArchive(item); }}
-              onPress={(e) => e?.stopPropagation?.()}
+              onPressIn={(event) => {
+                event?.stopPropagation?.();
+                onArchive(item);
+              }}
+              onPress={(event) => event?.stopPropagation?.()}
             >
               <Text style={cardMenuStyles.menuText}>Archive</Text>
               <MaterialIcons name="archive" size={18} color={COLORS.primary} />
@@ -461,59 +502,34 @@ const AnnouncementCard = ({
 };
 
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-  <TouchableOpacity style={[styles.navItem, isCenter && styles.navCenter]} onPress={onPress}>
+  <TouchableOpacity
+    style={[styles.navItem, isCenter && styles.navCenter]}
+    onPress={onPress}
+  >
     {isCenter ? (
       <View style={styles.navCenterCircle}>
         <MaterialIcons name={iconName} size={26} color={COLORS.white} />
       </View>
     ) : (
       <>
-        <MaterialIcons name={iconName} size={24} color={isActive ? COLORS.primary : COLORS.grayText} />
-        <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>{label}</Text>
+        <MaterialIcons
+          name={iconName}
+          size={24}
+          color={isActive ? COLORS.primary : COLORS.grayText}
+        />
+        <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
+          {label}
+        </Text>
       </>
     )}
-  </TouchableOpacity>
-);
-
-const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
-  <TouchableOpacity style={styles.drawerItem} onPress={onPress} activeOpacity={0.7}>
-    <View style={styles.drawerItemLeft}>
-      {iconLib === 'MaterialIcons'
-        ? <MaterialIcons name={iconName} size={20} color={COLORS.white} />
-        : <Ionicons name={iconName} size={20} color={COLORS.white} />
-      }
-      <Text style={styles.drawerItemText}>{label}</Text>
-    </View>
-    {hasChevron && <Ionicons name="chevron-forward" size={18} color={COLORS.white} />}
   </TouchableOpacity>
 );
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, avatarUri } = useUser();
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [documentsExpanded, setDocumentsExpanded] = useState(false);
-  const drawerAnim = useRef(new Animated.Value(-400)).current;
-
-  const openDrawer = () => {
-    setDrawerOpen(true);
-    Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
-  };
-
-  const closeDrawer = () => {
-    Animated.timing(drawerAnim, { toValue: -400, duration: 250, useNativeDriver: true })
-      .start(() => setDrawerOpen(false));
-  };
-
-  const drawerNavigate = (route) => { closeDrawer(); router.push(route); };
-
-  const username = user
-    ? '@' + `${user.first_name ?? ''}${user.last_name ?? ''}`.replace(/\s+/g, '').toLowerCase()
-    : '';
-  const roomCode = user?.room_number ? `R${user.room_number}-01` : '';
-  const photoSource = avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png');
+  const { avatarUri } = useUser();
+  const drawerRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('All');
   const [announcements, setAnnouncements] = useState([]);
@@ -528,24 +544,26 @@ export default function AnnouncementsScreen() {
   const [archivedAnnouncementIds, setArchivedAnnouncementIds] = useState([]);
   const [pinnedAnnouncementIds, setPinnedAnnouncementIds] = useState([]);
 
-  useEffect(() => { fetchAnnouncements(); }, []);
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
+    const loadAnnouncementPreferences = async () => {
       try {
-        const [r, a, p] = await Promise.all([
+        const [storedReadIds, storedArchivedIds, storedPinnedIds] = await Promise.all([
           AsyncStorage.getItem(READ_STORAGE_KEY),
           AsyncStorage.getItem(ARCHIVED_STORAGE_KEY),
           AsyncStorage.getItem(PINNED_STORAGE_KEY),
         ]);
-        setReadAnnouncementIds(parseStoredAnnouncementIds(r));
-        setArchivedAnnouncementIds(parseStoredAnnouncementIds(a));
-        setPinnedAnnouncementIds(parseStoredAnnouncementIds(p));
+        setReadAnnouncementIds(parseStoredAnnouncementIds(storedReadIds));
+        setArchivedAnnouncementIds(parseStoredAnnouncementIds(storedArchivedIds));
+        setPinnedAnnouncementIds(parseStoredAnnouncementIds(storedPinnedIds));
       } catch (error) {
         console.error('announcement preferences error:', error);
       }
     };
-    load();
+    loadAnnouncementPreferences();
   }, []);
 
   const fetchAnnouncements = async () => {
@@ -581,92 +599,106 @@ export default function AnnouncementsScreen() {
   };
 
   const toggleActionMenu = (item) => {
-    const key = getAnnouncementKey(item);
-    const openKey = actionMenuItem ? getAnnouncementKey(actionMenuItem) : null;
-    setActionMenuItem(openKey === key ? null : item);
+    const itemKey = getAnnouncementKey(item);
+    const openItemKey = actionMenuItem ? getAnnouncementKey(actionMenuItem) : null;
+    setActionMenuItem(openItemKey === itemKey ? null : item);
   };
 
   const markAnnouncementAsRead = useCallback(async (item) => {
-    const key = getAnnouncementKey(item);
-    const next = Array.from(new Set([...readAnnouncementIds, key]));
-    setReadAnnouncementIds(next);
-    setAnnouncements((cur) =>
-      cur.map((a) => getAnnouncementKey(a) === key ? { ...a, read: true } : a)
+    const itemKey = getAnnouncementKey(item);
+    const nextReadIds = Array.from(new Set([...readAnnouncementIds, itemKey]));
+    setReadAnnouncementIds(nextReadIds);
+    setAnnouncements((current) =>
+      current.map((a) =>
+        getAnnouncementKey(a) === itemKey ? { ...a, read: true } : a
+      )
     );
     setActionMenuItem(null);
     try {
-      await AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
+      await AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(nextReadIds));
+    } catch (error) {
+      console.error('save read announcement failed:', error);
     }
   }, [readAnnouncementIds]);
 
   const archiveAnnouncement = useCallback(async (item) => {
-    const key = getAnnouncementKey(item);
-    const next = Array.from(new Set([...archivedAnnouncementIds, key]));
-    setArchivedAnnouncementIds(next);
+    const itemKey = getAnnouncementKey(item);
+    const nextArchivedIds = Array.from(new Set([...archivedAnnouncementIds, itemKey]));
+    setArchivedAnnouncementIds(nextArchivedIds);
     setActionMenuItem(null);
     setActiveTab('Archive');
     try {
-      await AsyncStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
+      await AsyncStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(nextArchivedIds));
+    } catch (error) {
+      console.error('save archived announcement failed:', error);
     }
   }, [archivedAnnouncementIds]);
 
   const unarchiveAnnouncement = useCallback(async (item) => {
-    const key = getAnnouncementKey(item);
-    const next = archivedAnnouncementIds.filter((id) => id !== key);
-    setArchivedAnnouncementIds(next);
+    const itemKey = getAnnouncementKey(item);
+    const nextArchivedIds = archivedAnnouncementIds.filter((id) => id !== itemKey);
+    setArchivedAnnouncementIds(nextArchivedIds);
     setActionMenuItem(null);
     try {
-      await AsyncStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
+      await AsyncStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(nextArchivedIds));
+    } catch (error) {
+      console.error('save unarchive announcement failed:', error);
     }
   }, [archivedAnnouncementIds]);
 
   const togglePinAnnouncement = useCallback(async (item) => {
-    const key = getAnnouncementKey(item);
-    const alreadyPinned = item.pinned || pinnedAnnouncementIds.includes(key);
-    const next = alreadyPinned
-      ? pinnedAnnouncementIds.filter((id) => id !== key)
-      : Array.from(new Set([...pinnedAnnouncementIds, key]));
-    setPinnedAnnouncementIds(next);
-    setAnnouncements((cur) =>
-      cur.map((a) => getAnnouncementKey(a) === key ? { ...a, pinned: !alreadyPinned } : a)
+    const itemKey = getAnnouncementKey(item);
+    const alreadyPinned = item.pinned || pinnedAnnouncementIds.includes(itemKey);
+    const nextPinnedIds = alreadyPinned
+      ? pinnedAnnouncementIds.filter((id) => id !== itemKey)
+      : Array.from(new Set([...pinnedAnnouncementIds, itemKey]));
+
+    setPinnedAnnouncementIds(nextPinnedIds);
+    setAnnouncements((current) =>
+      current.map((a) =>
+        getAnnouncementKey(a) === itemKey ? { ...a, pinned: !alreadyPinned } : a
+      )
     );
     setActionMenuItem(null);
     if (!alreadyPinned) setActiveTab('Pinned');
+
     try {
-      await AsyncStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
+      await AsyncStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(nextPinnedIds));
+    } catch (error) {
+      console.error('save pinned announcement failed:', error);
     }
   }, [pinnedAnnouncementIds]);
 
   const isAnnouncementRead = useCallback(
-    (a) => a.read || readAnnouncementIds.includes(getAnnouncementKey(a)),
+    (announcement) =>
+      announcement.read || readAnnouncementIds.includes(getAnnouncementKey(announcement)),
     [readAnnouncementIds]
   );
+
   const isAnnouncementArchived = useCallback(
-    (a) => a.archived || archivedAnnouncementIds.includes(getAnnouncementKey(a)),
+    (announcement) =>
+      announcement.archived || archivedAnnouncementIds.includes(getAnnouncementKey(announcement)),
     [archivedAnnouncementIds]
   );
+
   const isAnnouncementPinned = useCallback(
-    (a) => a.pinned || pinnedAnnouncementIds.includes(getAnnouncementKey(a)),
+    (announcement) =>
+      announcement.pinned || pinnedAnnouncementIds.includes(getAnnouncementKey(announcement)),
     [pinnedAnnouncementIds]
   );
 
   const periodFilteredAnnouncements = useMemo(() => {
-    const ref = getFilterReferenceDate(announcements);
-    return announcements.filter((a) => isInSelectedPeriod(a, selectedFilter, ref));
+    const referenceDate = getFilterReferenceDate(announcements);
+    return announcements.filter((a) => isInSelectedPeriod(a, selectedFilter, referenceDate));
   }, [announcements, selectedFilter]);
 
   const activeAnnouncements = useMemo(
-    () => periodFilteredAnnouncements
-      .filter((a) => !isAnnouncementArchived(a))
-      .sort((l, r) => Number(isAnnouncementPinned(r)) - Number(isAnnouncementPinned(l))),
+    () =>
+      periodFilteredAnnouncements
+        .filter((a) => !isAnnouncementArchived(a))
+        .sort((left, right) =>
+          Number(isAnnouncementPinned(right)) - Number(isAnnouncementPinned(left))
+        ),
     [isAnnouncementArchived, isAnnouncementPinned, periodFilteredAnnouncements]
   );
 
@@ -693,7 +725,9 @@ export default function AnnouncementsScreen() {
     <SafeAreaView
       style={styles.container}
       edges={['bottom']}
-      onTouchStart={() => { if (actionMenuItem) setActionMenuItem(null); }}
+      onTouchStart={() => {
+        if (actionMenuItem) setActionMenuItem(null);
+      }}
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
@@ -715,13 +749,16 @@ export default function AnnouncementsScreen() {
           }
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={openDrawer}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
               <MaterialIcons name="menu" size={24} color={COLORS.dark} />
             </TouchableOpacity>
             <View style={styles.topRowRight}>
               <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
               <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                <Image source={photoSource} style={styles.avatar} />
+                <Image
+                  source={avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png')}
+                  style={styles.avatar}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -750,7 +787,11 @@ export default function AnnouncementsScreen() {
 
           <View style={styles.tabRow}>
             {ANNOUNCEMENT_TABS.map((tab) => (
-              <TouchableOpacity key={tab} style={styles.tab} onPress={() => setActiveTab(tab)}>
+              <TouchableOpacity
+                key={tab}
+                style={styles.tab}
+                onPress={() => setActiveTab(tab)}
+              >
                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
                   {tab} {tabCounts[tab]}
                 </Text>
@@ -840,87 +881,7 @@ export default function AnnouncementsScreen() {
         onClose={() => setShowDetail(false)}
       />
 
-      {drawerOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={closeDrawer}
-        />
-      )}
-
-      <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-        <View style={styles.drawerTop}>
-          <Image source={photoSource} style={styles.drawerAvatar} />
-          <Text style={styles.drawerUsername}>{username}</Text>
-          <Text style={styles.drawerRoom}>{roomCode}</Text>
-        </View>
-
-        <TouchableOpacity style={styles.drawerCloseBtn} onPress={closeDrawer}>
-          <Ionicons name="close" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-
-        <View style={styles.drawerDivider} />
-
-        <DrawerItem iconName="home-outline" label="Dashboard" onPress={() => drawerNavigate('/tenant/dashboard')} />
-        <DrawerItem iconName="megaphone-outline" label="Announcements" onPress={() => drawerNavigate('/tenant/announcements')} />
-
-        <TouchableOpacity
-          style={styles.drawerItem}
-          onPress={() => setDocumentsExpanded(!documentsExpanded)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.drawerItemLeft}>
-            <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
-            <Text style={styles.drawerItemText}>Documents</Text>
-          </View>
-          <Ionicons
-            name={documentsExpanded ? 'chevron-down' : 'chevron-forward'}
-            size={18}
-            color={COLORS.white}
-          />
-        </TouchableOpacity>
-
-        {documentsExpanded && (
-          <>
-            <TouchableOpacity
-              style={styles.drawerSubItem}
-              onPress={() => drawerNavigate('/tenant/documents')}
-            >
-              <Text style={styles.drawerSubItemText}>Document Request</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.drawerSubItem}
-              onPress={() => drawerNavigate('/tenant/records')}
-            >
-              <Text style={styles.drawerSubItemText}>Tenant Records</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        <DrawerItem iconName="build" iconLib="MaterialIcons" label="Maintenance" onPress={() => drawerNavigate('/tenant/maintenance')} />
-        <DrawerItem iconName="warning-outline" label="Emergency" onPress={() => drawerNavigate('/tenant/emergency')} />
-        <DrawerItem iconName="people-outline" label="Visitor" onPress={() => drawerNavigate('/tenant/visitors')} />
-        <DrawerItem iconName="receipt-outline" label="Billing" onPress={() => drawerNavigate('/tenant/water-bill')} />
-        <DrawerItem iconName="settings-outline" label="Settings" onPress={() => drawerNavigate('/tenant/settings')} />
-
-        <View style={styles.drawerDivider} />
-
-        <TouchableOpacity
-          style={styles.drawerLogout}
-          onPress={async () => {
-            closeDrawer();
-            dashboardCache.loaded = false;
-            dashboardCache.announcements = [];
-            dashboardCache.currentBill = '0.00';
-            dashboardCache.pendingRequests = 0;
-            await clearSession();
-            setTimeout(() => router.replace('/auth/login'), 260);
-          }}
-        >
-          <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
-          <Text style={styles.drawerLogoutText}>Logout</Text>
-        </TouchableOpacity>
-      </Animated.View>
+      <DrawerMenu ref={drawerRef} />
     </SafeAreaView>
   );
 }
