@@ -432,7 +432,7 @@ export default function DocumentsScreen() {
                         />
 
                         <View style={styles.inlineRow}>
-                            <View style={styles.contactWrapper}>
+                            <View style={[styles.contactWrapper, { flex: 2 }]}>
                                 <TextInput
                                     style={[styles.input, { marginBottom: 0, paddingRight: 36 }]}
                                     placeholder="Contact No."
