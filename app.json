@@ -28,9 +28,9 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "permissions": [
-        "RECORD_AUDIO",
-        "POST_NOTIFICATIONS",
-        "VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES"
       ],
@@ -70,8 +70,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "DormEase needs camera access to take photos of maintenance issues.",
-          "microphonePermission": false
+          "cameraPermission": "DormEase needs camera access to take photos of maintenance issues."
         }
       ]
     ],
