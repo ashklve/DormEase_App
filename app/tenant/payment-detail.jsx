@@ -293,13 +293,26 @@ export default function PaymentDetailScreen() {
                         <View style={styles.summaryCard}>
                             <Text style={styles.summaryCardLabel}>Billing Summary</Text>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Amount Due:</Text>
+                                <Text style={styles.summaryLabel}>Total Amount Due:</Text>
                                 <Text style={styles.summaryAmountDue}>₱{billing.amount_due}</Text>
                             </View>
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Billing Month:</Text>
                                 <Text style={styles.summaryValue}>{billing.billing_period}</Text>
                             </View>
+                            {parseFloat(billing.past_due_amount || 0) > 0 && (
+                                <>
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>Current Month:</Text>
+                                        <Text style={styles.summaryValue}>₱{billing.current_charges ?? '0.00'}</Text>
+                                    </View>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>Past Due Balance:</Text>
+                                        <Text style={styles.summaryValueAccent}>₱{billing.past_due_amount ?? '0.00'}</Text>
+                                    </View>
+                                </>
+                            )}
                             {roomNumber ? (
                                 <View style={styles.summaryRow}>
                                     <Text style={styles.summaryLabel}>Room:</Text>

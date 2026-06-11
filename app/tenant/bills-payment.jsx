@@ -151,7 +151,7 @@ export default function BillsPaymentScreen() {
 
                         {/* Amount Due */}
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Amount Due:</Text>
+                            <Text style={styles.summaryLabel}>Total Amount Due:</Text>
                             <Text style={styles.summaryAmountDue}>₱{billing.amount_due}</Text>
                         </View>
 
@@ -160,6 +160,23 @@ export default function BillsPaymentScreen() {
                             <Text style={styles.summaryLabel}>Due Date:</Text>
                             <Text style={styles.summaryValue}>{billing.due_date ?? '—'}</Text>
                         </View>
+
+                        {parseFloat(billing.past_due_amount || 0) > 0 && (
+                            <>
+                                <View style={styles.summaryDivider} />
+                                <BreakdownRow
+                                    label="Current Month Charges"
+                                    value={`₱${billing.current_charges ?? '0.00'}`}
+                                />
+                                <BreakdownRow
+                                    label="Past Due Balance"
+                                    value={`₱${billing.past_due_amount ?? '0.00'}`}
+                                    accent
+                                />
+                            </>
+                        )}
+
+                        <View style={styles.summaryDivider} />
 
                         {/* Status */}
                         <View style={styles.summaryRow}>
