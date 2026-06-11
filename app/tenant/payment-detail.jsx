@@ -11,6 +11,7 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Clipboard,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,23 +30,24 @@ import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-// ── QR images — replace these with your client's actual QR assets ─────────────
-// Place the QR images in assets/ and update the paths below
+// ── QR images — GCash only ────────────────────────────────────────────────────
 const QR_IMAGES = {
     gcash: require('../../assets/qr_gcash.jpg'),
-    maya: require('../../assets/qr_maya.png'),
-    bank: require('../../assets/qr_bank.png'),
 };
 const QR_FILE_NAMES = {
     gcash: 'dormease-gcash-qr.jpg',
-    maya: 'dormease-maya-qr.png',
-    bank: 'dormease-bank-qr.png',
 };
 
 const QR_HINTS = {
     gcash: 'Open GCash → Scan QR → Enter Exact Amount → Confirm Payment',
-    maya: 'Open Maya → Scan QR → Enter Exact Amount → Confirm Payment',
-    bank: 'Open your Banking App → Scan QR → Enter Exact Amount → Confirm Transfer',
+};
+
+// ── Bank account details — update with your actual bank info ─────────────────
+const BANK_DETAILS = {
+    bankName: 'BDO Unibank',
+    accountName: 'DormEase Properties Inc.',
+    accountNumber: '1234 5678 9012',
+    accountType: 'Savings Account',
 };
 
 // ── Bottom Nav Item ───────────────────────────────────────────────────────────
@@ -73,6 +75,28 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
+// ── Bank Detail Row ───────────────────────────────────────────────────────────
+const BankDetailRow = ({ label, value, copyable }) => {
+    const handleCopy = () => {
+        Clipboard.setString(value);
+        Alert.alert('Copied', `${label} copied to clipboard.`);
+    };
+
+    return (
+        <View style={styles.bankDetailRow}>
+            <View style={styles.bankDetailLeft}>
+                <Text style={styles.bankDetailLabel}>{label}</Text>
+                <Text style={styles.bankDetailValue}>{value}</Text>
+            </View>
+            {copyable && (
+                <TouchableOpacity style={styles.bankCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
+                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+};
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function PaymentDetailScreen() {
     const router = useRouter();
@@ -88,9 +112,9 @@ export default function PaymentDetailScreen() {
     const roomNumber = breakdown?.room_number ?? billing?.room_number ?? user?.room_number;
 
     const isCash = paymentMethod === 'cash';
+    const isBank = paymentMethod === 'bank';
     const methodLabel = {
         gcash: 'GCash',
-        maya: 'Maya',
         bank: 'Bank Transfer',
         cash: 'Cash (Admin Office)',
     }[paymentMethod] ?? 'GCash';
@@ -315,13 +339,124 @@ export default function PaymentDetailScreen() {
                                 ) : null}
                             </View>
                         </View>
+
+                    ) : isBank ? (
+                        <>
+                            {/* ── BANK: Step 1 — Account Details ── */}
+                            <View style={styles.stepSection}>
+                                <Text style={styles.stepTitle}>Step 1: Transfer to Bank Account</Text>
+                                <View style={styles.bankCard}>
+                                    <View style={styles.bankCardHeader}>
+                                        <View style={styles.bankIconCircle}>
+                                            <MaterialIcons name="account-balance" size={18} color={COLORS.white} />
+                                        </View>
+                                        <View>
+                                            <Text style={styles.bankCardTitle}>{BANK_DETAILS.bankName}</Text>
+                                            <Text style={styles.bankCardSubtitle}>{BANK_DETAILS.accountType}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.bankDivider} />
+
+                                    <BankDetailRow
+                                        label="Account Name"
+                                        value={BANK_DETAILS.accountName}
+                                        copyable={false}
+                                    />
+                                    <BankDetailRow
+                                        label="Account Number"
+                                        value={BANK_DETAILS.accountNumber}
+                                        copyable={true}
+                                    />
+
+                                    <View style={styles.bankAmountNotice}>
+                                        <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+                                        <Text style={styles.bankAmountNoticeText}>
+                                            Transfer the{' '}
+                                            <Text style={{ fontWeight: '700', color: COLORS.primary }}>
+                                                exact amount due
+                                            </Text>
+                                            {' '}to avoid payment discrepancies.
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                {/* How-to steps */}
+                                <View style={styles.bankStepsCard}>
+                                    <Text style={styles.bankStepsTitle}>How to transfer</Text>
+                                    {[
+                                        'Open your banking app (BDO, BPI, UnionBank, etc.)',
+                                        'Go to Transfer → Other Bank or Inter-bank Transfer',
+                                        'Enter the account number above and the exact amount due',
+                                        'Confirm the transfer and save the receipt',
+                                    ].map((step, i) => (
+                                        <View key={i} style={styles.bankStepRow}>
+                                            <View style={styles.bankStepBullet}>
+                                                <Text style={styles.bankStepBulletText}>{i + 1}</Text>
+                                            </View>
+                                            <Text style={styles.bankStepText}>{step}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* ── Step 2: Upload Proof ── */}
+                            <View style={styles.stepSection}>
+                                <Text style={styles.stepTitle}>Step 2: Upload Proof of Payment</Text>
+                                <TouchableOpacity
+                                    style={[styles.uploadBox, proofUri && styles.uploadBoxWithImage]}
+                                    onPress={handleUploadProof}
+                                    activeOpacity={0.75}
+                                >
+                                    {proofUri ? (
+                                        <Image
+                                            source={{ uri: proofUri }}
+                                            style={styles.uploadedImage}
+                                        />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
+                                            <Text style={styles.uploadText}>Upload Screenshot / Photo</Text>
+                                            <Text style={styles.uploadHint}>
+                                                Upload a screenshot or photo of your bank transfer confirmation
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                                {proofUri ? (
+                                    <TouchableOpacity
+                                        onPress={handleUploadProof}
+                                        style={{ marginTop: verticalScale(6), alignSelf: 'flex-end' }}
+                                    >
+                                        <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
+                                            Change Photo
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
+
+                            {/* ── Step 3: Reference Number ── */}
+                            <View style={styles.stepSection}>
+                                <Text style={styles.stepTitle}>Step 3: Enter Reference / Trace Number</Text>
+                                <TextInput
+                                    style={[styles.refInput, refFocused && styles.refInputFocused]}
+                                    placeholder="Bank Transfer Reference / Trace Number"
+                                    placeholderTextColor={COLORS.muted}
+                                    value={refNumber}
+                                    onChangeText={setRefNumber}
+                                    onFocus={() => setRefFocused(true)}
+                                    onBlur={() => setRefFocused(false)}
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+                        </>
+
                     ) : (
                         <>
-                            {/* ── Step 1: Scan QR ── */}
+                            {/* ── GCASH: Step 1: Scan QR ── */}
                             <View style={styles.stepSection}>
                                 <Text style={styles.stepTitle}>Step 1: Scan QR Code</Text>
                                 <View style={styles.qrCard}>
-                                    {/* Download icon top-right */}
                                     <TouchableOpacity
                                         style={styles.qrDownloadBtn}
                                         onPress={handleDownloadQr}

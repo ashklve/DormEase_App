@@ -21,7 +21,6 @@ const defaultPhoto = require('../../assets/def_icon.png');
 // ── Payment methods ───────────────────────────────────────────────────────────
 const PAYMENT_METHODS = [
     { id: 'gcash', label: 'GCash' },
-    { id: 'maya', label: 'Maya' },
     { id: 'bank', label: 'Bank Transfer' },
     { id: 'cash', label: 'Cash (Admin Office)' },
 ];
