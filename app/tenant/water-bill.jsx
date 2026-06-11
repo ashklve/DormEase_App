@@ -337,13 +337,26 @@ export default function WaterBillScreen() {
                                             ) : null}
                                         </View>
                                         <View style={styles.billingRow}>
-                                            <Text style={styles.billingRowLabel}>Amount Due:</Text>
+                                            <Text style={styles.billingRowLabel}>Total Amount Due:</Text>
                                             <Text style={styles.billingAmountDue}>₱{billing.amount_due ?? '0.00'}</Text>
                                         </View>
                                         <View style={styles.billingRow}>
                                             <Text style={styles.billingRowLabel}>Due Date:</Text>
                                             <Text style={styles.billingRowValue}>{billing.due_date ?? '—'}</Text>
                                         </View>
+                                        {parseFloat(billing.past_due_amount || 0) > 0 && (
+                                            <>
+                                                <View style={styles.billingDivider} />
+                                                <View style={styles.billingRow}>
+                                                    <Text style={styles.billingRowLabel}>Current Month Charges:</Text>
+                                                    <Text style={styles.billingRowValue}>₱{billing.current_charges ?? '0.00'}</Text>
+                                                </View>
+                                                <View style={styles.billingRow}>
+                                                    <Text style={styles.billingRowLabel}>Past Due Balance:</Text>
+                                                    <Text style={styles.billingRowValueAccent}>₱{billing.past_due_amount ?? '0.00'}</Text>
+                                                </View>
+                                            </>
+                                        )}
                                         <View style={styles.billingDivider} />
                                         <View style={styles.statusRow}>
                                             <Text style={styles.statusLabel}>Status:</Text>
@@ -355,6 +368,38 @@ export default function WaterBillScreen() {
                                     </View>
                                 ) : (
                                     <Text style={styles.emptyText}>No current billing available.</Text>
+                                )}
+
+                                {billing && billing.past_due_bills && billing.past_due_bills.length > 0 && (
+                                    <>
+                                        <Text style={styles.sectionTitle}>Previous Unpaid Balance Details</Text>
+                                        <View style={styles.breakdownCard}>
+                                            {billing.past_due_bills.map((pastBill, index) => (
+                                                <View 
+                                                    key={pastBill.id ?? index} 
+                                                    style={[
+                                                        styles.breakdownRow, 
+                                                        index === billing.past_due_bills.length - 1 && styles.breakdownRowLast
+                                                    ]}
+                                                >
+                                                    <View style={styles.pastDueRowLeft}>
+                                                        <Text style={styles.breakdownLabel}>{pastBill.billing_period}</Text>
+                                                        <Text style={styles.pastDueRowDueDate}>
+                                                            Due: {pastBill.due_date}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.pastDueRowRight}>
+                                                        <Text style={styles.pastDueRowAmount}>
+                                                            ₱{pastBill.amount}
+                                                        </Text>
+                                                        <Text style={styles.pastDueRowStatus}>
+                                                            {pastBill.status}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </>
                                 )}
 
                                 {breakdown ? (

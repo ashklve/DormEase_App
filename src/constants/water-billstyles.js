@@ -610,5 +610,33 @@ export default StyleSheet.create({
     fontSize: moderateScale(15),
     fontWeight: '500',
   },
+  pastDueRowLeft: {
+    flex: 1,
+  },
+  pastDueRowDueDate: {
+    fontSize: moderateScale(11),
+    color: COLORS.muted,
+    marginTop: verticalScale(2),
+  },
+  pastDueRowRight: {
+    alignItems: 'flex-end',
+  },
+  pastDueRowAmount: {
+    fontSize: moderateScale(13),
+    color: COLORS.primary,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  pastDueRowStatus: {
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: verticalScale(2),
+  },
+  billingRowValueAccent: {
+    fontSize: moderateScale(13),
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
 
 });

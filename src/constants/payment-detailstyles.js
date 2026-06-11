@@ -463,5 +463,15 @@ export default StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
   },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: COLORS.border || '#F0F0F0',
+    marginVertical: verticalScale(8),
+  },
+  summaryValueAccent: {
+    fontSize: moderateScale(13),
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
 
 });
