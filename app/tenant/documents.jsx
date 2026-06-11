@@ -74,6 +74,7 @@ export default function DocumentsScreen() {
     const [purposeDropOpen, setPurposeDropOpen] = useState(false);
     const [selectedPurpose, setSelectedPurpose] = useState(null);
     const [customPurpose,   setCustomPurpose]   = useState('');
+    const [customDocName,   setCustomDocName]   = useState('');
     const [fullName,        setFullName]        = useState('');
     const [contactNo,       setContactNo]       = useState('');
     const [roomNo,          setRoomNo]          = useState('');
@@ -86,6 +87,7 @@ export default function DocumentsScreen() {
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm        = selectedOption?.category === CATEGORY.FORM;
+    const isOtherDoc    = selectedOption?.isOther === true;
 
     const resolvedPurpose = selectedPurpose === 'Other'
         ? customPurpose.trim()
@@ -108,6 +110,7 @@ export default function DocumentsScreen() {
                 { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
                 { id: 'lease_copy',     label: 'Lease Contract Copy',      category: CATEGORY.CERTIFICATE },
                 { id: 'receipt_copy',   label: 'Acknowledgement Receipt',  category: CATEGORY.CERTIFICATE },
+                { id: 'other_doc',      label: 'Others',                   category: CATEGORY.CERTIFICATE, isOther: true },
             ],
         },
     ];
@@ -176,6 +179,7 @@ export default function DocumentsScreen() {
         setUploadedFile(null);
         setSelectedPurpose(null);
         setCustomPurpose('');
+        setCustomDocName('');
         setDeliveryMethods(new Set(['digital']));
     };
 
@@ -198,6 +202,10 @@ export default function DocumentsScreen() {
             Alert.alert('Missing File', 'Please upload your completed form before submitting.');
             return;
         }
+        if (isCertificate && isOtherDoc && !customDocName.trim()) {
+            Alert.alert('Missing Field', 'Please specify the document you are requesting.');
+            return;
+        }
         if (isCertificate && !selectedPurpose) {
             Alert.alert('Missing Field', 'Please select a purpose for your request.');
             return;
@@ -209,18 +217,25 @@ export default function DocumentsScreen() {
 
         setSubmitting(true);
         try {
+            const resolvedLabel = isOtherDoc && customDocName.trim()
+                ? customDocName.trim()
+                : selectedOption.label;
+
             const formData = new FormData();
             formData.append('full_name',       fullName.trim());
             formData.append('contact_no',      contactNo.trim());
             formData.append('room_no',         roomNo.trim());
             formData.append('request_type',    selectedOption.id);
-            formData.append('request_label',   selectedOption.label);
-            formData.append('document_type',   selectedOption.label);
+            formData.append('request_label',   resolvedLabel);
+            formData.append('document_type',   resolvedLabel);
             formData.append('category',        selectedOption.category);
 
             if (isCertificate) {
                 formData.append('purpose',         resolvedPurpose);
                 formData.append('delivery_method', [...deliveryMethods].join(','));
+                if (isOtherDoc) {
+                    formData.append('custom_document_name', customDocName.trim());
+                }
             }
 
             if (isForm && uploadedFile) {
@@ -242,6 +257,7 @@ export default function DocumentsScreen() {
             setUploadedFile(null);
             setSelectedPurpose(null);
             setCustomPurpose('');
+            setCustomDocName('');
             setDeliveryMethods(new Set(['digital']));
 
             Alert.alert('Submitted!', 'Your request has been sent successfully.');
@@ -558,6 +574,21 @@ export default function DocumentsScreen() {
 
                         {isCertificate && (
                             <>
+                                {isOtherDoc && (
+                                    <>
+                                        <Text style={styles.fieldLabel}>Specify Document</Text>
+                                        <TextInput
+                                            style={[styles.input, { marginBottom: 12, textAlignVertical: 'top' }]}
+                                            placeholder="e.g. Room Assignment Letter, Official Receipt Copy..."
+                                            placeholderTextColor={COLORS.muted}
+                                            value={customDocName}
+                                            onChangeText={setCustomDocName}
+                                            multiline
+                                            numberOfLines={2}
+                                        />
+                                    </>
+                                )}
+
                                 <Text style={styles.fieldLabel}>Purpose of Request</Text>
 
                                 <TouchableOpacity
