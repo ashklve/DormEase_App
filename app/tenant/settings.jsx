@@ -1,18 +1,18 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     ScrollView,
     StatusBar,
-    Image,
     Animated,
     Alert,
     Linking,
 } from 'react-native';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import styles, { COLORS } from '../../src/constants/settingsstyles';
 import { useUser } from '../../src/context/UserContext';
 
@@ -20,15 +20,18 @@ import { useUser } from '../../src/context/UserContext';
 const Toggle = ({ value, onToggle }) => {
     const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
-    const handlePress = () => {
-        const next = !value;
+    // Keep animation in sync if value changes externally (e.g. on mount after permission check)
+    useEffect(() => {
         Animated.spring(anim, {
-            toValue: next ? 1 : 0,
+            toValue: value ? 1 : 0,
             useNativeDriver: false,
             speed: 20,
             bounciness: 6,
         }).start();
-        onToggle(next);
+    }, [value]);
+
+    const handlePress = () => {
+        onToggle(!value);
     };
 
     const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 22] });
@@ -95,11 +98,50 @@ export default function SettingsScreen() {
     const { user } = useUser();
 
     // ── notification toggles
-    const [pushEnabled, setPushEnabled] = useState(true);
-    const [emailEnabled, setEmailEnabled] = useState(true);
-    const [smsEnabled, setSmsEnabled] = useState(true);
+    const [pushEnabled, setPushEnabled] = useState(false);
 
-    const hasEmail = !!user?.email;
+    // ── Check real push permission status on mount
+    useEffect(() => {
+        const checkPushPermission = async () => {
+            const { status } = await Notifications.getPermissionsAsync();
+            setPushEnabled(status === 'granted');
+        };
+        checkPushPermission();
+    }, []);
+
+    // ── Handle push toggle
+    const handlePushToggle = async (next) => {
+        if (next) {
+            // User wants to ENABLE — request permission
+            const { status } = await Notifications.requestPermissionsAsync();
+            if (status === 'granted') {
+                setPushEnabled(true);
+            } else {
+                // Permission denied or previously denied — direct to device settings
+                setPushEnabled(false);
+                Alert.alert(
+                    'Notifications Blocked',
+                    'Please enable notifications for this app in your device settings.',
+                    [
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                        { text: 'Cancel', style: 'cancel' },
+                    ]
+                );
+            }
+        } else {
+            // User wants to DISABLE — OS doesn't allow programmatic revoke, send to settings
+            Alert.alert(
+                'Turn Off Notifications',
+                'To disable notifications, please turn them off in your device settings.',
+                [
+                    { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    { text: 'Cancel', style: 'cancel' },
+                ]
+            );
+            // Revert toggle — we can't disable it programmatically
+            setPushEnabled(true);
+        }
+    };
 
     // ── logout
     const handleLogout = () => {
@@ -151,24 +193,7 @@ export default function SettingsScreen() {
                         icon={<Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.primary} />}
                         label="By Push Notification"
                         value={pushEnabled}
-                        onToggle={setPushEnabled}
-                    />
-                    <ToggleRow
-                        divider
-                        icon={<MaterialIcons name="mail-outline" size={18} color={COLORS.primary} />}
-                        label="By Email"
-                        sublabel={!hasEmail ? 'Your account is not yet linked to an email' : undefined}
-                        linkLabel={!hasEmail ? 'Bind Now' : undefined}
-                        onLinkPress={() => router.push('/tenant/profile')}
-                        value={emailEnabled}
-                        onToggle={setEmailEnabled}
-                    />
-                    <ToggleRow
-                        divider
-                        icon={<MaterialIcons name="sms" size={18} color={COLORS.primary} />}
-                        label="By SMS"
-                        value={smsEnabled}
-                        onToggle={setSmsEnabled}
+                        onToggle={handlePushToggle}
                     />
                 </View>
 

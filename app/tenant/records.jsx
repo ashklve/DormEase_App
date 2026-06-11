@@ -24,20 +24,20 @@ import client from '../../api/client';
 const defaultPhoto = require('../../assets/def_icon.png');
 
 const STATUS_CONFIG = {
-    pending:    { label: 'Pending',    color: COLORS.warning, bg: COLORS.warningLight, icon: 'schedule' },
-    processing: { label: 'Processing', color: COLORS.info,    bg: COLORS.infoLight,    icon: 'autorenew' },
-    approved:   { label: 'Approved',   color: COLORS.success, bg: COLORS.successLight, icon: 'check-circle' },
-    ready:      { label: 'Ready',      color: COLORS.ready,   bg: COLORS.readyLight,   icon: 'inventory' },
-    denied:     { label: 'Denied',     color: COLORS.denied,  bg: COLORS.deniedLight,  icon: 'cancel' },
+    pending: { label: 'Pending', color: COLORS.warning, bg: COLORS.warningLight, icon: 'schedule' },
+    processing: { label: 'Processing', color: COLORS.info, bg: COLORS.infoLight, icon: 'autorenew' },
+    approved: { label: 'Approved', color: COLORS.success, bg: COLORS.successLight, icon: 'check-circle' },
+    ready: { label: 'Ready', color: COLORS.ready, bg: COLORS.readyLight, icon: 'inventory' },
+    denied: { label: 'Denied', color: COLORS.denied, bg: COLORS.deniedLight, icon: 'cancel' },
 };
 
 const FILTERS = [
-    { key: 'all',        label: 'All' },
-    { key: 'pending',    label: 'Pending' },
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending' },
     { key: 'processing', label: 'Processing' },
-    { key: 'approved',   label: 'Approved' },
-    { key: 'ready',      label: 'Ready' },
-    { key: 'denied',     label: 'Denied' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'ready', label: 'Ready' },
+    { key: 'denied', label: 'Denied' },
 ];
 
 const fmtDate = (d) => {
@@ -45,7 +45,7 @@ const fmtDate = (d) => {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-// nav item — same as documents.jsx
+// nav item
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -75,38 +75,14 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-// filter chip
-const FilterChip = ({ label, active, onPress }) => (
-    <TouchableOpacity
-        style={[
-            styles.filterChip,
-            {
-                backgroundColor: active ? COLORS.primary : COLORS.card,
-                borderColor: active ? COLORS.primary : COLORS.border,
-                minWidth: 70,
-                alignItems: 'center',
-            },
-        ]}
-        onPress={onPress}
-        activeOpacity={0.75}
-    >
-        <Text style={[
-            styles.filterChipText,
-            { color: active ? COLORS.white : COLORS.dark }
-        ]}>
-            {label}
-        </Text>
-    </TouchableOpacity>
-);
-
 // record card
 const RecordCard = ({ item, index }) => {
-    const fade  = useRef(new Animated.Value(0)).current;
+    const fade = useRef(new Animated.Value(0)).current;
     const slide = useRef(new Animated.Value(16)).current;
 
     useEffect(() => {
         Animated.parallel([
-            Animated.timing(fade,  { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }),
+            Animated.timing(fade, { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }),
             Animated.timing(slide, { toValue: 0, duration: 300, delay: index * 60, useNativeDriver: true }),
         ]).start();
     }, []);
@@ -119,8 +95,9 @@ const RecordCard = ({ item, index }) => {
         }
     };
 
-    const hasFulfilled  = !!item.fulfilled_file;
+    const hasFulfilled = !!item.fulfilled_file;
     const hasAttachment = !!item.attachment;
+    const isDownloadableForm = item.category === 'form';
 
     return (
         <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
@@ -134,9 +111,17 @@ const RecordCard = ({ item, index }) => {
                     {/* header */}
                     <View style={styles.cardHeaderRow}>
                         <View style={styles.cardHeaderLeft}>
-                            <Text style={styles.reqId}>
-                                #DRQ-{String(item.doc_request_id).padStart(3, '0')}
-                            </Text>
+                            <View style={styles.reqIdRow}>
+                                <Text style={styles.reqId}>
+                                    #DRQ-{String(item.doc_request_id).padStart(3, '0')}
+                                </Text>
+                                {isDownloadableForm && (
+                                    <View style={styles.categoryTag}>
+                                        <MaterialIcons name="download" size={10} color={COLORS.info} />
+                                        <Text style={styles.categoryTagText}>Form</Text>
+                                    </View>
+                                )}
+                            </View>
                             <Text style={styles.docType} numberOfLines={2}>
                                 {item.document_type}
                             </Text>
@@ -197,18 +182,19 @@ const RecordCard = ({ item, index }) => {
                             </View>
                             <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: '#065F46' }]}>Document Ready</Text>
-                                <Text style={[styles.fileBtnSub,  { color: '#059669' }]}>Tap to view fulfilled document</Text>
+                                <Text style={[styles.fileBtnSub, { color: '#059669' }]}>Tap to view fulfilled document</Text>
                             </View>
                             <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
                         </TouchableOpacity>
-                    ) : (
+                    ) : !isDownloadableForm && (
+                        /* only show "awaiting" placeholder for certificate requests, not downloadable forms */
                         <View style={[styles.fileBtn, { backgroundColor: '#F3F4F6', marginBottom: 0 }]}>
                             <View style={[styles.fileBtnIcon, { backgroundColor: '#E5E7EB' }]}>
                                 <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
                             </View>
                             <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: COLORS.muted }]}>Awaiting Document</Text>
-                                <Text style={[styles.fileBtnSub,  { color: COLORS.muted }]}>Admin hasn't sent a file yet</Text>
+                                <Text style={[styles.fileBtnSub, { color: COLORS.muted }]}>Admin hasn't sent a file yet</Text>
                             </View>
                         </View>
                     )}
@@ -225,7 +211,7 @@ const RecordCard = ({ item, index }) => {
                             </View>
                             <View style={styles.fileBtnTextWrap}>
                                 <Text style={[styles.fileBtnTitle, { color: COLORS.primary }]}>Your Submitted Form</Text>
-                                <Text style={[styles.fileBtnSub,  { color: '#BE185D' }]}>Tap to view your uploaded file</Text>
+                                <Text style={[styles.fileBtnSub, { color: '#BE185D' }]}>Tap to view your uploaded file</Text>
                             </View>
                             <MaterialIcons name="open-in-new" size={16} color={COLORS.primary} />
                         </TouchableOpacity>
@@ -252,19 +238,19 @@ const EmptyState = () => (
 
 // main screen
 export default function TenantRecordsScreen() {
-    const router        = useRouter();
+    const router = useRouter();
     const { avatarUri } = useUser();
-    const insets        = useSafeAreaInsets();
-    const drawerRef     = useRef(null);
+    const insets = useSafeAreaInsets();
+    const drawerRef = useRef(null);
 
-    const [records,      setRecords]      = useState([]);
-    const [loading,      setLoading]      = useState(true);
-    const [refreshing,   setRefreshing]   = useState(false);
+    const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeFilter, setActiveFilter] = useState('all');
 
     const fetchRecords = useCallback(async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
-        else           setLoading(true);
+        else setLoading(true);
         try {
             const res = await client.get('/document-requests');
             const data = res.data;
@@ -284,13 +270,13 @@ export default function TenantRecordsScreen() {
         : records.filter(r => r.status === activeFilter);
 
     const fulfilledCount = records.filter(r => r.fulfilled_file).length;
-    const pendingCount   = records.filter(r => r.status === 'pending').length;
+    const pendingCount = records.filter(r => r.status === 'pending').length;
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* top row — same structure as documents.jsx */}
+            {/* top row */}
             <View style={styles.topRow}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
                     <MaterialIcons name="menu" size={24} color={COLORS.dark} />
@@ -321,9 +307,9 @@ export default function TenantRecordsScreen() {
             {!loading && records.length > 0 && (
                 <View style={styles.statsRow}>
                     {[
-                        { label: 'Total Requests', value: records.length,  color: COLORS.primary },
-                        { label: 'Docs Received',  value: fulfilledCount,  color: COLORS.success },
-                        { label: 'Pending',         value: pendingCount,    color: COLORS.warning },
+                        { label: 'Total Requests', value: records.length, color: COLORS.primary },
+                        { label: 'Docs Received', value: fulfilledCount, color: COLORS.success },
+                        { label: 'Pending', value: pendingCount, color: COLORS.warning },
                     ].map(s => (
                         <View key={s.label} style={[styles.statCard, { borderLeftColor: s.color }]}>
                             <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
@@ -332,48 +318,66 @@ export default function TenantRecordsScreen() {
                     ))}
                 </View>
             )}
-                    {/* filter chips */}
-                    {!loading && records.length > 0 && (
-                        <View style={{ height: 44, marginBottom: 8 }}>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={{
-                                    paddingHorizontal: 20,
-                                    alignItems: 'center',
-                                    flexDirection: 'row',
-                                }}
-                            >
-                                {FILTERS.map(f => (
-                                    <TouchableOpacity
-                                        key={f.key}
-                                        onPress={() => setActiveFilter(f.key)}
-                                        activeOpacity={0.75}
-                                        style={{
-                                            height: 34,
-                                            paddingHorizontal: 16,
-                                            borderRadius: 20,
-                                            borderWidth: 1.5,
-                                            marginRight: 8,
-                                            flexShrink: 0,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            backgroundColor: activeFilter === f.key ? COLORS.primary : COLORS.card,
-                                            borderColor: activeFilter === f.key ? COLORS.primary : COLORS.border,
-                                        }}
-                                    >
-                                        <Text style={{
-                                            fontSize: 12,
-                                            fontWeight: '600',
-                                            color: activeFilter === f.key ? COLORS.white : COLORS.dark,
-                                        }}>
-                                            {f.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
+
+            {/* filter chips with counts */}
+            {!loading && records.length > 0 && (
+                <View style={{ height: 44, marginBottom: 8 }}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingHorizontal: 20,
+                            alignItems: 'center',
+                            flexDirection: 'row',
+                        }}
+                    >
+                        {FILTERS.map(f => {
+                            const count = f.key === 'all'
+                                ? records.length
+                                : records.filter(r => r.status === f.key).length;
+                            const isActive = activeFilter === f.key;
+                            return (
+                                <TouchableOpacity
+                                    key={f.key}
+                                    onPress={() => setActiveFilter(f.key)}
+                                    activeOpacity={0.75}
+                                    style={[
+                                        styles.filterChip,
+                                        {
+                                            backgroundColor: isActive ? COLORS.primary : COLORS.card,
+                                            borderColor: isActive ? COLORS.primary : COLORS.border,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={[
+                                        styles.filterChipText,
+                                        { color: isActive ? COLORS.white : COLORS.dark },
+                                    ]}>
+                                        {f.label}
+                                    </Text>
+                                    {count > 0 && (
+                                        <View style={[
+                                            styles.filterChipCount,
+                                            {
+                                                backgroundColor: isActive
+                                                    ? 'rgba(255,255,255,0.25)'
+                                                    : COLORS.primaryLight,
+                                            },
+                                        ]}>
+                                            <Text style={[
+                                                styles.filterChipCountText,
+                                                { color: isActive ? COLORS.white : COLORS.primary },
+                                            ]}>
+                                                {count}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* body */}
             {loading ? (

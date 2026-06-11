@@ -25,13 +25,13 @@ export const COLORS = {
 
 export default StyleSheet.create({
 
-    // container
+    // ─── container ────────────────────────────────────────────────────────────
     container: {
         flex: 1,
         backgroundColor: COLORS.bg,
     },
 
-    // top row
+    // ─── top row ──────────────────────────────────────────────────────────────
     topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -69,7 +69,7 @@ export default StyleSheet.create({
         borderRadius: 18,
     },
 
-    // page header
+    // ─── page header ──────────────────────────────────────────────────────────
     headerSection: {
         paddingHorizontal: 20,
         paddingTop: 4,
@@ -102,14 +102,14 @@ export default StyleSheet.create({
         color: COLORS.primary,
     },
 
-    // scroll content
+    // ─── scroll content ───────────────────────────────────────────────────────
     scrollContent: {
         paddingBottom: 100,
         paddingHorizontal: 20,
         paddingTop: 4,
     },
 
-    // stats row
+    // ─── stats row ────────────────────────────────────────────────────────────
     statsRow: {
         flexDirection: 'row',
         gap: 10,
@@ -139,22 +139,39 @@ export default StyleSheet.create({
         flexShrink: 1,
     },
 
-    // filter chips
+    // ─── filter chips ─────────────────────────────────────────────────────────
     filterChip: {
+        height: 34,
         paddingHorizontal: 14,
-        paddingVertical: 7,
         borderRadius: 20,
         borderWidth: 1.5,
         marginRight: 8,
-        flexShrink:0,
-        flexGrow:0,
+        flexShrink: 0,
+        flexGrow: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
     },
     filterChipText: {
         fontSize: 12,
         fontWeight: '600',
     },
+    // count badge inside each filter chip
+    filterChipCount: {
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        paddingHorizontal: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    filterChipCountText: {
+        fontSize: 10,
+        fontWeight: '800',
+    },
 
-    // record card
+    // ─── record card ──────────────────────────────────────────────────────────
     recordCard: {
         backgroundColor: COLORS.card,
         borderRadius: 14,
@@ -185,12 +202,36 @@ export default StyleSheet.create({
         flex: 1,
         minWidth: 0,
     },
+
+    // req id row — holds #DRQ-xxx + optional "Form" tag side by side
+    reqIdRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 2,
+    },
     reqId: {
         fontSize: 11,
         fontWeight: '800',
         color: COLORS.primary,
-        marginBottom: 2,
     },
+
+    // small "Form" category tag shown next to the request ID
+    categoryTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: COLORS.infoLight,
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    categoryTagText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.info,
+    },
+
     docType: {
         fontSize: 14,
         fontWeight: '700',
@@ -198,7 +239,7 @@ export default StyleSheet.create({
         lineHeight: 20,
     },
 
-    // status badge
+    // ─── status badge ─────────────────────────────────────────────────────────
     statusBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -214,7 +255,7 @@ export default StyleSheet.create({
         fontWeight: '700',
     },
 
-    // meta row
+    // ─── meta rows ────────────────────────────────────────────────────────────
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -234,7 +275,7 @@ export default StyleSheet.create({
         marginBottom: 4,
     },
 
-    // admin remarks
+    // ─── admin remarks ────────────────────────────────────────────────────────
     remarksBox: {
         backgroundColor: '#FFF8F0',
         borderLeftWidth: 3,
@@ -263,14 +304,14 @@ export default StyleSheet.create({
         lineHeight: 18,
     },
 
-    // divider
+    // ─── divider ──────────────────────────────────────────────────────────────
     divider: {
         height: 1,
         backgroundColor: COLORS.border,
         marginVertical: 12,
     },
 
-    // file action buttons
+    // ─── file action buttons ──────────────────────────────────────────────────
     fileBtn: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -300,7 +341,7 @@ export default StyleSheet.create({
         flexShrink: 1,
     },
 
-    // empty state
+    // ─── empty state ──────────────────────────────────────────────────────────
     emptyWrap: {
         flex: 1,
         alignItems: 'center',
@@ -330,7 +371,7 @@ export default StyleSheet.create({
         lineHeight: 20,
     },
 
-    // bottom nav — exact match of documentstyles
+    // ─── bottom nav ───────────────────────────────────────────────────────────
     bottomNav: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
