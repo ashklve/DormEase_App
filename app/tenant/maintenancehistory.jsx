@@ -9,10 +9,13 @@ import {
     ActivityIndicator,
     RefreshControl,
     Animated,
+    Alert,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import styles, { COLORS } from '../../src/constants/maintenancehistorystyles';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
@@ -25,28 +28,26 @@ const STATUS_OPTIONS = ['All', 'Pending', 'In Progress', 'Resolved', 'Closed'];
 const PRIORITY_OPTIONS = ['All Priority', 'Low', 'Moderate', 'Urgent'];
 
 const STATUS_STYLE = {
-    pending: { bg: '#FFF3CD', text: '#856404' },
-    'in progress': { bg: '#CCE5FF', text: '#004085' },
-    resolved: { bg: '#D4EDDA', text: '#28A745' },
-    closed: { bg: '#F5F5F5', text: '#616161' },
+    pending: { bg: '#FEF3C7', text: '#92400E' },
+    'in progress': { bg: '#DBEAFE', text: '#1E40AF' },
+    resolved: { bg: '#DCFCE7', text: '#15803D' },
+    closed: { bg: '#F3F4F6', text: '#6B7280' },
 };
 
 const PRIORITY_STYLE = {
-    urgent: { bg: '#F8D7DA', text: '#721C24' },
-    high: { bg: '#F8D7DA', text: '#721C24' },
-    moderate: { bg: '#FFF3CD', text: '#856404' },
-    low: { bg: '#D4EDDA', text: '#155724' },
+    urgent: { bg: '#FEE2E2', text: '#991B1B' },
+    high: { bg: '#FEE2E2', text: '#991B1B' },
+    moderate: { bg: '#FEF3C7', text: '#92400E' },
+    low: { bg: '#DCFCE7', text: '#15803D' },
 };
 
-// accent bar color per status (matches badge text color)
 const STATUS_ACCENT = {
-    pending: '#856404',
-    'in progress': '#004085',
-    resolved: '#28A745',
-    closed: '#616161',
+    pending: '#D97706',
+    'in progress': '#2563EB',
+    resolved: '#16A34A',
+    closed: '#9CA3AF',
 };
 
-// category icon map (MaterialIcons)
 const CATEGORY_ICON = {
     'Plumbing': 'water',
     'Electrical': 'electrical-services',
@@ -105,13 +106,16 @@ const summarizeDescription = (description) => {
 
 const mapMaintenanceRequest = (request) => ({
     id: request.id,
-    req_id: `#REQ-${String(request.id ?? '').padStart(3, '0')}`,
+    req_id: `REQ-${String(request.id ?? '').padStart(3, '0')}`,
     title: summarizeDescription(request.description),
     category: ISSUE_LABELS[request.issue_type] ?? request.issue_type ?? 'Others',
     status: formatStatus(request.status),
     priority: request.urgency_level ?? 'low',
     date_submitted: formatDate(request.submitted_at),
     submitted_at: request.submitted_at,
+    photo_url: request.photo_url ?? null,
+    resubmission_requested_at: request.resubmission_requested_at ?? null,
+    resubmission_reason: request.resubmission_reason ?? null,
     admin_notes: request.admin_notes
         ? [{ timestamp: formatDateTime(request.admin_notes_at), text: request.admin_notes, bold: false }]
         : [],
@@ -143,8 +147,14 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 );
 
 // ── Request Card ──────────────────────────────────────────────────────────────
-const RequestCard = ({ item }) => {
-    const [expanded, setExpanded] = useState(true);
+const RequestCard = ({ item, onResubmitPhoto }) => {
+    const statusKey = item.status?.toLowerCase();
+    const priorityKey = item.priority?.toLowerCase();
+
+    // Resolved/Closed cards start collapsed; others start expanded
+    const isClosedStatus = statusKey === 'resolved' || statusKey === 'closed';
+    const [expanded, setExpanded] = useState(!isClosedStatus);
+    const [submittingPhoto, setSubmittingPhoto] = useState(false);
     const rotateAnim = useRef(new Animated.Value(expanded ? 1 : 0)).current;
 
     const toggle = () => {
@@ -162,8 +172,6 @@ const RequestCard = ({ item }) => {
         outputRange: ['0deg', '180deg'],
     });
 
-    const statusKey = item.status?.toLowerCase();
-    const priorityKey = item.priority?.toLowerCase();
     const ss = STATUS_STYLE[statusKey] ?? STATUS_STYLE.pending;
     const ps = PRIORITY_STYLE[priorityKey] ?? PRIORITY_STYLE.moderate;
     const accentColor = STATUS_ACCENT[statusKey] ?? COLORS.primary;
@@ -176,73 +184,177 @@ const RequestCard = ({ item }) => {
         : 'Moderate';
 
     const categoryIcon = CATEGORY_ICON[item.category] ?? 'build';
+    const needsResubmission = !!item.resubmission_requested_at;
+
+    const handleTakePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera access is needed to take a photo.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 1,
+            allowsEditing: false,
+        });
+
+        if (!result.canceled && result.assets?.length > 0) {
+            const asset = result.assets[0];
+            const compressed = await ImageManipulator.manipulateAsync(
+                asset.uri,
+                [{ resize: { width: 1024 } }],
+                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            const photo = {
+                uri: compressed.uri,
+                fileName: asset.fileName ?? `photo_${Date.now()}.jpg`,
+                type: 'image/jpeg',
+            };
+            setSubmittingPhoto(true);
+            await onResubmitPhoto(item.id, photo);
+            setSubmittingPhoto(false);
+        }
+    };
 
     return (
         <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
 
-            {/* ── Category chip ── */}
-            <View style={styles.categoryChipRow}>
-                <View style={styles.categoryChip}>
-                    <MaterialIcons name={categoryIcon} size={12} color={COLORS.primary} />
-                    <Text style={styles.categoryChipText}>{item.category}</Text>
-                </View>
-            </View>
+            {/* ── Card Header ── */}
+            <View style={styles.cardHeader}>
 
-            {/* ── Title row ── */}
-            <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
-                    <Animated.View style={{ transform: [{ rotate }] }}>
-                        <MaterialIcons name="expand-less" size={22} color={COLORS.primary} />
-                    </Animated.View>
-                </TouchableOpacity>
-            </View>
-
-            {/* ── Status + Priority badges ── */}
-            <View style={styles.badgeRow}>
-                <View style={[styles.badge, { backgroundColor: ss.bg }]}>
-                    <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: ps.bg }]}>
-                    <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
-                </View>
-            </View>
-
-            {/* ── Expandable admin notes ── */}
-            {expanded && (
-                <View style={styles.notesBlock}>
-                    <View style={styles.notesBlockHeader}>
-                        <MaterialIcons name="sticky-note-2" size={12} color={COLORS.muted} />
-                        <Text style={styles.notesLabel}>Admin Notes</Text>
+                {/* Category chip + req id row */}
+                <View style={styles.chipIdRow}>
+                    <View style={styles.categoryChip}>
+                        <MaterialIcons name={categoryIcon} size={12} color={COLORS.primary} />
+                        <Text style={styles.categoryChipText}>{item.category}</Text>
                     </View>
-                    {item.admin_notes && item.admin_notes.length > 0 ? (
-                        item.admin_notes.map((note, idx) => (
-                            <View key={idx} style={styles.noteItem}>
-                                <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
-                                <Text style={styles.noteText}>
-                                    {note.bold
-                                        ? <Text style={styles.noteBold}>{note.text}</Text>
-                                        : note.text
-                                    }
-                                </Text>
-                            </View>
-                        ))
-                    ) : (
-                        <Text style={styles.noNotesText}>No admin notes yet.</Text>
+                    <View style={styles.reqIdPill}>
+                        <MaterialIcons name="tag" size={11} color={COLORS.muted} />
+                        <Text style={styles.reqIdPillText}>{item.req_id}</Text>
+                    </View>
+                </View>
+
+                {/* Title + collapse button */}
+                <View style={styles.cardTitleRow}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
+                        <Animated.View style={{ transform: [{ rotate }] }}>
+                            <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
+                        </Animated.View>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Status + Priority badges */}
+                <View style={styles.badgeRow}>
+                    <View style={[styles.badge, { backgroundColor: ss.bg }]}>
+                        <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: ps.bg }]}>
+                        <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
+                    </View>
+
+                    {/* Resubmission indicator badge in collapsed state */}
+                    {needsResubmission && !expanded && (
+                        <View style={styles.resubmitIndicatorBadge}>
+                            <MaterialIcons name="camera-alt" size={10} color="#92400E" />
+                            <Text style={styles.resubmitIndicatorText}>Photo needed</Text>
+                        </View>
                     )}
+                </View>
+            </View>
+
+            {/* ── Divider (only when expanded) ── */}
+            {expanded && <View style={styles.cardDivider} />}
+
+            {/* ── Expandable Body ── */}
+            {expanded && (
+                <View style={styles.cardBody}>
+
+                    {/* ── Attached Photo (only shown when photo exists) ── */}
+                    {item.photo_url ? (
+                        <View style={styles.photoBlock}>
+                            <View style={styles.photoBlockHeader}>
+                                <MaterialIcons name="photo" size={12} color={COLORS.primary} />
+                                <Text style={styles.photoBlockLabel}>Attached photo</Text>
+                            </View>
+                            <Image
+                                source={{ uri: item.photo_url }}
+                                style={styles.photoImage}
+                                resizeMode="cover"
+                            />
+                        </View>
+                    ) : null}
+
+                    {/* ── Resubmission Banner (amber tone) ── */}
+                    {needsResubmission && (
+                        <View style={styles.resubmitBanner}>
+                            <View style={styles.resubmitBannerHeader}>
+                                <MaterialIcons name="camera-alt" size={14} color="#92400E" />
+                                <Text style={styles.resubmitBannerTitle}>Photo resubmission requested</Text>
+                            </View>
+                            <View style={styles.resubmitBannerBody}>
+                                {item.resubmission_reason ? (
+                                    <View style={styles.resubmitReasonBox}>
+                                        <Text style={styles.resubmitReason}>
+                                            <Text style={styles.resubmitReasonBold}>Reason: </Text>
+                                            {item.resubmission_reason}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                                <TouchableOpacity
+                                    style={[styles.resubmitBtn, submittingPhoto && { opacity: 0.7 }]}
+                                    onPress={handleTakePhoto}
+                                    disabled={submittingPhoto}
+                                    activeOpacity={0.85}
+                                >
+                                    {submittingPhoto ? (
+                                        <ActivityIndicator size="small" color={COLORS.white} />
+                                    ) : (
+                                        <>
+                                            <MaterialIcons name="camera-alt" size={16} color={COLORS.white} />
+                                            <Text style={styles.resubmitBtnText}>Take & submit new photo</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* ── Admin Notes ── */}
+                    <View style={styles.notesBlock}>
+                        <View style={styles.notesBlockHeader}>
+                            <MaterialIcons name="sticky-note-2" size={12} color={COLORS.muted} />
+                            <Text style={styles.notesLabel}>Admin notes</Text>
+                        </View>
+                        {item.admin_notes && item.admin_notes.length > 0 ? (
+                            item.admin_notes.map((note, idx) => (
+                                <View key={idx} style={styles.noteItem}>
+                                    <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
+                                    <Text style={styles.noteText}>
+                                        {note.bold
+                                            ? <Text style={styles.noteBold}>{note.text}</Text>
+                                            : note.text
+                                        }
+                                    </Text>
+                                </View>
+                            ))
+                        ) : (
+                            <Text style={styles.noNotesText}>No admin notes yet.</Text>
+                        )}
+                    </View>
                 </View>
             )}
 
-            {/* ── Footer: req ID + date ── */}
+            {/* ── Footer: date only (req id moved to top) ── */}
             <View style={styles.cardFooter}>
-                <View style={styles.reqIdRow}>
-                    <MaterialIcons name="tag" size={12} color={COLORS.muted} />
-                    <Text style={styles.reqId}>{item.req_id.replace('#', '')}</Text>
-                </View>
                 <View style={styles.footerDateRow}>
                     <Ionicons name="calendar-outline" size={13} color={COLORS.muted} />
-                    <Text style={styles.footerDate}>{item.date_submitted}</Text>
+                    <Text style={styles.footerDate}>Submitted {item.date_submitted}</Text>
                 </View>
+                <TouchableOpacity onPress={toggle} style={styles.footerToggle}>
+                    <Text style={styles.footerToggleText}>{expanded ? 'Hide details' : 'View details'}</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -304,12 +416,35 @@ export default function MaintenanceHistoryScreen() {
         fetchRequests();
     }, [fetchRequests]);
 
+    // ── Resubmit photo handler
+    const handleResubmitPhoto = useCallback(async (requestId, photo) => {
+        try {
+            const formData = new FormData();
+            formData.append('photo', {
+                uri: photo.uri,
+                name: photo.fileName,
+                type: photo.type,
+            });
+
+            await client.post(`/maintenance/${requestId}/resubmit-photo`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            Alert.alert('Success', 'Photo submitted successfully. The admin will review it shortly.');
+            fetchRequests();
+        } catch (err) {
+            console.error('resubmit photo error:', err.response?.data ?? err.message);
+            const message = err.response?.data?.message ?? 'Failed to submit photo. Please try again.';
+            Alert.alert('Error', message);
+        }
+    }, [fetchRequests]);
+
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* ── Top Row (ORIGINAL - untouched) ── */}
+            {/* ── Top Row ── */}
             <View style={styles.topRow}>
                 <TouchableOpacity
                     style={styles.backBtn}
@@ -328,7 +463,7 @@ export default function MaintenanceHistoryScreen() {
                 </View>
             </View>
 
-            {/* ── Header (ORIGINAL - untouched) ── */}
+            {/* ── Header ── */}
             <View style={styles.headerSection}>
                 <View style={styles.headerTitleRow}>
                     <View style={styles.headerIconBadge}>
@@ -365,26 +500,26 @@ export default function MaintenanceHistoryScreen() {
                     <View style={styles.statsRow}>
                         <View style={[styles.statCard, styles.statCardPending]}>
                             <View style={styles.statIconWrap}>
-                                <MaterialIcons name="hourglass-empty" size={16} color="#856404" />
+                                <MaterialIcons name="hourglass-empty" size={16} color="#92400E" />
                             </View>
                             <Text style={styles.statLabel}>Pending</Text>
-                            <Text style={[styles.statValue, { color: '#856404' }]}>{pendingCount}</Text>
+                            <Text style={[styles.statValue, { color: '#92400E' }]}>{pendingCount}</Text>
                             <Text style={styles.statSub}>Awaiting action</Text>
                         </View>
                         <View style={[styles.statCard, styles.statCardProgress]}>
                             <View style={[styles.statIconWrap, styles.statIconProgress]}>
-                                <MaterialIcons name="autorenew" size={16} color="#004085" />
+                                <MaterialIcons name="autorenew" size={16} color="#1E40AF" />
                             </View>
                             <Text style={styles.statLabel}>In Progress</Text>
-                            <Text style={[styles.statValue, { color: '#004085' }]}>{progressCount}</Text>
+                            <Text style={[styles.statValue, { color: '#1E40AF' }]}>{progressCount}</Text>
                             <Text style={styles.statSub}>Being handled</Text>
                         </View>
                         <View style={[styles.statCard, styles.statCardResolved]}>
                             <View style={[styles.statIconWrap, styles.statIconResolved]}>
-                                <MaterialIcons name="check-circle-outline" size={16} color="#28A745" />
+                                <MaterialIcons name="check-circle-outline" size={16} color="#15803D" />
                             </View>
                             <Text style={styles.statLabel}>Resolved</Text>
-                            <Text style={[styles.statValue, { color: '#28A745' }]}>{resolvedCount}</Text>
+                            <Text style={[styles.statValue, { color: '#15803D' }]}>{resolvedCount}</Text>
                             <Text style={styles.statSub}>All done</Text>
                         </View>
                     </View>
@@ -504,7 +639,11 @@ export default function MaintenanceHistoryScreen() {
                         </View>
                     ) : (
                         filtered.map((item) => (
-                            <RequestCard key={item.id} item={item} />
+                            <RequestCard
+                                key={item.id}
+                                item={item}
+                                onResubmitPhoto={handleResubmitPhoto}
+                            />
                         ))
                     )}
                 </ScrollView>
