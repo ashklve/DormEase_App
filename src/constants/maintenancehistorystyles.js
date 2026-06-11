@@ -278,6 +278,11 @@ export default StyleSheet.create({
         borderRadius:    8,
         backgroundColor: COLORS.lightPink,
     },
+    deleteBtn: {
+        padding:         4,
+        borderRadius:    8,
+        backgroundColor: COLORS.lightPink,
+    },
 
     // badges row
     badgeRow: {

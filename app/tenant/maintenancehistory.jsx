@@ -147,7 +147,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 );
 
 // ── Request Card ──────────────────────────────────────────────────────────────
-const RequestCard = ({ item, onResubmitPhoto }) => {
+const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
     const statusKey = item.status?.toLowerCase();
     const priorityKey = item.priority?.toLowerCase();
 
@@ -185,6 +185,28 @@ const RequestCard = ({ item, onResubmitPhoto }) => {
 
     const categoryIcon = CATEGORY_ICON[item.category] ?? 'build';
     const needsResubmission = !!item.resubmission_requested_at;
+
+    const handleDelete = () => {
+        const isPending = statusKey === 'pending';
+        const title = isPending ? 'Cancel Request' : 'Remove from History';
+        const message = isPending
+            ? 'Are you sure you want to cancel this pending maintenance request? This will cancel it on the admin side as well.'
+            : 'Are you sure you want to remove this resolved request from your history?';
+        const buttonText = isPending ? 'Cancel Request' : 'Remove';
+
+        Alert.alert(
+            title,
+            message,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: buttonText,
+                    style: 'destructive',
+                    onPress: () => onDelete(item.id),
+                },
+            ]
+        );
+    };
 
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -238,11 +260,18 @@ const RequestCard = ({ item, onResubmitPhoto }) => {
                 {/* Title + collapse button */}
                 <View style={styles.cardTitleRow}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
-                    <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
-                        <Animated.View style={{ transform: [{ rotate }] }}>
-                            <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
-                        </Animated.View>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {statusKey !== 'in progress' && (
+                            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+                                <MaterialIcons name="delete-outline" size={20} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
+                            <Animated.View style={{ transform: [{ rotate }] }}>
+                                <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Status + Priority badges */}
@@ -435,6 +464,19 @@ export default function MaintenanceHistoryScreen() {
         } catch (err) {
             console.error('resubmit photo error:', err.response?.data ?? err.message);
             const message = err.response?.data?.message ?? 'Failed to submit photo. Please try again.';
+            Alert.alert('Error', message);
+        }
+    }, [fetchRequests]);
+
+    // ── Delete request handler
+    const handleDeleteRequest = useCallback(async (requestId) => {
+        try {
+            await client.delete(`/maintenance/${requestId}`);
+            Alert.alert('Success', 'Maintenance request deleted successfully.');
+            fetchRequests();
+        } catch (err) {
+            console.error('delete request error:', err.response?.data ?? err.message);
+            const message = err.response?.data?.message ?? 'Failed to delete request. Please try again.';
             Alert.alert('Error', message);
         }
     }, [fetchRequests]);
@@ -643,6 +685,7 @@ export default function MaintenanceHistoryScreen() {
                                 key={item.id}
                                 item={item}
                                 onResubmitPhoto={handleResubmitPhoto}
+                                onDelete={handleDeleteRequest}
                             />
                         ))
                     )}
