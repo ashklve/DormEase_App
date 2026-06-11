@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -266,7 +267,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
 
@@ -298,10 +299,10 @@ export default function ProfileScreen() {
     );
   };
 
-  // ── Fetch profile
-  const fetchProfile = async () => {
+  // ── Fetch profile — used both on mount and on pull-to-refresh
+  const fetchProfile = async ({ isRefresh = false } = {}) => {
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
       const res = await client.get('/user');
       setUser(res.data);
       setEmail(res.data.email || '');
@@ -309,9 +310,12 @@ export default function ProfileScreen() {
     } catch (err) {
       console.error('profile fetch error:', err.message);
     } finally {
-      setLoading(false);
+      if (isRefresh) setRefreshing(false);
     }
   };
+
+  // ── Pull-to-refresh handler
+  const onRefresh = () => fetchProfile({ isRefresh: true });
 
   // ── Live validation — contact fields
   const handleEmailChange = (v) => {
@@ -326,7 +330,7 @@ export default function ProfileScreen() {
   };
 
   const handlePhoneChange = (v) => {
-    const digits = v.replace(/[^0-9]/g, ''); // digits only
+    const digits = v.replace(/[^0-9]/g, '');
     setContactNumber(digits);
     if (!digits) {
       setPhoneError('Contact number cannot be empty.');
@@ -335,7 +339,7 @@ export default function ProfileScreen() {
     setPhoneError(digits.length === 11 ? '' : 'Contact number must be exactly 11 digits.');
   };
 
-  // ── Save contact info — only on explicit button press
+  // ── Save contact info — refreshes profile data after success
   const handleUpdateContact = async () => {
     const eErr = !email
       ? 'Email cannot be empty.'
@@ -358,8 +362,9 @@ export default function ProfileScreen() {
         email,
         contact_number: contactNumber,
       });
-      setUser((prev) => ({ ...prev, email, contact_number: contactNumber }));
       showToast('success', 'Contact info updated successfully!');
+      // Refresh profile to sync latest server state
+      await fetchProfile({ isRefresh: false });
     } catch (err) {
       showToast('error', err.response?.data?.message || 'Failed to update contact info.');
     } finally {
@@ -372,7 +377,7 @@ export default function ProfileScreen() {
     confirmPw.length === 0 ? null :
       confirmPw === newPw ? 'match' : 'mismatch';
 
-  // ── Change password
+  // ── Change password — refreshes profile data after success
   const handleChangePassword = async () => {
     if (!currentPw || !newPw || !confirmPw) {
       showToast('error', 'Please fill in all password fields.');
@@ -397,6 +402,8 @@ export default function ProfileScreen() {
       setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
+      // Refresh profile so is_temp_password banner clears if applicable
+      await fetchProfile({ isRefresh: false });
     } catch (err) {
       showToast('error', err.response?.data?.message || 'Failed to update password.');
     } finally {
@@ -442,18 +449,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ── Loading screen
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={[]}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
   const statusKey = user?.status || 'inactive';
   const sc = statusColors[statusKey] || statusColors.inactive;
@@ -473,6 +468,14 @@ export default function ProfileScreen() {
           { paddingBottom: 120 + Math.max(insets.bottom, 24) },
         ]}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
       >
         {/* ── Top Row ── */}
         <View style={styles.topRow}>
