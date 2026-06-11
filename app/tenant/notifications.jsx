@@ -115,7 +115,14 @@ const formatDateTime = (value) => {
 // Groups a flat notifications array into { today: [], yesterday: [], older: [] }
 const groupByDate = (notifications) => {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Use local midnight boundaries but construct them explicitly
+    const startOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0, 0, 0, 0
+    );
     const startOfYesterday = new Date(startOfToday);
     startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
@@ -123,25 +130,67 @@ const groupByDate = (notifications) => {
 
     notifications.forEach((n) => {
         const d = new Date(n._rawDate ?? n.timestamp);
-        if (d >= startOfToday) groups.today.push(n);
-        else if (d >= startOfYesterday) groups.yesterday.push(n);
+
+        if (isNaN(d.getTime())) {
+            groups.older.push(n);
+            return;
+        }
+
+        // Compare using timestamps (milliseconds) to avoid timezone issues
+        const dTime = d.getTime();
+        const todayTime = startOfToday.getTime();
+        const yesterdayTime = startOfYesterday.getTime();
+
+        if (dTime >= todayTime) groups.today.push(n);
+        else if (dTime >= yesterdayTime) groups.yesterday.push(n);
         else groups.older.push(n);
     });
-
     return groups;
+};
+
+const getNotificationDateValue = (notification) =>
+    notification.created_at ??
+    notification.createdAt ??
+    notification.timestamp ??
+    notification.date ??
+    null;
+
+const getNotificationRows = (data) => {
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.notifications)) return data.notifications;
+    if (Array.isArray(data)) return data;
+    return [];
+};
+
+const getNextPage = (data) => {
+    const currentPage = Number(data?.current_page ?? data?.meta?.current_page);
+    const lastPage = Number(data?.last_page ?? data?.meta?.last_page);
+    const nextPageUrl = data?.next_page_url ?? data?.links?.next;
+
+    if (Number.isFinite(currentPage) && Number.isFinite(lastPage) && currentPage < lastPage) {
+        return currentPage + 1;
+    }
+
+    if (typeof nextPageUrl === 'string') {
+        const match = nextPageUrl.match(/[?&]page=(\d+)/);
+        if (match) return Number(match[1]);
+    }
+
+    return null;
 };
 
 const mapNotification = (notification) => {
     const type = notification.type ?? 'notification';
     const meta = getTypeMeta(type);
+    const dateValue = getNotificationDateValue(notification);
 
     return {
-        id: notification.notif_id,
+        id: notification.notif_id ?? notification.notification_id ?? notification.id,
         type,
         title: meta.label,
         description: notification.message ?? '',
-        timestamp: formatDateTime(notification.created_at),
-        _rawDate: notification.created_at,
+        timestamp: formatDateTime(dateValue),
+        _rawDate: dateValue,
         read: Boolean(notification.is_read),
         refId: notification.ref_id,
         route: meta.route,
@@ -259,12 +308,25 @@ export default function NotificationsScreen() {
     /* ─── Fetch ─── */
     const fetchNotifications = useCallback(async () => {
         try {
-            const res = await client.get('/notifications', { timeout: 15000 });
-            const rows = Array.isArray(res.data?.data)
-                ? res.data.data
-                : Array.isArray(res.data)
-                    ? res.data
-                    : [];
+            const requestConfig = {
+                timeout: 15000,
+                params: { per_page: 100, limit: 100 },
+            };
+            const res = await client.get('/notifications', requestConfig);
+            let rows = getNotificationRows(res.data);
+            let nextPage = getNextPage(res.data);
+            const loadedPages = new Set([1]);
+
+            while (nextPage && !loadedPages.has(nextPage) && rows.length < 500) {
+                loadedPages.add(nextPage);
+                const pageRes = await client.get('/notifications', {
+                    ...requestConfig,
+                    params: { ...requestConfig.params, page: nextPage },
+                });
+                rows = rows.concat(getNotificationRows(pageRes.data));
+                nextPage = getNextPage(pageRes.data);
+            }
+
             setNotifications(rows.map(mapNotification));
         } catch (err) {
             console.error('fetch notifications error:', err.response?.data ?? err.message);
