@@ -221,6 +221,134 @@ export default StyleSheet.create({
     fontWeight: '600',
   },
 
+  // ── bank transfer card ────────────────────────────────────────────────────
+  bankCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: scale(16),
+    marginBottom: verticalScale(12),
+  },
+  bankCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    marginBottom: verticalScale(12),
+  },
+  bankIconCircle: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankCardTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    color: COLORS.dark,
+  },
+  bankCardSubtitle: {
+    fontSize: moderateScale(11),
+    color: COLORS.muted,
+    marginTop: 1,
+  },
+  bankDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginBottom: verticalScale(12),
+  },
+  bankDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: verticalScale(8),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  bankDetailLeft: {
+    flex: 1,
+  },
+  bankDetailLabel: {
+    fontSize: moderateScale(11),
+    color: COLORS.muted,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  bankDetailValue: {
+    fontSize: moderateScale(14),
+    color: COLORS.dark,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  bankCopyBtn: {
+    padding: scale(8),
+    borderRadius: 8,
+    backgroundColor: COLORS.lightPink,
+    marginLeft: scale(8),
+  },
+  bankAmountNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(8),
+    marginTop: verticalScale(14),
+    backgroundColor: COLORS.lightPink,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    padding: scale(12),
+  },
+  bankAmountNoticeText: {
+    flex: 1,
+    fontSize: moderateScale(12),
+    color: COLORS.grayText,
+    lineHeight: 18,
+  },
+
+  // ── bank how-to steps ─────────────────────────────────────────────────────
+  bankStepsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: scale(16),
+  },
+  bankStepsTitle: {
+    fontSize: moderateScale(12),
+    fontWeight: '700',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: verticalScale(10),
+  },
+  bankStepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(10),
+    marginBottom: verticalScale(10),
+  },
+  bankStepBullet: {
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  bankStepBulletText: {
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  bankStepText: {
+    flex: 1,
+    fontSize: moderateScale(13),
+    color: COLORS.grayText,
+    lineHeight: 19,
+  },
+
   // ── upload box ────────────────────────────────────────────────────────────
   uploadBox: {
     backgroundColor: COLORS.card,
