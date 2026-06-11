@@ -35,10 +35,15 @@ export default function NotificationBell({
     );
 
     const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
+    const badgeSizeStyle = badgeText.length >= 3
+        ? componentStyles.badgeLarge
+        : badgeText.length === 2
+            ? componentStyles.badgeMedium
+            : null;
 
     return (
         <TouchableOpacity
-            style={style}
+            style={[componentStyles.button, style]}
             onPress={() => router.push('/tenant/notifications')}
             activeOpacity={0.8}
         >
@@ -47,10 +52,16 @@ export default function NotificationBell({
                 <View
                     style={[
                         componentStyles.badge,
-                        badgeText.length > 1 && componentStyles.badgeWide,
+                        badgeSizeStyle,
                     ]}
                 >
-                    <Text style={componentStyles.badgeText}>{badgeText}</Text>
+                    <Text
+                        style={componentStyles.badgeText}
+                        numberOfLines={1}
+                        allowFontScaling={false}
+                    >
+                        {badgeText}
+                    </Text>
                 </View>
             )}
         </TouchableOpacity>
@@ -58,29 +69,40 @@ export default function NotificationBell({
 }
 
 const componentStyles = StyleSheet.create({
+    button: {
+        position: 'relative',
+        overflow: 'visible',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     badge: {
         position: 'absolute',
-        top: -7,
-        right: -8,
-        minWidth: 19,
-        height: 19,
+        top: -8,
+        right: -10,
+        width: 20,
+        height: 20,
         borderRadius: 10,
-        paddingHorizontal: 5,
         backgroundColor: '#E8175D',
         borderWidth: 1.5,
         borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    badgeWide: {
-        minWidth: 24,
+    badgeMedium: {
+        width: 26,
+        right: -13,
+    },
+    badgeLarge: {
+        width: 32,
+        right: -17,
     },
     badgeText: {
         color: '#FFFFFF',
         fontSize: 10,
         fontWeight: '800',
-        lineHeight: 13,
+        lineHeight: 12,
         includeFontPadding: false,
         textAlign: 'center',
+        textAlignVertical: 'center',
     },
 });
