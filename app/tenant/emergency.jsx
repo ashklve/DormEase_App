@@ -56,48 +56,13 @@ const fmtTimer = (secs) => {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
-    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
-};
-
-const EMERGENCY_KEYWORDS = [
-    { category: 'Medical', words: ['medical', 'injury', 'injured', 'hurt', 'bleeding', 'fainted', 'unconscious', 'sick', 'ambulance', 'heart', 'chest pain', 'nahilo', 'himatay', 'sugat', 'nasugatan', 'dugo', 'may sakit', 'masakit', 'ambulansya'] },
-    { category: 'Fire/Smoke', words: ['fire', 'smoke', 'burning', 'burn', 'flame', 'sunog', 'usok', 'nasusunog', 'apoy'] },
-    { category: 'Electrical Hazard', words: ['electric', 'electrical', 'spark', 'wire', 'outlet', 'power', 'shock', 'kuryente', 'saksakan', 'kurente', 'grounded', 'kumukuryente', 'pumutok'] },
-    { category: 'Security', words: ['security', 'intruder', 'break in', 'break-in', 'stolen', 'theft', 'fight', 'threat', 'stranger', 'harass', 'harassing', 'harassment', 'assault', 'magnanakaw', 'nanakaw', 'nakawan', 'away', 'gulo', 'banta', 'estranghero', 'panliligalig'] },
-    { category: 'Flood/Water Leak', words: ['flood', 'flooding', 'water leak', 'leak', 'pipe burst', 'overflow', 'baha', 'binabaha', 'tagas', 'tumutulo', 'pumutok na tubo', 'umaapaw'] },
-];
-
-const normalizeEmergencyText = (text) =>
-    String(text ?? '')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s\-\/]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-const detectEmergencyTypeFromTranscript = (text) => {
-    const normalized = normalizeEmergencyText(text);
-    return EMERGENCY_KEYWORDS.find(({ words }) =>
-        words.some((word) => normalized.includes(word))
-    )?.category ?? '';
+    return [h, m, s].map(v => String(v).padStart(2, '00')).join(':');
 };
 
 const formatTenantRoomLocation = (roomNumber) => {
     const room = String(roomNumber ?? '').trim();
     if (!room) return '';
     return room.toLowerCase().startsWith('room ') ? room : `Room ${room}`;
-};
-
-const detectLocationFromTranscript = (text, tenantRoomNumber) => {
-    const normalized = String(text ?? '').trim();
-    const tenantRoomLocation = formatTenantRoomLocation(tenantRoomNumber);
-
-    const roomMatch = normalized.match(/\b(?:room|rm|kwarto|kuwarto)\s*([a-z0-9-]+)/i);
-    if (roomMatch) return `Room ${roomMatch[1].toUpperCase()}`;
-
-    const knownLocation = normalized.match(/\b(?:lobby|hallway|kitchen|bathroom|stairs|stairwell|elevator|parking|laundry|banyo|kusina|hagdan|pasilyo)\b/i);
-    if (knownLocation) return knownLocation[0];
-
-    return tenantRoomLocation;
 };
 
 // nav item
@@ -175,8 +140,6 @@ export default function EmergencyScreen() {
     const [recordSecs, setRecordSecs] = useState(0);
     const [transcript, setTranscript] = useState('');
     const [manualText, setManualText] = useState('');
-    const [detectedType, setDetectedType] = useState('');
-    const [detectedLocation, setDetectedLocation] = useState('');
     const [hasRecording, setHasRecording] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -185,8 +148,6 @@ export default function EmergencyScreen() {
     const transcribedRef = useRef('');
     const confirmedTranscriptRef = useRef('');
     const listenerRefs = useRef([]);
-    const hasContent = transcript.trim() || manualText.trim();
-    const showDetected = (detectedType || detectedLocation) && hasContent;
 
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((option) => option.key === speechLanguage)
         ?? SPEECH_LANGUAGE_OPTIONS[0];
@@ -206,7 +167,6 @@ export default function EmergencyScreen() {
             if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) {
                 return;
             }
-
             lastTimerTickRef.current = now;
             setRecordSecs((seconds) => seconds + 1);
         }, 1000);
@@ -217,31 +177,17 @@ export default function EmergencyScreen() {
         listenerRefs.current = [];
     }, []);
 
-    const applyEmergencyDetection = useCallback((text) => {
-        const detectedCategory = detectEmergencyTypeFromTranscript(text);
-        if (detectedCategory) {
-            setSelectedCategory(detectedCategory);
-            setDetectedType(detectedCategory);
-        }
-
-        const detectedRoom = detectLocationFromTranscript(text, user?.room_number);
-        if (detectedRoom) setDetectedLocation(detectedRoom);
-    }, [user?.room_number]);
-
     const updateTranscript = useCallback((text) => {
         const nextText = String(text ?? '').trim();
         if (!nextText) return;
-
         transcribedRef.current = nextText;
         setTranscript(nextText);
         setManualText(nextText);
-        applyEmergencyDetection(nextText);
-    }, [applyEmergencyDetection]);
+    }, []);
 
     const mergeTranscriptChunk = useCallback((text) => {
         const chunk = String(text ?? '').trim();
         if (!chunk) return;
-
         const existing = confirmedTranscriptRef.current;
         const nextText = existing ? `${existing} ${chunk}` : chunk;
         confirmedTranscriptRef.current = nextText;
@@ -251,21 +197,17 @@ export default function EmergencyScreen() {
     const applyPartialTranscript = useCallback((text) => {
         const partial = String(text ?? '').trim();
         if (!partial) return;
-
         const existing = confirmedTranscriptRef.current;
         updateTranscript(existing ? `${existing} ${partial}` : partial);
     }, [updateTranscript]);
 
     const handleSpeechLanguageChange = (nextLanguage) => {
         if (isRecording || modelLoading || nextLanguage === speechLanguage) return;
-
         setSpeechLanguage(nextLanguage);
         setTranscript('');
         setManualText('');
         setHasRecording(false);
         setRecordSecs(0);
-        setDetectedType('');
-        setDetectedLocation('');
         transcribedRef.current = '';
         confirmedTranscriptRef.current = '';
     };
@@ -309,8 +251,6 @@ export default function EmergencyScreen() {
         confirmedTranscriptRef.current = '';
         setTranscript('');
         setManualText('');
-        setDetectedType('');
-        setDetectedLocation('');
         setHasRecording(false);
         setIsRecording(true);
         startRecordingTimer();
@@ -344,13 +284,11 @@ export default function EmergencyScreen() {
     const stopRecording = async () => {
         stopRecordingTimer();
         setIsRecording(false);
-
         try {
             await stop();
         } catch (error) {
             console.error('failed to stop Vosk recognizer:', error);
         }
-
         setHasRecording(Boolean(transcribedRef.current));
     };
 
@@ -361,6 +299,7 @@ export default function EmergencyScreen() {
             startRecording();
         }
     };
+
     // panic alert — sends immediately with room info, no description required
     const handlePanicAlert = async () => {
         Alert.alert(
@@ -397,13 +336,10 @@ export default function EmergencyScreen() {
 
         setSubmitting(true);
         try {
-            const submittedType = detectedType || selectedCategory || undefined;
-            const submittedLocation = detectedLocation || formatTenantRoomLocation(user?.room_number);
-
             await client.post('/emergency', {
-                type: submittedType,
+                type: selectedCategory || undefined,
                 description: description,
-                location: submittedLocation,
+                location: formatTenantRoomLocation(user?.room_number),
                 input_type: hasRecording ? 'voice' : 'text',
                 language: speechLanguage,
             });
@@ -415,8 +351,6 @@ export default function EmergencyScreen() {
             setRecordSecs(0);
             setTranscript('');
             setManualText('');
-            setDetectedType('');
-            setDetectedLocation('');
             setHasRecording(false);
             transcribedRef.current = '';
             confirmedTranscriptRef.current = '';
@@ -472,159 +406,141 @@ export default function EmergencyScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 >
-                {/* panic alert button */}
-                <TouchableOpacity style={styles.panicBtn} activeOpacity={0.85} onPress={handlePanicAlert}>
-                    <Text style={styles.panicBtnText}>SEND PANIC ALERT</Text>
-                </TouchableOpacity>
-                <Text style={styles.panicSub}>
-                    Press to send an immediate alert with your room details to staff.
-                </Text>
+                    {/* panic alert button */}
+                    <TouchableOpacity style={styles.panicBtn} activeOpacity={0.85} onPress={handlePanicAlert}>
+                        <Text style={styles.panicBtnText}>SEND PANIC ALERT</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.panicSub}>
+                        Press to send an immediate alert with your room details to staff.
+                    </Text>
 
-                {/* category selector */}
-                <Text style={[styles.sectionLabel, styles.standaloneSectionLabel]}>What's your emergency?</Text>
-                <View style={styles.categoryGrid}>
-                    {CATEGORIES.map(cat => {
-                        const active = selectedCategory === cat.key;
-                        const colors = CATEGORY_COLORS[cat.key];
-                        return (
-                            <TouchableOpacity
-                                key={cat.key}
-                                style={[
-                                    styles.categoryChip,
-                                    {
-                                        backgroundColor: active ? colors.bg : COLORS.white,
-                                        borderColor: active ? colors.icon : COLORS.border,
-                                    },
-                                ]}
-                                activeOpacity={0.75}
-                                onPress={() => setSelectedCategory(active ? null : cat.key)}
-                            >
-                                <MaterialCommunityIcons
-                                    name={cat.icon}
-                                    size={18}
-                                    color={colors.icon}
-                                />
-                                <Text style={[styles.categoryChipText, { color: active ? colors.label : COLORS.dark }]}>
-                                    {cat.label}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-
-                {/* voice recorder */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionLabel}>Describe the emergency</Text>
-                    <Text style={styles.sectionSub}>Speak or type the situation</Text>
-
-                    <View style={styles.languageSelector}>
-                        {SPEECH_LANGUAGE_OPTIONS.map((option) => {
-                            const active = speechLanguage === option.key;
+                    {/* category selector */}
+                    <Text style={[styles.sectionLabel, styles.standaloneSectionLabel]}>What's your emergency?</Text>
+                    <View style={styles.categoryGrid}>
+                        {CATEGORIES.map(cat => {
+                            const active = selectedCategory === cat.key;
+                            const colors = CATEGORY_COLORS[cat.key];
                             return (
                                 <TouchableOpacity
-                                    key={option.key}
+                                    key={cat.key}
                                     style={[
-                                        styles.languageOption,
-                                        active && styles.languageOptionActive,
-                                        (isRecording || modelLoading) && styles.languageOptionDisabled,
+                                        styles.categoryChip,
+                                        {
+                                            backgroundColor: active ? colors.bg : COLORS.white,
+                                            borderColor: active ? colors.icon : COLORS.border,
+                                        },
                                     ]}
-                                    onPress={() => handleSpeechLanguageChange(option.key)}
-                                    disabled={isRecording || modelLoading}
-                                    activeOpacity={0.85}
+                                    activeOpacity={0.75}
+                                    onPress={() => setSelectedCategory(active ? null : cat.key)}
                                 >
-                                    <Text style={[
-                                        styles.languageOptionText,
-                                        active && styles.languageOptionTextActive,
-                                    ]}>
-                                        {option.label}
+                                    <MaterialCommunityIcons
+                                        name={cat.icon}
+                                        size={18}
+                                        color={colors.icon}
+                                    />
+                                    <Text style={[styles.categoryChipText, { color: active ? colors.label : COLORS.dark }]}>
+                                        {cat.label}
                                     </Text>
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
 
-                    <TouchableOpacity
-                        style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
-                        activeOpacity={0.85}
-                        onPress={handleToggleRecord}
-                        disabled={modelLoading}
-                    >
-                        {isRecording ? (
-                            <Waveform isRecording={isRecording} />
-                        ) : (
-                            <View style={styles.micCircle}>
-                                <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                    {/* voice recorder */}
+                    <View style={styles.formCard}>
+                        <Text style={styles.sectionLabel}>Describe the emergency</Text>
+                        <Text style={styles.sectionSub}>Speak or type the situation</Text>
+
+                        <View style={styles.languageSelector}>
+                            {SPEECH_LANGUAGE_OPTIONS.map((option) => {
+                                const active = speechLanguage === option.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={option.key}
+                                        style={[
+                                            styles.languageOption,
+                                            active && styles.languageOptionActive,
+                                            (isRecording || modelLoading) && styles.languageOptionDisabled,
+                                        ]}
+                                        onPress={() => handleSpeechLanguageChange(option.key)}
+                                        disabled={isRecording || modelLoading}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={[
+                                            styles.languageOptionText,
+                                            active && styles.languageOptionTextActive,
+                                        ]}>
+                                            {option.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
+                            activeOpacity={0.85}
+                            onPress={handleToggleRecord}
+                            disabled={modelLoading}
+                        >
+                            {isRecording ? (
+                                <Waveform isRecording={isRecording} />
+                            ) : (
+                                <View style={styles.micCircle}>
+                                    <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                                </View>
+                            )}
+                            <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+                        </TouchableOpacity>
+
+                        <Text style={styles.tapToSpeak}>
+                            {modelLoading
+                                ? `Loading ${selectedSpeechLanguage.label} Model...`
+                                : isRecording
+                                    ? 'Tap to stop recording'
+                                    : hasRecording
+                                        ? 'Tap to re-record'
+                                        : 'Tap to Speak'}
+                        </Text>
+
+                        {/* transcript output */}
+                        {!!transcript && (
+                            <View style={styles.transcriptBox}>
+                                <Text style={styles.transcriptText}>{transcript}</Text>
                             </View>
                         )}
-                        <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+
+                        {/* or divider */}
+                        <View style={styles.orRow}>
+                            <View style={styles.orLine} />
+                            <Text style={styles.orText}>or</Text>
+                            <View style={styles.orLine} />
+                        </View>
+
+                        {/* manual text input */}
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder="Describe the emergency here"
+                            placeholderTextColor={COLORS.muted}
+                            value={manualText}
+                            onChangeText={(text) => setManualText(text)}
+                            multiline
+                            numberOfLines={4}
+                        />
+                    </View>
+
+                    {/* submit */}
+                    <TouchableOpacity
+                        style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                        activeOpacity={0.85}
+                        onPress={handleSubmit}
+                        disabled={submitting}
+                    >
+                        {submitting
+                            ? <ActivityIndicator size="small" color={COLORS.white} />
+                            : <Text style={styles.submitBtnText}>Submit</Text>
+                        }
                     </TouchableOpacity>
-
-                    <Text style={styles.tapToSpeak}>
-                        {modelLoading ? `Loading ${selectedSpeechLanguage.label} Model...` : (isRecording ? 'Tap to stop recording' : (hasRecording ? 'Tap to re-record' : 'Tap to Speak'))}
-                    </Text>
-
-                    {/* transcript output */}
-                    {!!transcript && (
-                        <View style={styles.transcriptBox}>
-                            <Text style={styles.transcriptText}>{transcript}</Text>
-                        </View>
-                    )}
-
-                    {/* or divider */}
-                    <View style={styles.orRow}>
-                        <View style={styles.orLine} />
-                        <Text style={styles.orText}>or</Text>
-                        <View style={styles.orLine} />
-                    </View>
-
-                    {/* manual text input */}
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Describe the emergency here"
-                        placeholderTextColor={COLORS.muted}
-                        value={manualText}
-                        onChangeText={(text) => {
-                            setManualText(text);
-                            applyEmergencyDetection(text);
-                        }}
-                        multiline
-                        numberOfLines={4}
-                    />
-                </View>
-
-                {/* AI-detected info card — shown after transcription */}
-                {showDetected && (
-                    <View style={styles.detectedCard}>
-                        <Text style={styles.detectedTitle}>Detected Issue</Text>
-                        <View style={styles.detectedTable}>
-                            <View style={styles.detectedRow}>
-                                <Text style={styles.detectedKey}>Detected Type:</Text>
-                                <View style={styles.detectedValueRow}>
-                                    <Text style={styles.detectedValue}>{detectedType || 'Not detected'}</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.detectedRow, { borderTopWidth: 1, borderTopColor: COLORS.border }]}>
-                                <Text style={styles.detectedKey}>Location:</Text>
-                                <View style={styles.detectedValueRow}>
-                                    <Text style={styles.detectedValue}>{detectedLocation || 'Not detected'}</Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {/* submit */}
-                <TouchableOpacity
-                    style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-                    activeOpacity={0.85}
-                    onPress={handleSubmit}
-                    disabled={submitting}
-                >
-                    {submitting
-                        ? <ActivityIndicator size="small" color={COLORS.white} />
-                        : <Text style={styles.submitBtnText}>Submit</Text>
-                    }
-                </TouchableOpacity>
 
                 </ScrollView>
             </KeyboardAvoidingView>
