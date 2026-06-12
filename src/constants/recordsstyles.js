@@ -102,6 +102,70 @@ export default StyleSheet.create({
         color: COLORS.primary,
     },
 
+    // ─── file action button variants ───────────────────────────────────────────
+    fileBtnFulfilled: {
+        backgroundColor: COLORS.successLight,
+    },
+    fileBtnAwaiting: {
+        backgroundColor: '#F3F4F6',
+        marginBottom: 0,
+    },
+    fileBtnAttachment: {
+        backgroundColor: COLORS.primaryLight,
+        marginBottom: 0,
+        marginTop: 8,
+    },
+    fileBtnIconFulfilled: {
+        backgroundColor: COLORS.success,
+    },
+    fileBtnIconAwaiting: {
+        backgroundColor: '#E5E7EB',
+    },
+    fileBtnIconAttachment: {
+        backgroundColor: COLORS.primary,
+    },
+    fileBtnTitleFulfilled: {
+        color: '#065F46',
+    },
+    fileBtnSubFulfilled: {
+        color: '#059669',
+    },
+    fileBtnSubAttachment: {
+        color: '#BE185D',
+    },
+    fileBtnTitleMuted: {
+        color: COLORS.muted,
+    },
+    fileBtnSubMuted: {
+        color: COLORS.muted,
+    },
+    fileBtnTitlePrimary: {
+        color: COLORS.primary,
+    },
+
+    // ─── filter chip row wrapper ───────────────────────────────────────────────
+    filterChipRow: {
+        height: 44,
+        marginBottom: 8,
+    },
+    filterChipScrollContent: {
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        flexDirection: 'row',
+    },
+
+    // ─── loading overlay ──────────────────────────────────────────────────────
+    loadingWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingText: {
+        fontSize: 13,
+        color: COLORS.muted,
+        marginTop: 12,
+    },
+
     // ─── scroll content ───────────────────────────────────────────────────────
     scrollContent: {
         paddingBottom: 100,
@@ -172,6 +236,9 @@ export default StyleSheet.create({
     },
 
     // ─── record card ──────────────────────────────────────────────────────────
+    cardAnimated: {
+        // animated wrapper — opacity + translateY driven by Animated.Value
+    },
     recordCard: {
         backgroundColor: COLORS.card,
         borderRadius: 14,
@@ -201,6 +268,18 @@ export default StyleSheet.create({
     cardHeaderLeft: {
         flex: 1,
         minWidth: 0,
+    },
+
+    // badge + delete icon wrapper on the right of the card header
+    cardHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
+    // trash-icon touch target
+    deleteBtn: {
+        padding: 4,
     },
 
     // req id row — holds #DRQ-xxx + optional "Form" tag side by side
@@ -267,6 +346,12 @@ export default StyleSheet.create({
         fontSize: 11,
         color: COLORS.muted,
         flexShrink: 1,
+    },
+    metaTextFlex: {
+        flex: 1,
+    },
+    metaTextCapitalize: {
+        textTransform: 'capitalize',
     },
     metaGroup: {
         flexDirection: 'row',
