@@ -355,4 +355,28 @@ export default StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 8,
     },
+    rightContainer: {
+        alignItems: 'flex-end',
+        justifyContent: 'flex-start',
+        gap: 8,
+    },
+    notifActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        backgroundColor: NOTIF_COLORS.lightPink,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        marginTop: 10,
+        marginBottom: 4,
+        gap: 4,
+        borderWidth: 1,
+        borderColor: NOTIF_COLORS.primaryLight,
+    },
+    notifActionText: {
+        fontSize: 11,
+        color: NOTIF_COLORS.primary,
+        fontWeight: '700',
+    },
 });
