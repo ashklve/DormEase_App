@@ -76,7 +76,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // record card
-const RecordCard = ({ item, index }) => {
+const RecordCard = ({ item, index, onDelete }) => {
     const fade = useRef(new Animated.Value(0)).current;
     const slide = useRef(new Animated.Value(16)).current;
 
@@ -95,12 +95,35 @@ const RecordCard = ({ item, index }) => {
         }
     };
 
+    const handleDelete = () => {
+        const isPending = item.status === 'pending';
+        const title = isPending ? 'Cancel Request' : 'Remove from History';
+        const message = isPending
+            ? 'Are you sure you want to cancel this pending document request? This will cancel it on the admin side as well.'
+            : 'Are you sure you want to remove this request from your history?';
+        const buttonText = isPending ? 'Cancel Request' : 'Remove';
+
+        Alert.alert(
+            title,
+            message,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: buttonText,
+                    style: 'destructive',
+                    onPress: () => onDelete(item.doc_request_id, isPending),
+                },
+            ]
+        );
+    };
+
     const hasFulfilled = !!item.fulfilled_file;
     const hasAttachment = !!item.attachment;
     const isDownloadableForm = item.category === 'form';
+    const canDelete = ['pending', 'approved', 'ready', 'denied'].includes(item.status);
 
     return (
-        <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
+        <Animated.View style={[styles.cardAnimated, { opacity: fade, transform: [{ translateY: slide }] }]}>
             <View style={styles.recordCard}>
 
                 {/* accent bar — green if fulfilled, pink if not */}
@@ -126,14 +149,25 @@ const RecordCard = ({ item, index }) => {
                                 {item.document_type}
                             </Text>
                         </View>
-                        <StatusBadge status={item.status} />
+                        <View style={styles.cardHeaderRight}>
+                            <StatusBadge status={item.status} />
+                            {canDelete && (
+                                <TouchableOpacity
+                                    style={styles.deleteBtn}
+                                    onPress={handleDelete}
+                                    activeOpacity={0.7}
+                                >
+                                    <MaterialIcons name="delete-outline" size={20} color={COLORS.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
 
                     {/* meta */}
                     {!!item.purpose && (
                         <View style={styles.metaRow}>
                             <MaterialIcons name="notes" size={13} color={COLORS.muted} />
-                            <Text style={[styles.metaText, { flex: 1 }]} numberOfLines={2}>
+                            <Text style={[styles.metaText, styles.metaTextFlex]} numberOfLines={2}>
                                 {item.purpose}
                             </Text>
                         </View>
@@ -150,7 +184,7 @@ const RecordCard = ({ item, index }) => {
                                     size={12}
                                     color={COLORS.muted}
                                 />
-                                <Text style={[styles.metaText, { textTransform: 'capitalize' }]}>
+                                <Text style={[styles.metaText, styles.metaTextCapitalize]}>
                                     {item.delivery_type}
                                 </Text>
                             </View>
@@ -173,28 +207,28 @@ const RecordCard = ({ item, index }) => {
                     {/* fulfilled document from admin */}
                     {hasFulfilled ? (
                         <TouchableOpacity
-                            style={[styles.fileBtn, { backgroundColor: COLORS.successLight }]}
+                            style={[styles.fileBtn, styles.fileBtnFulfilled]}
                             activeOpacity={0.75}
                             onPress={() => openFile(item.fulfilled_file)}
                         >
-                            <View style={[styles.fileBtnIcon, { backgroundColor: COLORS.success }]}>
+                            <View style={[styles.fileBtnIcon, styles.fileBtnIconFulfilled]}>
                                 <MaterialIcons name="description" size={18} color={COLORS.white} />
                             </View>
                             <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, { color: '#065F46' }]}>Document Ready</Text>
-                                <Text style={[styles.fileBtnSub, { color: '#059669' }]}>Tap to view fulfilled document</Text>
+                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitleFulfilled]}>Document Ready</Text>
+                                <Text style={[styles.fileBtnSub, styles.fileBtnSubFulfilled]}>Tap to view fulfilled document</Text>
                             </View>
                             <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
                         </TouchableOpacity>
                     ) : !isDownloadableForm && (
                         /* only show "awaiting" placeholder for certificate requests, not downloadable forms */
-                        <View style={[styles.fileBtn, { backgroundColor: '#F3F4F6', marginBottom: 0 }]}>
-                            <View style={[styles.fileBtnIcon, { backgroundColor: '#E5E7EB' }]}>
+                        <View style={[styles.fileBtn, styles.fileBtnAwaiting]}>
+                            <View style={[styles.fileBtnIcon, styles.fileBtnIconAwaiting]}>
                                 <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
                             </View>
                             <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, { color: COLORS.muted }]}>Awaiting Document</Text>
-                                <Text style={[styles.fileBtnSub, { color: COLORS.muted }]}>Admin hasn't sent a file yet</Text>
+                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitleMuted]}>Awaiting Document</Text>
+                                <Text style={[styles.fileBtnSub, styles.fileBtnSubMuted]}>Admin hasn't sent a file yet</Text>
                             </View>
                         </View>
                     )}
@@ -202,16 +236,16 @@ const RecordCard = ({ item, index }) => {
                     {/* tenant's own uploaded attachment */}
                     {hasAttachment && (
                         <TouchableOpacity
-                            style={[styles.fileBtn, { backgroundColor: COLORS.primaryLight, marginBottom: 0, marginTop: 8 }]}
+                            style={[styles.fileBtn, styles.fileBtnAttachment]}
                             activeOpacity={0.75}
                             onPress={() => openFile(item.attachment)}
                         >
-                            <View style={[styles.fileBtnIcon, { backgroundColor: COLORS.primary }]}>
+                            <View style={[styles.fileBtnIcon, styles.fileBtnIconAttachment]}>
                                 <MaterialIcons name="attach-file" size={18} color={COLORS.white} />
                             </View>
                             <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, { color: COLORS.primary }]}>Your Submitted Form</Text>
-                                <Text style={[styles.fileBtnSub, { color: '#BE185D' }]}>Tap to view your uploaded file</Text>
+                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitlePrimary]}>Your Submitted Form</Text>
+                                <Text style={[styles.fileBtnSub, styles.fileBtnSubAttachment]}>Tap to view your uploaded file</Text>
                             </View>
                             <MaterialIcons name="open-in-new" size={16} color={COLORS.primary} />
                         </TouchableOpacity>
@@ -262,6 +296,19 @@ export default function TenantRecordsScreen() {
             setRefreshing(false);
         }
     }, []);
+
+    const handleDeleteRequest = useCallback(async (requestId, isPending) => {
+        try {
+            const res = await client.delete(`/document-requests/${requestId}`);
+            const msg = isPending ? 'Request cancelled successfully.' : 'Request removed from history.';
+            Alert.alert('Done', msg);
+            fetchRecords();
+        } catch (err) {
+            console.error('delete request error:', err.response?.data ?? err.message);
+            const message = err.response?.data?.message ?? 'Failed to delete request. Please try again.';
+            Alert.alert('Error', message);
+        }
+    }, [fetchRecords]);
 
     useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
@@ -321,15 +368,11 @@ export default function TenantRecordsScreen() {
 
             {/* filter chips with counts */}
             {!loading && records.length > 0 && (
-                <View style={{ height: 44, marginBottom: 8 }}>
+                <View style={styles.filterChipRow}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{
-                            paddingHorizontal: 20,
-                            alignItems: 'center',
-                            flexDirection: 'row',
-                        }}
+                        contentContainerStyle={styles.filterChipScrollContent}
                     >
                         {FILTERS.map(f => {
                             const count = f.key === 'all'
@@ -381,9 +424,9 @@ export default function TenantRecordsScreen() {
 
             {/* body */}
             {loading ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={styles.loadingWrap}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 12 }}>
+                    <Text style={styles.loadingText}>
                         Loading your records...
                     </Text>
                 </View>
@@ -408,7 +451,7 @@ export default function TenantRecordsScreen() {
                         <EmptyState />
                     ) : (
                         filtered.map((item, index) => (
-                            <RecordCard key={item.doc_request_id} item={item} index={index} />
+                            <RecordCard key={item.doc_request_id} item={item} index={index} onDelete={handleDeleteRequest} />
                         ))
                     )}
                 </ScrollView>
