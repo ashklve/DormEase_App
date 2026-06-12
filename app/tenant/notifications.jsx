@@ -201,13 +201,13 @@ const mapNotification = (notification) => {
 };
 
 /* ─── Single notification row ─── */
-const NotificationItem = ({ item, onPress }) => (
+const NotificationItem = ({ item, isExpanded, onToggleExpand, onActionPress }) => (
     <TouchableOpacity
         style={[
             styles.notificationItem,
             !item.read && styles.notificationItemUnread,
         ]}
-        onPress={onPress}
+        onPress={onToggleExpand}
         activeOpacity={0.8}
     >
         {/* Colored avatar with icon */}
@@ -219,27 +219,55 @@ const NotificationItem = ({ item, onPress }) => (
         <View style={styles.notifContent}>
             <Text style={styles.notifTitle}>{item.title}</Text>
             {!!item.description && (
-                <Text style={styles.notifDescription} numberOfLines={2}>
+                <Text 
+                    style={styles.notifDescription} 
+                    numberOfLines={isExpanded ? undefined : 2}
+                >
                     {item.description}
                 </Text>
             )}
+            
+            {isExpanded && item.route && (
+                <TouchableOpacity
+                    style={styles.notifActionButton}
+                    onPress={onActionPress}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.notifActionText}>Go to {item.title}</Text>
+                    <MaterialIcons name="arrow-forward" size={14} color={NOTIF_COLORS.primary} />
+                </TouchableOpacity>
+            )}
+            
             <Text style={styles.notifTime}>{item.timestamp}</Text>
         </View>
 
-        {/* Unread indicator */}
-        {!item.read && <View style={styles.unreadDot} />}
+        {/* Right side indicators */}
+        <View style={styles.rightContainer}>
+            {!item.read && <View style={styles.unreadDot} />}
+            <MaterialIcons 
+                name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+                size={20} 
+                color={NOTIF_COLORS.grayText} 
+            />
+        </View>
     </TouchableOpacity>
 );
 
 /* ─── Date group block ─── */
-const NotificationGroup = ({ label, items, onPress, showDivider }) => {
+const NotificationGroup = ({ label, items, expandedNotifIds, onToggleExpand, onActionPress, showDivider }) => {
     if (!items?.length) return null;
     return (
         <>
             {showDivider && <View style={styles.groupDivider} />}
             <Text style={styles.sectionLabel}>{label}</Text>
             {items.map((item) => (
-                <NotificationItem key={item.id} item={item} onPress={() => onPress(item)} />
+                <NotificationItem 
+                    key={item.id} 
+                    item={item} 
+                    isExpanded={!!expandedNotifIds[item.id]}
+                    onToggleExpand={() => onToggleExpand(item)}
+                    onActionPress={() => onActionPress(item)}
+                />
             ))}
         </>
     );
@@ -302,6 +330,7 @@ export default function NotificationsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [markingAll, setMarkingAll] = useState(false);
     const [activeFilter, setActiveFilter] = useState('all');
+    const [expandedNotifIds, setExpandedNotifIds] = useState({});
 
     const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -388,10 +417,21 @@ export default function NotificationsScreen() {
         }
     }, [markingAll, notifications, unreadCount]);
 
-    const handleNotificationPress = async (notification) => {
-        await markNotificationRead(notification);
-        if (notification.route) router.push(notification.route);
-    };
+    const handleToggleExpand = useCallback(async (notification) => {
+        if (!notification.read) {
+            await markNotificationRead(notification);
+        }
+        setExpandedNotifIds((prev) => ({
+            ...prev,
+            [notification.id]: !prev[notification.id],
+        }));
+    }, [markNotificationRead]);
+
+    const handleActionPress = useCallback((notification) => {
+        if (notification.route) {
+            router.push(notification.route);
+        }
+    }, [router]);
 
     const tabNavigate = (tab, route) => {
         setActiveTab(tab);
@@ -525,19 +565,25 @@ export default function NotificationsScreen() {
                             <NotificationGroup
                                 label="Today"
                                 items={groups.today}
-                                onPress={handleNotificationPress}
+                                expandedNotifIds={expandedNotifIds}
+                                onToggleExpand={handleToggleExpand}
+                                onActionPress={handleActionPress}
                                 showDivider={false}
                             />
                             <NotificationGroup
                                 label="Yesterday"
                                 items={groups.yesterday}
-                                onPress={handleNotificationPress}
+                                expandedNotifIds={expandedNotifIds}
+                                onToggleExpand={handleToggleExpand}
+                                onActionPress={handleActionPress}
                                 showDivider={groups.today.length > 0}
                             />
                             <NotificationGroup
                                 label="Older"
                                 items={groups.older}
-                                onPress={handleNotificationPress}
+                                expandedNotifIds={expandedNotifIds}
+                                onToggleExpand={handleToggleExpand}
+                                onActionPress={handleActionPress}
                                 showDivider={
                                     groups.today.length > 0 || groups.yesterday.length > 0
                                 }
