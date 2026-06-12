@@ -166,7 +166,11 @@ const Dashboard = () => {
         const fetchCurrentBill = async () => {
             try {
                 const res = await client.get('/water-bill', { timeout: 30000 });
-                const amount = formatBillAmount(res.data.current_billing?.amount_due);
+                const currentBilling = res.data.current_billing;
+                const amountDue = parseFloat(String(currentBilling?.amount_due ?? '0').replace(/,/g, '')) || 0;
+                const pastDueAmount = parseFloat(String(currentBilling?.past_due_amount ?? '0').replace(/,/g, '')) || 0;
+                const total = amountDue + pastDueAmount;
+                const amount = formatBillAmount(total);
                 dashboardCache.currentBill = amount;
                 setCurrentBill(amount);
             } catch (err) {
