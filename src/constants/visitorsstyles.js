@@ -501,6 +501,34 @@ export default StyleSheet.create({
     shadowRadius: 8,
   },
 
+  cancelBtnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(4),
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: '#FFC5C5',
+    marginLeft: scale(4),
+  },
+  cancelBtnHeaderText: {
+    fontSize: moderateScale(10),
+    fontWeight: '700',
+    color: '#D32F2F',
+  },
+  deleteBtnHeader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bg,
+    width: scale(26),
+    height: scale(26),
+    borderRadius: 13,
+    borderWidth: 0.5,
+    borderColor: COLORS.primaryLight,
+    marginLeft: scale(4),
+  },
+
 });
 
 export { COLORS };
