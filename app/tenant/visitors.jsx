@@ -57,6 +57,7 @@ const STATUS_STYLE = {
     inside: { bg: '#CCE5FF', text: '#003E80' },
     rejected: { bg: '#F8D7DA', text: '#721C24' },
     completed: { bg: '#E2E3E5', text: '#3C3F42' },
+    cancelled: { bg: '#F8D7DA', text: '#721C24' },
 };
 
 const formatDisplayDate = (d) =>
@@ -124,13 +125,21 @@ const VisitorDetail = ({ icon, label, value }) => {
 };
 
 // ── Compact Visitor Row ───────────────────────────────────────────────────────
-const VisitorRow = ({ item, isLast }) => {
+const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
     const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
     const statusLabel = item.status
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
         : 'Pending';
     const visitDate = formatShortDate(item.date_of_visit);
     const visitTime = formatVisitorTime(item.time_of_visit);
+
+    const isCompleted = item.status?.toLowerCase() === 'completed';
+    const isCancelled = item.status?.toLowerCase() === 'cancelled';
+    const isInside = item.status?.toLowerCase() === 'inside';
+    const isRejected = item.status?.toLowerCase() === 'rejected';
+
+    const canCancel = !item.arrival_time && !isCancelled && !isInside && !isCompleted && !isRejected;
+    const canDelete = isCompleted;
 
     return (
         <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
@@ -151,10 +160,31 @@ const VisitorRow = ({ item, isLast }) => {
                         </View>
                     )}
                 </View>
-                <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
-                    <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
-                        {statusLabel}
-                    </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.visitorRowBadge, { backgroundColor: s.bg }]}>
+                        <Text style={[styles.visitorRowBadgeText, { color: s.text }]}>
+                            {statusLabel}
+                        </Text>
+                    </View>
+                    {canCancel && (
+                        <TouchableOpacity 
+                            style={styles.cancelBtnHeader}
+                            onPress={() => onCancel(item.id)}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialIcons name="close" size={12} color="#D32F2F" style={{ marginRight: 2 }} />
+                            <Text style={styles.cancelBtnHeaderText}>Cancel</Text>
+                        </TouchableOpacity>
+                    )}
+                    {canDelete && (
+                        <TouchableOpacity 
+                            style={styles.deleteBtnHeader}
+                            onPress={() => onDelete(item.id)}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialIcons name="delete-outline" size={15} color="#D63375" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
             <View style={styles.visitorDetailsGrid}>
@@ -168,7 +198,7 @@ const VisitorRow = ({ item, isLast }) => {
 };
 
 // ── Collapsible Visitor List ──────────────────────────────────────────────────
-const CollapsibleVisitorList = ({ visitors }) => {
+const CollapsibleVisitorList = ({ visitors, onCancel, onDelete }) => {
     const [open, setOpen] = useState(true);
     const animHeight = useRef(new Animated.Value(1)).current;
     const animOpacity = useRef(new Animated.Value(1)).current;
@@ -211,7 +241,13 @@ const CollapsibleVisitorList = ({ visitors }) => {
             }}>
                 <View style={styles.collapseListDivider} />
                 {visitors.map((item, index) => (
-                    <VisitorRow key={item.id} item={item} isLast={index === visitors.length - 1} />
+                    <VisitorRow 
+                        key={item.id} 
+                        item={item} 
+                        isLast={index === visitors.length - 1} 
+                        onCancel={onCancel}
+                        onDelete={onDelete}
+                    />
                 ))}
             </Animated.View>
         </View>
@@ -297,6 +333,54 @@ export default function VisitorsScreen() {
         setRefreshing(true);
         fetchVisitors();
     }, []);
+
+    const handleCancelVisitor = (visitorId) => {
+        Alert.alert(
+            'Cancel Registration',
+            'Are you sure you want to cancel this visitor registration?',
+            [
+                { text: 'No', style: 'cancel' },
+                {
+                    text: 'Yes',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await client.patch(`/visitors/${visitorId}/cancel`);
+                            Alert.alert('Success', 'Visitor registration cancelled successfully.');
+                            fetchVisitors();
+                        } catch (err) {
+                            console.error('cancel visitor error:', err.message);
+                            Alert.alert('Error', 'Failed to cancel visitor registration.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleDeleteVisitor = (visitorId) => {
+        Alert.alert(
+            'Delete Log',
+            'Are you sure you want to delete this visitor log from your history?',
+            [
+                { text: 'No', style: 'cancel' },
+                {
+                    text: 'Yes',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await client.delete(`/visitors/${visitorId}`);
+                            Alert.alert('Success', 'Visitor log deleted successfully.');
+                            fetchVisitors();
+                        } catch (err) {
+                            console.error('delete visitor error:', err.message);
+                            Alert.alert('Error', 'Failed to delete visitor log.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const onAndroidDateChange = (event, date) => {
         setShowDatePicker(false);
@@ -501,7 +585,11 @@ export default function VisitorsScreen() {
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
                         ) : (
-                            <CollapsibleVisitorList visitors={visitors} />
+                            <CollapsibleVisitorList 
+                                visitors={visitors} 
+                                onCancel={handleCancelVisitor} 
+                                onDelete={handleDeleteVisitor} 
+                            />
                         )}
 
                         {/* Register New Visitor Form */}
