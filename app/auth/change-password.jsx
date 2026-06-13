@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import client from '../../api/client';
 import { loadSession, saveSession } from '../../api/auth';
 
-const PINK = '#CA5D86';
+const PINK = '#D63375';
 const PINK_FORM = '#FFF0F3';
 const TEXT_DARK = '#2D1B2E';
 const TEXT_MUTED = '#B5B7C0';
@@ -18,12 +18,13 @@ const getStrength = (pwd) => {
     if (!pwd) return null;
     if (pwd.length < 8) return { label: 'Too short', color: '#DF0404', width: '25%' };
     const hasUpper = /[A-Z]/.test(pwd);
+    const hasLower = /[a-z]/.test(pwd);
     const hasNum = /[0-9]/.test(pwd);
     const hasSpec = /[^A-Za-z0-9]/.test(pwd);
-    const score = [hasUpper, hasNum, hasSpec].filter(Boolean).length;
-    if (score === 0) return { label: 'Weak', color: '#FF6B35', width: '40%' };
-    if (score === 1) return { label: 'Fair', color: '#F0C040', width: '60%' };
-    if (score === 2) return { label: 'Strong', color: '#4CAF50', width: '80%' };
+    const score = [hasUpper, hasLower, hasNum, hasSpec].filter(Boolean).length;
+    if (score === 0 || score === 1) return { label: 'Weak', color: '#FF6B35', width: '40%' };
+    if (score === 2) return { label: 'Fair', color: '#F0C040', width: '65%' };
+    if (score === 3) return { label: 'Strong', color: '#4CAF50', width: '85%' };
     return { label: 'Very Strong', color: '#2E7D32', width: '100%' };
 };
 
@@ -49,6 +50,10 @@ export default function ChangePasswordScreen() {
         if (!currentPassword) return setError('Please enter your current password');
         if (!newPassword) return setError('Please enter a new password');
         if (newPassword.length < 8) return setError('New password must be at least 8 characters');
+        if (!/[A-Z]/.test(newPassword)) return setError('New password must contain at least one uppercase letter (A-Z)');
+        if (!/[a-z]/.test(newPassword)) return setError('New password must contain at least one lowercase letter (a-z)');
+        if (!/[0-9]/.test(newPassword)) return setError('New password must contain at least one number (0-9)');
+        if (!/[^A-Za-z0-9]/.test(newPassword)) return setError('New password must contain at least one special character (e.g. !@#$)');
         if (newPassword !== confirmPassword) return setError('Passwords do not match');
         if (newPassword === currentPassword) return setError('New password must be different from current password');
 
@@ -183,6 +188,62 @@ export default function ChangePasswordScreen() {
                                 <Text style={[styles.strengthLabel, { color: strength.color }]}>
                                     {strength.label}
                                 </Text>
+                            </View>
+                        )}
+
+                        {/* password requirements checklist */}
+                        {newPassword.length > 0 && (
+                            <View style={styles.checklist}>
+                                <View style={styles.checkItem}>
+                                    <MaterialIcons
+                                        name={newPassword.length >= 8 ? "check-circle" : "radio-button-unchecked"}
+                                        size={14}
+                                        color={newPassword.length >= 8 ? "#4CAF50" : TEXT_MUTED}
+                                    />
+                                    <Text style={[styles.checkText, newPassword.length >= 8 && styles.checkTextDone]}>
+                                        At least 8 characters
+                                    </Text>
+                                </View>
+                                <View style={styles.checkItem}>
+                                    <MaterialIcons
+                                        name={/[A-Z]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
+                                        size={14}
+                                        color={/[A-Z]/.test(newPassword) ? "#4CAF50" : TEXT_MUTED}
+                                    />
+                                    <Text style={[styles.checkText, /[A-Z]/.test(newPassword) && styles.checkTextDone]}>
+                                        At least one uppercase letter (A-Z)
+                                    </Text>
+                                </View>
+                                <View style={styles.checkItem}>
+                                    <MaterialIcons
+                                        name={/[a-z]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
+                                        size={14}
+                                        color={/[a-z]/.test(newPassword) ? "#4CAF50" : TEXT_MUTED}
+                                    />
+                                    <Text style={[styles.checkText, /[a-z]/.test(newPassword) && styles.checkTextDone]}>
+                                        At least one lowercase letter (a-z)
+                                    </Text>
+                                </View>
+                                <View style={styles.checkItem}>
+                                    <MaterialIcons
+                                        name={/[0-9]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
+                                        size={14}
+                                        color={/[0-9]/.test(newPassword) ? "#4CAF50" : TEXT_MUTED}
+                                    />
+                                    <Text style={[styles.checkText, /[0-9]/.test(newPassword) && styles.checkTextDone]}>
+                                        At least one number (0-9)
+                                    </Text>
+                                </View>
+                                <View style={styles.checkItem}>
+                                    <MaterialIcons
+                                        name={/[^A-Za-z0-9]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
+                                        size={14}
+                                        color={/[^A-Za-z0-9]/.test(newPassword) ? "#4CAF50" : TEXT_MUTED}
+                                    />
+                                    <Text style={[styles.checkText, /[^A-Za-z0-9]/.test(newPassword) && styles.checkTextDone]}>
+                                        At least one special character (e.g. !@#$)
+                                    </Text>
+                                </View>
                             </View>
                         )}
                     </View>
@@ -389,5 +450,28 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#fff',
+    },
+    checklist: {
+        marginTop: 12,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#E5ECF6',
+        gap: 8,
+    },
+    checkItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    checkText: {
+        fontSize: 12,
+        color: '#B5B7C0',
+        fontWeight: '500',
+    },
+    checkTextDone: {
+        color: '#2D1B2E',
+        textDecorationLine: 'none',
     },
 });
