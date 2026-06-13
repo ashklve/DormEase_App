@@ -10,6 +10,7 @@ import {
     RefreshControl,
     Animated,
     Alert,
+    PanResponder,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,6 +147,103 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
+// ── Swipeable Wrapper ────────────────────────────────────────────────────────
+const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
+    const translateX = useRef(new Animated.Value(0)).current;
+    const [isOpen, setIsOpen] = useState(false);
+    const actionWidth = 80;
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < 8;
+            },
+            onPanResponderGrant: () => {
+                translateX.setOffset(isOpen ? -actionWidth : 0);
+                translateX.setValue(0);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                let currentPos = (isOpen ? -actionWidth : 0) + gestureState.dx;
+                if (currentPos > 0) {
+                    currentPos = 0;
+                } else if (currentPos < -actionWidth - 20) {
+                    currentPos = -actionWidth - 20 + (currentPos + actionWidth + 20) * 0.2;
+                }
+                translateX.setValue(currentPos - (isOpen ? -actionWidth : 0));
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                translateX.flattenOffset();
+                const currentPos = translateX._value;
+                let toValue = 0;
+                let nextOpen = false;
+
+                if (!isOpen && currentPos < -10) {
+                    toValue = -actionWidth;
+                    nextOpen = true;
+                } else if (isOpen && currentPos > -actionWidth + 10) {
+                    toValue = 0;
+                    nextOpen = false;
+                } else if (isOpen) {
+                    toValue = -actionWidth;
+                    nextOpen = true;
+                }
+
+                setIsOpen(nextOpen);
+                Animated.spring(translateX, {
+                    toValue,
+                    useNativeDriver: true,
+                    damping: 18,
+                    stiffness: 150,
+                    mass: 0.9,
+                }).start();
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(translateX, {
+                    toValue: isOpen ? -actionWidth : 0,
+                    useNativeDriver: true,
+                    damping: 18,
+                    stiffness: 150,
+                    mass: 0.9,
+                }).start();
+            }
+        })
+    ).current;
+
+    const handleActionPress = () => {
+        setIsOpen(false);
+        Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 18,
+            stiffness: 150,
+            mass: 0.9,
+        }).start();
+        onAction();
+    };
+
+    return (
+        <View style={styles.swipeContainer}>
+            <View style={styles.swipeActionContainer}>
+                <TouchableOpacity
+                    style={styles.swipeActionButton}
+                    onPress={handleActionPress}
+                    activeOpacity={0.7}
+                >
+                    <MaterialIcons name={actionIconName} size={24} color="#D63375" />
+                </TouchableOpacity>
+            </View>
+
+            <Animated.View
+                style={{ transform: [{ translateX }] }}
+                {...panResponder.panHandlers}
+            >
+                {children}
+            </Animated.View>
+        </View>
+    );
+};
+
 // ── Request Card ──────────────────────────────────────────────────────────────
 const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
     const statusKey = item.status?.toLowerCase();
@@ -239,7 +337,10 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
         }
     };
 
-    return (
+    const isPending = statusKey === 'pending';
+    const actionIconName = isPending ? 'close' : 'delete-outline';
+
+    const cardContent = (
         <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
 
             {/* ── Card Header ── */}
@@ -261,11 +362,6 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
                 <View style={styles.cardTitleRow}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        {statusKey !== 'in progress' && (
-                            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-                                <MaterialIcons name="delete-outline" size={20} color={COLORS.primary} />
-                            </TouchableOpacity>
-                        )}
                         <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
                             <Animated.View style={{ transform: [{ rotate }] }}>
                                 <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
@@ -386,6 +482,19 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
                 </TouchableOpacity>
             </View>
         </View>
+    );
+
+    if (statusKey === 'in progress') {
+        return cardContent;
+    }
+
+    return (
+        <SwipeableWrapper
+            actionIconName={actionIconName}
+            onAction={handleDelete}
+        >
+            {cardContent}
+        </SwipeableWrapper>
     );
 };
 

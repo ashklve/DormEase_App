@@ -583,4 +583,31 @@ export default StyleSheet.create({
         shadowOpacity:   0.4,
         shadowRadius:    8,
     },
+
+    // ── swipeable list item styles ─────────────────────────────────────────────
+    swipeContainer: {
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    swipeActionContainer: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 12,
+        width: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FDE8F0', // light pink background
+        borderWidth: 1,
+        borderColor: '#F0D6E2', // light pink border
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
+        overflow: 'hidden',
+    },
+    swipeActionButton: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 });
