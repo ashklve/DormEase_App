@@ -446,7 +446,11 @@ export default function VisitorsScreen() {
 
     const handleSubmit = async () => {
         if (!fullName.trim()) {
-            Alert.alert('Validation', 'Full name is required.');
+            Alert.alert('Required Field', 'Full name is required.');
+            return;
+        }
+        if (contactNo && (contactNo.length !== 11 || !contactNo.startsWith('09'))) {
+            Alert.alert('Invalid Contact Number', 'Contact number must be 11 digits.');
             return;
         }
         setSubmitting(true);
@@ -608,8 +612,12 @@ export default function VisitorsScreen() {
                                 placeholder="Contact No."
                                 placeholderTextColor={COLORS.muted}
                                 value={contactNo}
-                                onChangeText={setContactNo}
+                                onChangeText={(text) => {
+                                    const digitsOnly = text.replace(/\D/g, '');
+                                    if (digitsOnly.length <= 11) setContactNo(digitsOnly);
+                                }}
                                 keyboardType="phone-pad"
+                                maxLength={11}
                             />
 
                             {/* Purpose */}
