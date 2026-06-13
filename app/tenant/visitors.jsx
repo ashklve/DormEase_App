@@ -139,7 +139,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
     const isRejected = item.status?.toLowerCase() === 'rejected';
 
     const canCancel = !item.arrival_time && !isCancelled && !isInside && !isCompleted && !isRejected;
-    const canDelete = isCompleted;
+    const canDelete = isCompleted || isCancelled;
 
     return (
         <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
@@ -167,7 +167,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                         </Text>
                     </View>
                     {canCancel && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.cancelBtnHeader}
                             onPress={() => onCancel(item.id)}
                             activeOpacity={0.7}
@@ -177,7 +177,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                         </TouchableOpacity>
                     )}
                     {canDelete && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.deleteBtnHeader}
                             onPress={() => onDelete(item.id)}
                             activeOpacity={0.7}
@@ -241,10 +241,10 @@ const CollapsibleVisitorList = ({ visitors, onCancel, onDelete }) => {
             }}>
                 <View style={styles.collapseListDivider} />
                 {visitors.map((item, index) => (
-                    <VisitorRow 
-                        key={item.id} 
-                        item={item} 
-                        isLast={index === visitors.length - 1} 
+                    <VisitorRow
+                        key={item.id}
+                        item={item}
+                        isLast={index === visitors.length - 1}
                         onCancel={onCancel}
                         onDelete={onDelete}
                     />
@@ -445,19 +445,49 @@ export default function VisitorsScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!fullName.trim()) {
+        const nameTrimmed = fullName.trim();
+        if (!nameTrimmed) {
             Alert.alert('Required Field', 'Full name is required.');
             return;
         }
-        if (contactNo && (contactNo.length !== 11 || !contactNo.startsWith('09'))) {
-            Alert.alert('Invalid Contact Number', 'Contact number must be 11 digits.');
+
+        const nameParts = nameTrimmed.split(/\s+/);
+        if (nameParts.length < 2) {
+            Alert.alert('Invalid Name', 'Full name must contain at least a first name and a last name.');
             return;
         }
+
+        const contactTrimmed = contactNo.trim();
+        if (!contactTrimmed) {
+            Alert.alert('Required Field', 'Contact number is required.');
+            return;
+        }
+
+        if (!/^09\d{9}$/.test(contactTrimmed)) {
+            Alert.alert('Invalid Contact Number', 'Contact number must start with 09 and be exactly 11 digits.');
+            return;
+        }
+
+        if (!purpose) {
+            Alert.alert('Required Field', 'Purpose of visit is required.');
+            return;
+        }
+
+        if (!idType) {
+            Alert.alert('Required Field', 'ID Type is required.');
+            return;
+        }
+
+        if (!uploadedFile) {
+            Alert.alert('Required Field', "Please upload a photo of the visitor's ID.");
+            return;
+        }
+
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('visitor_name', fullName.trim());
-            formData.append('contact_no', contactNo.trim());
+            formData.append('visitor_name', nameTrimmed);
+            formData.append('contact_no', contactTrimmed);
             formData.append('purpose', purpose);
             formData.append('id_type', idType);
             formData.append('date_of_visit', formatSQLDate(selectedDateTime));
@@ -589,10 +619,10 @@ export default function VisitorsScreen() {
                         {visitors.length === 0 ? (
                             <Text style={styles.emptyText}>No registered visitors yet.</Text>
                         ) : (
-                            <CollapsibleVisitorList 
-                                visitors={visitors} 
-                                onCancel={handleCancelVisitor} 
-                                onDelete={handleDeleteVisitor} 
+                            <CollapsibleVisitorList
+                                visitors={visitors}
+                                onCancel={handleCancelVisitor}
+                                onDelete={handleDeleteVisitor}
                             />
                         )}
 
@@ -602,14 +632,14 @@ export default function VisitorsScreen() {
 
                             <TextInput
                                 style={styles.input}
-                                placeholder="Full Name"
+                                placeholder="Full Name (First and Last Name)"
                                 placeholderTextColor={COLORS.muted}
                                 value={fullName}
                                 onChangeText={setFullName}
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Contact No."
+                                placeholder="Contact No. (e.g. 09XXXXXXXXX) *"
                                 placeholderTextColor={COLORS.muted}
                                 value={contactNo}
                                 onChangeText={(text) => {
@@ -682,7 +712,7 @@ export default function VisitorsScreen() {
                                 <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
                                     <MaterialIcons name="upload" size={16} color={COLORS.dark} />
                                     <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
-                                        {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID'}
+                                        {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID Photo *'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
