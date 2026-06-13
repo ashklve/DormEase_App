@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const PINK_PRIMARY = '#CA5D86';
+const PINK_PRIMARY = '#D63375';
 
 export default function WelcomeScreen() {
     const router = useRouter();

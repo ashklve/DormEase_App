@@ -12,8 +12,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '../../src/services/pushNotifications';
 
 const { width } = Dimensions.get('window');
-const PINK_PRIMARY = '#CA5D86';
-const PINK_DARK = '#CA5D86';
+const PINK_PRIMARY = '#D63375';
+const PINK_DARK = '#D63375';
 const PINK_FORM = '#FFF0F3';
 const TEXT_DARK = '#2D1B2E';
 const TEXT_MUTED = '#B5B7C0';
