@@ -11,6 +11,7 @@ import {
     Linking,
     Alert,
     Animated,
+    PanResponder,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,6 +76,103 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+// ── Swipeable Wrapper ────────────────────────────────────────────────────────
+const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
+    const translateX = useRef(new Animated.Value(0)).current;
+    const [isOpen, setIsOpen] = useState(false);
+    const actionWidth = 80;
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < 8;
+            },
+            onPanResponderGrant: () => {
+                translateX.setOffset(isOpen ? -actionWidth : 0);
+                translateX.setValue(0);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                let currentPos = (isOpen ? -actionWidth : 0) + gestureState.dx;
+                if (currentPos > 0) {
+                    currentPos = 0;
+                } else if (currentPos < -actionWidth - 20) {
+                    currentPos = -actionWidth - 20 + (currentPos + actionWidth + 20) * 0.2;
+                }
+                translateX.setValue(currentPos - (isOpen ? -actionWidth : 0));
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                translateX.flattenOffset();
+                const currentPos = translateX._value;
+                let toValue = 0;
+                let nextOpen = false;
+
+                if (!isOpen && currentPos < -10) {
+                    toValue = -actionWidth;
+                    nextOpen = true;
+                } else if (isOpen && currentPos > -actionWidth + 10) {
+                    toValue = 0;
+                    nextOpen = false;
+                } else if (isOpen) {
+                    toValue = -actionWidth;
+                    nextOpen = true;
+                }
+
+                setIsOpen(nextOpen);
+                Animated.spring(translateX, {
+                    toValue,
+                    useNativeDriver: true,
+                    damping: 18,
+                    stiffness: 150,
+                    mass: 0.9,
+                }).start();
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(translateX, {
+                    toValue: isOpen ? -actionWidth : 0,
+                    useNativeDriver: true,
+                    damping: 18,
+                    stiffness: 150,
+                    mass: 0.9,
+                }).start();
+            }
+        })
+    ).current;
+
+    const handleActionPress = () => {
+        setIsOpen(false);
+        Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 18,
+            stiffness: 150,
+            mass: 0.9,
+        }).start();
+        onAction();
+    };
+
+    return (
+        <View style={styles.swipeContainer}>
+            <View style={styles.swipeActionContainer}>
+                <TouchableOpacity
+                    style={styles.swipeActionButton}
+                    onPress={handleActionPress}
+                    activeOpacity={0.7}
+                >
+                    <MaterialIcons name={actionIconName} size={24} color="#D63375" />
+                </TouchableOpacity>
+            </View>
+
+            <Animated.View
+                style={{ transform: [{ translateX }] }}
+                {...panResponder.panHandlers}
+            >
+                {children}
+            </Animated.View>
+        </View>
+    );
+};
+
 // record card
 const RecordCard = ({ item, index, onDelete }) => {
     const fade = useRef(new Animated.Value(0)).current;
@@ -122,137 +220,144 @@ const RecordCard = ({ item, index, onDelete }) => {
     const isDownloadableForm = item.category === 'form';
     const canDelete = ['pending', 'approved', 'ready', 'denied'].includes(item.status);
 
-    return (
-        <Animated.View style={[styles.cardAnimated, { opacity: fade, transform: [{ translateY: slide }] }]}>
-            <View style={styles.recordCard}>
+    const isPending = item.status === 'pending';
+    const actionIconName = isPending ? 'close' : 'delete-outline';
 
-                {/* accent bar — green if fulfilled, pink if not */}
-                <View style={[styles.accentBar, { backgroundColor: hasFulfilled ? COLORS.success : COLORS.primary }]} />
+    const cardContent = (
+        <View style={styles.recordCard}>
 
-                <View style={styles.cardBody}>
+            {/* accent bar — green if fulfilled, pink if not */}
+            <View style={[styles.accentBar, { backgroundColor: hasFulfilled ? COLORS.success : COLORS.primary }]} />
 
-                    {/* header */}
-                    <View style={styles.cardHeaderRow}>
-                        <View style={styles.cardHeaderLeft}>
-                            <View style={styles.reqIdRow}>
-                                <Text style={styles.reqId}>
-                                    #DRQ-{String(item.doc_request_id).padStart(3, '0')}
-                                </Text>
-                                {isDownloadableForm && (
-                                    <View style={styles.categoryTag}>
-                                        <MaterialIcons name="download" size={10} color={COLORS.info} />
-                                        <Text style={styles.categoryTagText}>Form</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={styles.docType} numberOfLines={2}>
-                                {item.document_type}
+            <View style={styles.cardBody}>
+
+                {/* header */}
+                <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardHeaderLeft}>
+                        <View style={styles.reqIdRow}>
+                            <Text style={styles.reqId}>
+                                #DRQ-{String(item.doc_request_id).padStart(3, '0')}
                             </Text>
-                        </View>
-                        <View style={styles.cardHeaderRight}>
-                            <StatusBadge status={item.status} />
-                            {canDelete && (
-                                <TouchableOpacity
-                                    style={styles.deleteBtn}
-                                    onPress={handleDelete}
-                                    activeOpacity={0.7}
-                                >
-                                    <MaterialIcons name="delete-outline" size={20} color={COLORS.primary} />
-                                </TouchableOpacity>
+                            {isDownloadableForm && (
+                                <View style={styles.categoryTag}>
+                                    <MaterialIcons name="download" size={10} color={COLORS.info} />
+                                    <Text style={styles.categoryTagText}>Form</Text>
+                                </View>
                             )}
                         </View>
+                        <Text style={styles.docType} numberOfLines={2}>
+                            {item.document_type}
+                        </Text>
                     </View>
+                    <View style={styles.cardHeaderRight}>
+                        <StatusBadge status={item.status} />
+                    </View>
+                </View>
 
-                    {/* meta */}
-                    {!!item.purpose && (
+                {/* meta */}
+                {!!item.purpose && (
+                    <View style={styles.metaRow}>
+                        <MaterialIcons name="notes" size={13} color={COLORS.muted} />
+                        <Text style={[styles.metaText, styles.metaTextFlex]} numberOfLines={2}>
+                            {item.purpose}
+                        </Text>
+                    </View>
+                )}
+                <View style={styles.metaGroup}>
+                    <View style={styles.metaRow}>
+                        <MaterialIcons name="event" size={12} color={COLORS.muted} />
+                        <Text style={styles.metaText}>Submitted {fmtDate(item.submitted_at)}</Text>
+                    </View>
+                    {!!item.delivery_type && (
                         <View style={styles.metaRow}>
-                            <MaterialIcons name="notes" size={13} color={COLORS.muted} />
-                            <Text style={[styles.metaText, styles.metaTextFlex]} numberOfLines={2}>
-                                {item.purpose}
+                            <MaterialIcons
+                                name={item.delivery_type === 'digital' ? 'phone-android' : 'print'}
+                                size={12}
+                                color={COLORS.muted}
+                            />
+                            <Text style={[styles.metaText, styles.metaTextCapitalize]}>
+                                {item.delivery_type}
                             </Text>
                         </View>
                     )}
-                    <View style={styles.metaGroup}>
-                        <View style={styles.metaRow}>
-                            <MaterialIcons name="event" size={12} color={COLORS.muted} />
-                            <Text style={styles.metaText}>Submitted {fmtDate(item.submitted_at)}</Text>
-                        </View>
-                        {!!item.delivery_type && (
-                            <View style={styles.metaRow}>
-                                <MaterialIcons
-                                    name={item.delivery_type === 'digital' ? 'phone-android' : 'print'}
-                                    size={12}
-                                    color={COLORS.muted}
-                                />
-                                <Text style={[styles.metaText, styles.metaTextCapitalize]}>
-                                    {item.delivery_type}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* admin remarks */}
-                    {!!item.admin_remarks && (
-                        <View style={styles.remarksBox}>
-                            <View style={styles.remarksHeader}>
-                                <MaterialIcons name="admin-panel-settings" size={11} color={COLORS.warning} />
-                                <Text style={styles.remarksLabel}>Admin Remarks</Text>
-                            </View>
-                            <Text style={styles.remarksText}>{item.admin_remarks}</Text>
-                        </View>
-                    )}
-
-                    <View style={styles.divider} />
-
-                    {/* fulfilled document from admin */}
-                    {hasFulfilled ? (
-                        <TouchableOpacity
-                            style={[styles.fileBtn, styles.fileBtnFulfilled]}
-                            activeOpacity={0.75}
-                            onPress={() => openFile(item.fulfilled_file)}
-                        >
-                            <View style={[styles.fileBtnIcon, styles.fileBtnIconFulfilled]}>
-                                <MaterialIcons name="description" size={18} color={COLORS.white} />
-                            </View>
-                            <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitleFulfilled]}>Document Ready</Text>
-                                <Text style={[styles.fileBtnSub, styles.fileBtnSubFulfilled]}>Tap to view fulfilled document</Text>
-                            </View>
-                            <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
-                        </TouchableOpacity>
-                    ) : !isDownloadableForm && (
-                        /* only show "awaiting" placeholder for certificate requests, not downloadable forms */
-                        <View style={[styles.fileBtn, styles.fileBtnAwaiting]}>
-                            <View style={[styles.fileBtnIcon, styles.fileBtnIconAwaiting]}>
-                                <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
-                            </View>
-                            <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitleMuted]}>Awaiting Document</Text>
-                                <Text style={[styles.fileBtnSub, styles.fileBtnSubMuted]}>Admin hasn't sent a file yet</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* tenant's own uploaded attachment */}
-                    {hasAttachment && (
-                        <TouchableOpacity
-                            style={[styles.fileBtn, styles.fileBtnAttachment]}
-                            activeOpacity={0.75}
-                            onPress={() => openFile(item.attachment)}
-                        >
-                            <View style={[styles.fileBtnIcon, styles.fileBtnIconAttachment]}>
-                                <MaterialIcons name="attach-file" size={18} color={COLORS.white} />
-                            </View>
-                            <View style={styles.fileBtnTextWrap}>
-                                <Text style={[styles.fileBtnTitle, styles.fileBtnTitlePrimary]}>Your Submitted Form</Text>
-                                <Text style={[styles.fileBtnSub, styles.fileBtnSubAttachment]}>Tap to view your uploaded file</Text>
-                            </View>
-                            <MaterialIcons name="open-in-new" size={16} color={COLORS.primary} />
-                        </TouchableOpacity>
-                    )}
-
                 </View>
+
+                {/* admin remarks */}
+                {!!item.admin_remarks && (
+                    <View style={styles.remarksBox}>
+                        <View style={styles.remarksHeader}>
+                            <MaterialIcons name="admin-panel-settings" size={11} color={COLORS.warning} />
+                            <Text style={styles.remarksLabel}>Admin Remarks</Text>
+                        </View>
+                        <Text style={styles.remarksText}>{item.admin_remarks}</Text>
+                    </View>
+                )}
+
+                <View style={styles.divider} />
+
+                {/* fulfilled document from admin */}
+                {hasFulfilled ? (
+                    <TouchableOpacity
+                        style={[styles.fileBtn, styles.fileBtnFulfilled]}
+                        activeOpacity={0.75}
+                        onPress={() => openFile(item.fulfilled_file)}
+                    >
+                        <View style={[styles.fileBtnIcon, styles.fileBtnIconFulfilled]}>
+                            <MaterialIcons name="description" size={18} color={COLORS.white} />
+                        </View>
+                        <View style={styles.fileBtnTextWrap}>
+                            <Text style={[styles.fileBtnTitle, styles.fileBtnTitleFulfilled]}>Document Ready</Text>
+                            <Text style={[styles.fileBtnSub, styles.fileBtnSubFulfilled]}>Tap to view fulfilled document</Text>
+                        </View>
+                        <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
+                    </TouchableOpacity>
+                ) : !isDownloadableForm && (
+                    /* only show "awaiting" placeholder for certificate requests, not downloadable forms */
+                    <View style={[styles.fileBtn, styles.fileBtnAwaiting]}>
+                        <View style={[styles.fileBtnIcon, styles.fileBtnIconAwaiting]}>
+                            <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
+                        </View>
+                        <View style={styles.fileBtnTextWrap}>
+                            <Text style={[styles.fileBtnTitle, styles.fileBtnTitleMuted]}>Awaiting Document</Text>
+                            <Text style={[styles.fileBtnSub, styles.fileBtnSubMuted]}>Admin hasn't sent a file yet</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* tenant's own uploaded attachment */}
+                {hasAttachment && (
+                    <TouchableOpacity
+                        style={[styles.fileBtn, styles.fileBtnAttachment]}
+                        activeOpacity={0.75}
+                        onPress={() => openFile(item.attachment)}
+                    >
+                        <View style={[styles.fileBtnIcon, styles.fileBtnIconAttachment]}>
+                            <MaterialIcons name="attach-file" size={18} color={COLORS.white} />
+                        </View>
+                        <View style={styles.fileBtnTextWrap}>
+                            <Text style={[styles.fileBtnTitle, styles.fileBtnTitlePrimary]}>Your Submitted Form</Text>
+                            <Text style={[styles.fileBtnSub, styles.fileBtnSubAttachment]}>Tap to view your uploaded file</Text>
+                        </View>
+                        <MaterialIcons name="open-in-new" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                )}
+
             </View>
+        </View>
+    );
+
+    return (
+        <Animated.View style={[styles.cardAnimated, { opacity: fade, transform: [{ translateY: slide }] }]}>
+            {canDelete ? (
+                <SwipeableWrapper
+                    actionIconName={actionIconName}
+                    onAction={handleDelete}
+                >
+                    {cardContent}
+                </SwipeableWrapper>
+            ) : (
+                cardContent
+            )}
         </Animated.View>
     );
 };
