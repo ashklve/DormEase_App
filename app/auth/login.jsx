@@ -4,7 +4,6 @@ import {
     ScrollView, KeyboardAvoidingView, Platform, Animated,
     Dimensions, StatusBar, Image,
 } from 'react-native';
-import Checkbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { loginTenant, saveSession } from '../../api/auth';
@@ -32,6 +31,7 @@ export default function LoginScreen() {
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
+    const toggleAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.parallel([
@@ -39,6 +39,22 @@ export default function LoginScreen() {
             Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
         ]).start();
     }, []);
+
+    const handleToggle = () => {
+        const newVal = !rememberMe;
+        setRememberMe(newVal);
+        Animated.spring(toggleAnim, {
+            toValue: newVal ? 1 : 0,
+            tension: 80,
+            friction: 10,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const thumbTranslate = toggleAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [2, 22],
+    });
 
     const handleLogin = async () => {
         setError('');
@@ -60,7 +76,7 @@ export default function LoginScreen() {
                 await saveSession(res.token, res.user);
             }
 
-            // ── redirect to change password first if temp ─────────────────────────
+            // redirect to change password first if temp
             if (res.user.is_temp_password) {
                 router.replace('/auth/change-password');
             } else if (res.user.role === 'tenant') {
@@ -89,7 +105,6 @@ export default function LoginScreen() {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-
                 {/* girl illustration */}
                 <View style={styles.girlWrapper}>
                     <Image
@@ -174,14 +189,19 @@ export default function LoginScreen() {
                         </View>
                     </View>
 
-                    {/* remember me */}
-                    <View style={styles.checkboxRow}>
-                        <Checkbox
-                            value={rememberMe}
-                            onValueChange={setRememberMe}
-                            color={rememberMe ? PINK_PRIMARY : undefined}
-                        />
+                    {/* remember me toggle */}
+                    <View style={styles.toggleRow}>
                         <Text style={styles.checkboxLabel}>Keep me logged in</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={handleToggle}
+                            style={[styles.toggleTrack, rememberMe && styles.toggleTrackActive]}
+                        >
+                            <Animated.View style={[
+                                styles.toggleThumb,
+                                { transform: [{ translateX: thumbTranslate }] }
+                            ]} />
+                        </TouchableOpacity>
                     </View>
 
                     {/* login button */}
@@ -301,16 +321,38 @@ const styles = StyleSheet.create({
     eyeBtn: {
         padding: 6,
     },
-    checkboxRow: {
+    toggleRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: 22,
         marginTop: 4,
     },
     checkboxLabel: {
         fontSize: 13,
         color: TEXT_DARK,
-        marginLeft: 8,
+    },
+    toggleTrack: {
+        width: 44,
+        height: 24,
+        borderRadius: 99,
+        backgroundColor: '#E5ECF6',
+        justifyContent: 'center',
+    },
+    toggleTrackActive: {
+        backgroundColor: PINK_PRIMARY,
+    },
+    toggleThumb: {
+        position: 'absolute',
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.18,
+        shadowRadius: 2,
+        elevation: 2,
     },
     loginBtn: {
         backgroundColor: PINK_PRIMARY,
