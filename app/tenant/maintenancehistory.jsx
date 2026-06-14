@@ -21,6 +21,7 @@ import styles, { COLORS } from '../../src/constants/maintenancehistorystyles';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -503,6 +504,8 @@ export default function MaintenanceHistoryScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+    const pullToRefreshRef = useRef(null);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
 
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -595,58 +598,60 @@ export default function MaintenanceHistoryScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* ── Top Row ── */}
-            <View style={styles.topRow}>
-                <TouchableOpacity
-                    style={styles.backBtn}
-                    onPress={() => router.push('/tenant/maintenance')}
-                >
-                    <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image
-                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                            style={styles.avatar}
-                        />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* ── Header ── */}
-            <View style={styles.headerSection}>
-                <View style={styles.headerTitleRow}>
-                    <View style={styles.headerIconBadge}>
-                        <Ionicons name="time-outline" size={20} color={COLORS.white} />
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                iconName="build"
+                headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => router.push('/tenant/maintenance')}
+                        >
+                            <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+                        </TouchableOpacity>
+                        <View style={styles.topRowRight}>
+                            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image
+                                    source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                    style={styles.avatar}
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <Text style={styles.headerTitle}>Maintenance History</Text>
-                </View>
-                <Text style={styles.headerSub}>Track your past maintenance requests</Text>
-            </View>
-
-            {/* ── Content ── */}
-            {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-            ) : (
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-                    ]}
-                    keyboardShouldPersistTaps="handled"
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={[COLORS.primary]}
-                            tintColor={COLORS.primary}
-                        />
-                    }
-                >
+                }
+            >
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                    </View>
+                ) : (
+                    <ScrollView
+                        scrollEnabled={scrollEnabled}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                        ]}
+                        keyboardShouldPersistTaps="handled"
+                        onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                        scrollEventThrottle={16}
+                        overScrollMode="never"
+                    >
+                        {/* ── Header ── */}
+                        <View style={styles.headerSection}>
+                            <View style={styles.headerTitleRow}>
+                                <View style={styles.headerIconBadge}>
+                                    <Ionicons name="time-outline" size={20} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.headerTitle}>Maintenance History</Text>
+                            </View>
+                            <Text style={styles.headerSub}>Track your past maintenance requests</Text>
+                        </View>
                     {/* ── Stats Row ── */}
                     <View style={styles.statsRow}>
                         <View style={[styles.statCard, styles.statCardPending]}>
@@ -798,8 +803,9 @@ export default function MaintenanceHistoryScreen() {
                             />
                         ))
                     )}
-                </ScrollView>
-            )}
+                    </ScrollView>
+                )}
+            </PremiumPullToRefresh>
 
             {/* ── Bottom Nav ── */}
             <View style={[

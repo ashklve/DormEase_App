@@ -12,6 +12,7 @@ import NotificationBell from '../../src/components/NotificationBell';
 import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -131,6 +132,8 @@ const Dashboard = () => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const greeting = getGreeting();
+    const pullToRefreshRef = useRef(null);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
 
     const { user, avatarUri, fetchUser } = useUser();
 
@@ -253,27 +256,35 @@ const Dashboard = () => {
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-
-            {/* header */}
-            <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
-                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image source={photoSource} style={styles.avatar} />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                iconName="dashboard"
+                headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                            <MaterialIcons name="menu" size={24} color={COLORS.dark} />
+                        </TouchableOpacity>
+                        <View style={styles.topRowRight}>
+                            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image source={photoSource} style={styles.avatar} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 }
             >
+                <ScrollView
+                    scrollEnabled={scrollEnabled}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24) }}
+                    onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                    scrollEventThrottle={16}
+                    overScrollMode="never"
+                >
                 {/* greeting */}
                 <View style={styles.greeting}>
                     <Text style={styles.greetTitle}>
@@ -377,7 +388,8 @@ const Dashboard = () => {
                     ))
                 )}
 
-            </ScrollView>
+                </ScrollView>
+            </PremiumPullToRefresh>
 
             {/* bottom nav */}
             <View style={[

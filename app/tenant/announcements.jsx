@@ -23,6 +23,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
@@ -530,6 +531,8 @@ export default function AnnouncementsScreen() {
   const insets = useSafeAreaInsets();
   const { avatarUri } = useUser();
   const drawerRef = useRef(null);
+  const pullToRefreshRef = useRef(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const [activeTab, setActiveTab] = useState('All');
   const [announcements, setAnnouncements] = useState([]);
@@ -731,23 +734,14 @@ export default function AnnouncementsScreen() {
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24), gap: 12 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-        >
+      <PremiumPullToRefresh
+        ref={pullToRefreshRef}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        iconName="campaign"
+        headerHeight={56}
+        onScrollEnabledChange={setScrollEnabled}
+        header={
           <View style={styles.topRow}>
             <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
               <MaterialIcons name="menu" size={24} color={COLORS.dark} />
@@ -762,6 +756,21 @@ export default function AnnouncementsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24), gap: 12 }}
+            onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+            scrollEventThrottle={16}
+            overScrollMode="never"
+          >
 
           <View style={styles.headerSection}>
             <View style={styles.headerTitleRow}>
@@ -825,8 +834,9 @@ export default function AnnouncementsScreen() {
               ))
             )}
           </View>
-        </ScrollView>
-      )}
+          </ScrollView>
+        )}
+      </PremiumPullToRefresh>
 
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />

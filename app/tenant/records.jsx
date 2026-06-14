@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import styles, { COLORS } from '../../src/constants/recordsstyles';
 import client from '../../api/client';
 
@@ -380,6 +381,7 @@ export default function TenantRecordsScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+    const pullToRefreshRef = useRef(null);
 
     useEffect(() => {
         if (user?.is_on_vacation) {
@@ -438,130 +440,130 @@ export default function TenantRecordsScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            {/* top row */}
-            <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
-                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image
-                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                            style={styles.avatar}
-                        />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* page header */}
-            <View style={styles.headerSection}>
-                <View style={styles.headerTitleRow}>
-                    <View style={styles.headerIconBadge}>
-                        <Ionicons name="folder-open-outline" size={20} color={COLORS.white} />
-                    </View>
-                    <Text style={styles.headerTitle}>My Records</Text>
-                </View>
-                <Text style={styles.headerSub}>Your document request history & received files</Text>
-            </View>
-
-            {/* stats */}
-            {!loading && records.length > 0 && (
-                <View style={styles.statsRow}>
-                    {[
-                        { label: 'Total Requests', value: records.length, color: COLORS.primary },
-                        { label: 'Docs Received', value: fulfilledCount, color: COLORS.success },
-                        { label: 'Pending', value: pendingCount, color: COLORS.warning },
-                    ].map(s => (
-                        <View key={s.label} style={[styles.statCard, { borderLeftColor: s.color }]}>
-                            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-                            <Text style={styles.statLabel}>{s.label}</Text>
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={() => fetchRecords(true)}
+                iconName="assignment"
+                headerHeight={56}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                            <MaterialIcons name="menu" size={24} color={COLORS.dark} />
+                        </TouchableOpacity>
+                        <View style={styles.topRowRight}>
+                            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image
+                                    source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                    style={styles.avatar}
+                                />
+                            </TouchableOpacity>
                         </View>
-                    ))}
-                </View>
-            )}
-
-            {/* filter chips with counts */}
-            {!loading && records.length > 0 && (
-                <View style={styles.filterChipRow}>
+                    </View>
+                }
+            >
+                {loading ? (
+                    <View style={styles.loadingWrap}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <Text style={styles.loadingText}>
+                            Loading your records...
+                        </Text>
+                    </View>
+                ) : (
                     <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.filterChipScrollContent}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                            filtered.length === 0 && { flex: 1 },
+                        ]}
+                        onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                        scrollEventThrottle={16}
+                        overScrollMode="never"
                     >
-                        {FILTERS.map(f => {
-                            const count = f.key === 'all'
-                                ? records.length
-                                : records.filter(r => r.status === f.key).length;
-                            const isActive = activeFilter === f.key;
-                            return (
-                                <TouchableOpacity
-                                    key={f.key}
-                                    onPress={() => setActiveFilter(f.key)}
-                                    activeOpacity={0.75}
-                                    style={[
-                                        styles.filterChip,
-                                        {
-                                            backgroundColor: isActive ? COLORS.primary : COLORS.card,
-                                            borderColor: isActive ? COLORS.primary : COLORS.border,
-                                        },
-                                    ]}
-                                >
-                                    <Text style={[
-                                        styles.filterChipText,
-                                        { color: isActive ? COLORS.white : COLORS.dark },
-                                    ]}>
-                                        {f.label}
-                                    </Text>
-                                    {count > 0 && (
-                                        <View style={[
-                                            styles.filterChipCount,
-                                            {
-                                                backgroundColor: isActive
-                                                    ? 'rgba(255,255,255,0.25)'
-                                                    : COLORS.primaryLight,
-                                            },
-                                        ]}>
-                                            <Text style={[
-                                                styles.filterChipCountText,
-                                                { color: isActive ? COLORS.white : COLORS.primary },
-                                            ]}>
-                                                {count}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
-            )}
+                        {/* page header */}
+                        <View style={styles.headerSection}>
+                            <View style={styles.headerTitleRow}>
+                                <View style={styles.headerIconBadge}>
+                                    <Ionicons name="folder-open-outline" size={20} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.headerTitle}>My Records</Text>
+                            </View>
+                            <Text style={styles.headerSub}>Your document request history & received files</Text>
+                        </View>
 
-            {/* body */}
-            {loading ? (
-                <View style={styles.loadingWrap}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>
-                        Loading your records...
-                    </Text>
-                </View>
-            ) : (
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-                        filtered.length === 0 && { flex: 1 },
-                    ]}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={() => fetchRecords(true)}
-                            colors={[COLORS.primary]}
-                            tintColor={COLORS.primary}
-                        />
-                    }
-                >
+                        {/* stats */}
+                        {records.length > 0 && (
+                            <View style={styles.statsRow}>
+                                {[
+                                    { label: 'Total Requests', value: records.length, color: COLORS.primary },
+                                    { label: 'Docs Received', value: fulfilledCount, color: COLORS.success },
+                                    { label: 'Pending', value: pendingCount, color: COLORS.warning },
+                                ].map(s => (
+                                    <View key={s.label} style={[styles.statCard, { borderLeftColor: s.color }]}>
+                                        <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
+                                        <Text style={styles.statLabel}>{s.label}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* filter chips with counts */}
+                        {records.length > 0 && (
+                            <View style={styles.filterChipRow}>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={styles.filterChipScrollContent}
+                                >
+                                    {FILTERS.map(f => {
+                                        const count = f.key === 'all'
+                                            ? records.length
+                                            : records.filter(r => r.status === f.key).length;
+                                        const isActive = activeFilter === f.key;
+                                        return (
+                                            <TouchableOpacity
+                                                key={f.key}
+                                                onPress={() => setActiveFilter(f.key)}
+                                                activeOpacity={0.75}
+                                                style={[
+                                                    styles.filterChip,
+                                                    {
+                                                        backgroundColor: isActive ? COLORS.primary : COLORS.card,
+                                                        borderColor: isActive ? COLORS.primary : COLORS.border,
+                                                    },
+                                                ]}
+                                            >
+                                                <Text style={[
+                                                    styles.filterChipText,
+                                                    { color: isActive ? COLORS.white : COLORS.dark },
+                                                ]}>
+                                                    {f.label}
+                                                </Text>
+                                                {count > 0 && (
+                                                    <View style={[
+                                                        styles.filterChipCount,
+                                                        {
+                                                            backgroundColor: isActive
+                                                                ? 'rgba(255,255,255,0.25)'
+                                                                : COLORS.primaryLight,
+                                                        },
+                                                    ]}>
+                                                        <Text style={[
+                                                            styles.filterChipCountText,
+                                                            { color: isActive ? COLORS.white : COLORS.primary },
+                                                        ]}>
+                                                            {count}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        )}
                     {filtered.length === 0 ? (
                         <EmptyState />
                     ) : (
@@ -569,8 +571,9 @@ export default function TenantRecordsScreen() {
                             <RecordCard key={item.doc_request_id} item={item} index={index} onDelete={handleDeleteRequest} />
                         ))
                     )}
-                </ScrollView>
-            )}
+                    </ScrollView>
+                )}
+            </PremiumPullToRefresh>
 
             {/* bottom nav */}
             <View style={[
