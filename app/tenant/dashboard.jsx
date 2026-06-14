@@ -11,6 +11,7 @@ import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import LoadingOverlay from '../../components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -138,6 +139,8 @@ const Dashboard = () => {
     const [currentBill, setCurrentBill] = useState(dashboardCache.currentBill);
     const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
     const [refreshing, setRefreshing] = useState(false);
+    // only show overlay on first load, skip if cache already has data
+    const [loading, setLoading] = useState(!dashboardCache.loaded);
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -207,12 +210,16 @@ const Dashboard = () => {
     // ── on mount: skip fetch entirely if cache already has data ──────────────
     useEffect(() => {
         if (dashboardCache.loaded) {
-            // cache hit — data already in state from useState(dashboardCache.x), nothing to do
+            // cache hit — data already in state, no overlay needed
             return;
         }
-        // first ever load — fetch from API
-        fetchUser();
-        fetchDashboardData();
+        // first ever load — fetch from API then hide overlay
+        const init = async () => {
+            await fetchUser();
+            await fetchDashboardData();
+            setLoading(false);
+        };
+        init();
     }, []);
 
     // ── pull-to-refresh — always forces a fresh fetch ─────────────────────────
@@ -409,8 +416,11 @@ const Dashboard = () => {
                 />
             </View>
 
-            {/* Drawer */}
+            {/* drawer */}
             <DrawerMenu ref={drawerRef} />
+
+            {/* loading overlay — only on first load, skipped if cache hit */}
+            <LoadingOverlay visible={loading} />
 
         </SafeAreaView>
     );
