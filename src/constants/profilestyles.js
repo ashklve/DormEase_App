@@ -349,10 +349,52 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  // ── Password inline error box ─────────────────────────────────────────────────
+  pwErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDECEA',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#F5C6C2',
+  },
+  pwErrorText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#922B21',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+
   // ── Skeleton ─────────────────────────────────────────────────────────────────
   skeletonBox: {
     backgroundColor: COLORS.border,
     borderRadius: 8,
+  },
+  checklist: {
+    marginTop: 10,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 8,
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkText: {
+    fontSize: 12,
+    color: COLORS.muted,
+    fontWeight: '500',
+  },
+  checkTextDone: {
+    color: COLORS.dark,
   },
 });
 
