@@ -378,8 +378,18 @@ const EmptyState = () => (
 // main screen
 export default function TenantRecordsScreen() {
     const router = useRouter();
-    const { avatarUri } = useUser();
+    const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                "Access Restricted",
+                "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
+                [{ text: "OK", onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user]);
     const drawerRef = useRef(null);
 
     const [records, setRecords] = useState([]);

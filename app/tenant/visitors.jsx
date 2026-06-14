@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -276,6 +276,17 @@ export default function VisitorsScreen() {
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
 
+    // ── vacation guard ─────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                'Access Restricted',
+                'You cannot register visitors while on vacation status. Please turn off vacation mode in your profile first.',
+                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user?.is_on_vacation]);
+
     // ── drawer ref ────────────────────────────────────────────────────────────
     const drawerRef = useRef(null);
 
@@ -308,6 +319,7 @@ export default function VisitorsScreen() {
     const [tempDateTime, setTempDateTime] = useState(new Date());
 
     const fetchVisitors = async () => {
+        if (user?.is_on_vacation) return;
         try {
             const res = await client.get('/visitors');
             setVisitors(res.data.logs ?? []);

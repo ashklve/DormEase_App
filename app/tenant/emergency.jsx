@@ -132,6 +132,17 @@ export default function EmergencyScreen() {
     const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
 
+    // ── vacation guard ─────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                'Access Restricted',
+                'You cannot submit emergency reports while on vacation status. Please turn off vacation mode in your profile first.',
+                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user?.is_on_vacation]);
+
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [speechLanguage, setSpeechLanguage] = useState('tl');
     const [isRecording, setIsRecording] = useState(false);
@@ -213,6 +224,7 @@ export default function EmergencyScreen() {
     };
 
     useEffect(() => {
+        if (user?.is_on_vacation) return;
         let mounted = true;
 
         setModelLoaded(false);

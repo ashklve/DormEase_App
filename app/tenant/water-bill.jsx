@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -206,6 +206,17 @@ export default function WaterBillScreen() {
     const roomCode = user?.room_number ? `R${user.room_number}-01` : '';
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
+    // ── vacation guard ─────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                'Access Restricted',
+                'You cannot view or pay water bills while on vacation status. Please turn off vacation mode in your profile first.',
+                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user?.is_on_vacation]);
+
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
@@ -236,6 +247,7 @@ export default function WaterBillScreen() {
     };
 
     const fetchWaterBill = async () => {
+        if (user?.is_on_vacation) return;
         try {
             const res = await client.get('/water-bill');
             setBilling(res.data.current_billing ?? null);
@@ -375,10 +387,10 @@ export default function WaterBillScreen() {
                                         <Text style={styles.sectionTitle}>Previous Unpaid Balance Details</Text>
                                         <View style={styles.breakdownCard}>
                                             {billing.past_due_bills.map((pastBill, index) => (
-                                                <View 
-                                                    key={pastBill.id ?? index} 
+                                                <View
+                                                    key={pastBill.id ?? index}
                                                     style={[
-                                                        styles.breakdownRow, 
+                                                        styles.breakdownRow,
                                                         index === billing.past_due_bills.length - 1 && styles.breakdownRowLast
                                                     ]}
                                                 >
