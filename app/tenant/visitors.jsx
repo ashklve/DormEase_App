@@ -28,6 +28,7 @@ import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -276,6 +277,7 @@ export default function VisitorsScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+    const pullToRefreshRef = useRef(null);
 
     // vacation guard
     useEffect(() => {
@@ -541,226 +543,228 @@ export default function VisitorsScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={20}
-            >
-                {/* top row */}
-                <View style={styles.topRow}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
-                        <MaterialIcons name="menu" size={24} color={COLORS.dark} />
-                    </TouchableOpacity>
-                    <View style={styles.topRowRight}>
-                        <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                        <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                            <Image
-                                source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                                style={styles.avatar}
-                            />
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                iconName="people"
+                headerHeight={56}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                            <MaterialIcons name="menu" size={24} color={COLORS.dark} />
                         </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* header */}
-                <View style={styles.headerSection}>
-                    <View style={styles.headerTitleRow}>
-                        <View style={styles.headerIconBadge}>
-                            <Ionicons name="people-outline" size={20} color={COLORS.white} />
-                        </View>
-                        <Text style={styles.headerTitle}>Visitor Registration</Text>
-                    </View>
-                    <Text style={styles.headerSub}>Register and track your visitors</Text>
-                </View>
-
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-                    ]}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="interactive"
-                    automaticallyAdjustKeyboardInsets={true}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={[COLORS.primary]}
-                            tintColor={COLORS.primary}
-                        />
-                    }
-                >
-                    {/* stats */}
-                    <View style={styles.statsRow}>
-                        <View style={styles.statCard}>
-                            <View style={styles.statCardTop}>
-                                <View style={[styles.statIconBadge, { backgroundColor: '#FBEAF0' }]}>
-                                    <Ionicons name="people-outline" size={17} color={COLORS.primary} />
-                                </View>
-                                <View style={[styles.statTrendBadge, { backgroundColor: '#E1F5EE' }]}>
-                                    <Text style={[styles.statTrendText, { color: '#0F6E56' }]}>today</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.statValue}>{visitorsToday}</Text>
-                            <Text style={styles.statLabel}>Visitors today</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <View style={styles.statCardTop}>
-                                <View style={[styles.statIconBadge, { backgroundColor: '#E1F5EE' }]}>
-                                    <Ionicons name="card-outline" size={17} color="#0F6E56" />
-                                </View>
-                                <View style={[styles.statTrendBadge, { backgroundColor: '#F1EFE8' }]}>
-                                    <Text style={[styles.statTrendText, { color: '#5F5E5A' }]}>active</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.statValue}>{activePasses}</Text>
-                            <Text style={styles.statLabel}>Active passes</Text>
-                        </View>
-                    </View>
-
-                    {/* registered visitors */}
-                    <Text style={styles.sectionTitle}>Registered Visitors</Text>
-                    {visitors.length === 0 ? (
-                        <Text style={styles.emptyText}>No registered visitors yet.</Text>
-                    ) : (
-                        <CollapsibleVisitorList
-                            visitors={visitors}
-                            onCancel={handleCancelVisitor}
-                            onDelete={handleDeleteVisitor}
-                        />
-                    )}
-
-                    {/* register new visitor form */}
-                    <View style={styles.formSection}>
-                        <Text style={styles.formSectionTitle}>Register New Visitor</Text>
-
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Full Name (First and Last Name)"
-                            placeholderTextColor={COLORS.muted}
-                            value={fullName}
-                            onChangeText={setFullName}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Contact No. (e.g. 09XXXXXXXXX) *"
-                            placeholderTextColor={COLORS.muted}
-                            value={contactNo}
-                            onChangeText={(text) => {
-                                const digitsOnly = text.replace(/\D/g, '');
-                                if (digitsOnly.length <= 11) setContactNo(digitsOnly);
-                            }}
-                            keyboardType="phone-pad"
-                            maxLength={11}
-                        />
-
-                        {/* purpose */}
-                        <TouchableOpacity
-                            style={styles.pickerWrapper}
-                            activeOpacity={0.8}
-                            onPress={() => { setPurposeOpen(!purposeOpen); setIdTypeOpen(false); }}
-                        >
-                            <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
-                                {purpose || 'Purpose of Visit'}
-                            </Text>
-                            <MaterialIcons name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
-                        </TouchableOpacity>
-                        {purposeOpen && (
-                            <View style={styles.dropdownList}>
-                                <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                    {PURPOSE_OPTIONS.map((item) => (
-                                        <TouchableOpacity
-                                            key={item}
-                                            style={[styles.dropdownListItem, purpose === item && styles.dropdownListItemActive]}
-                                            onPress={() => { setPurpose(item); setPurposeOpen(false); }}
-                                        >
-                                            <Text style={[styles.dropdownListItemText, purpose === item && styles.dropdownListItemTextActive]}>{item}</Text>
-                                            {purpose === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )}
-
-                        {/* id type */}
-                        <TouchableOpacity
-                            style={styles.pickerWrapper}
-                            activeOpacity={0.8}
-                            onPress={() => { setIdTypeOpen(!idTypeOpen); setPurposeOpen(false); }}
-                        >
-                            <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
-                                {idType || 'ID Type'}
-                            </Text>
-                            <MaterialIcons name={idTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
-                        </TouchableOpacity>
-                        {idTypeOpen && (
-                            <View style={styles.dropdownList}>
-                                <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                    {ID_TYPES.map((item) => (
-                                        <TouchableOpacity
-                                            key={item}
-                                            style={[styles.dropdownListItem, idType === item && styles.dropdownListItemActive]}
-                                            onPress={() => { setIdType(item); setIdTypeOpen(false); }}
-                                        >
-                                            <Text style={[styles.dropdownListItemText, idType === item && styles.dropdownListItemTextActive]}>{item}</Text>
-                                            {idType === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )}
-
-                        {/* upload id */}
-                        <View style={styles.uploadBox}>
-                            <Text style={styles.uploadHint}>10 MB Maximum file size (.png / .jpg)</Text>
-                            <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
-                                <MaterialIcons name="upload" size={16} color={COLORS.dark} />
-                                <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
-                                    {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID Photo *'}
-                                </Text>
+                        <View style={styles.topRowRight}>
+                            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image
+                                    source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                    style={styles.avatar}
+                                />
                             </TouchableOpacity>
                         </View>
-
-                        {/* date & time */}
-                        <View style={styles.dateTimeRow}>
-                            <View style={[styles.dateTimeField, { flex: 1, marginRight: 8 }]}>
-                                <Text style={styles.dateTimeLabel}>Date of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput} onPress={openDatePicker} activeOpacity={0.7}>
-                                    <Text style={styles.dateTimeText}>{formatDisplayDate(selectedDateTime)}</Text>
-                                    <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
-                                </TouchableOpacity>
+                    </View>
+                }
+            >
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={20}
+                >
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+                        ]}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        automaticallyAdjustKeyboardInsets={true}
+                        onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                        scrollEventThrottle={16}
+                        overScrollMode="never"
+                    >
+                        {/* header */}
+                        <View style={styles.headerSection}>
+                            <View style={styles.headerTitleRow}>
+                                <View style={styles.headerIconBadge}>
+                                    <Ionicons name="people-outline" size={20} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.headerTitle}>Visitor Registration</Text>
                             </View>
-                            <View style={[styles.dateTimeField, { flex: 1 }]}>
-                                <Text style={styles.dateTimeLabel}>Time of Visit</Text>
-                                <TouchableOpacity style={styles.dateTimeInput} onPress={openTimePicker} activeOpacity={0.7}>
-                                    <Text style={styles.dateTimeText}>{formatDisplayTime(selectedDateTime)}</Text>
-                                    <MaterialIcons name="access-time" size={16} color={COLORS.primary} />
-                                </TouchableOpacity>
+                            <Text style={styles.headerSub}>Register and track your visitors</Text>
+                        </View>
+                        {/* stats */}
+                        <View style={styles.statsRow}>
+                            <View style={styles.statCard}>
+                                <View style={styles.statCardTop}>
+                                    <View style={[styles.statIconBadge, { backgroundColor: '#FBEAF0' }]}>
+                                        <Ionicons name="people-outline" size={17} color={COLORS.primary} />
+                                    </View>
+                                    <View style={[styles.statTrendBadge, { backgroundColor: '#E1F5EE' }]}>
+                                        <Text style={[styles.statTrendText, { color: '#0F6E56' }]}>today</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.statValue}>{visitorsToday}</Text>
+                                <Text style={styles.statLabel}>Visitors today</Text>
+                            </View>
+                            <View style={styles.statCard}>
+                                <View style={styles.statCardTop}>
+                                    <View style={[styles.statIconBadge, { backgroundColor: '#E1F5EE' }]}>
+                                        <Ionicons name="card-outline" size={17} color="#0F6E56" />
+                                    </View>
+                                    <View style={[styles.statTrendBadge, { backgroundColor: '#F1EFE8' }]}>
+                                        <Text style={[styles.statTrendText, { color: '#5F5E5A' }]}>active</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.statValue}>{activePasses}</Text>
+                                <Text style={styles.statLabel}>Active passes</Text>
                             </View>
                         </View>
 
-                        {Platform.OS === 'android' && showDatePicker && (
-                            <DateTimePicker value={selectedDateTime} mode="date" display="default" minimumDate={new Date()} onChange={onAndroidDateChange} />
-                        )}
-                        {Platform.OS === 'android' && showTimePicker && (
-                            <DateTimePicker value={selectedDateTime} mode="time" display="default" is24Hour={false} onChange={onAndroidTimeChange} />
+                        {/* registered visitors */}
+                        <Text style={styles.sectionTitle}>Registered Visitors</Text>
+                        {visitors.length === 0 ? (
+                            <Text style={styles.emptyText}>No registered visitors yet.</Text>
+                        ) : (
+                            <CollapsibleVisitorList
+                                visitors={visitors}
+                                onCancel={handleCancelVisitor}
+                                onDelete={handleDeleteVisitor}
+                            />
                         )}
 
-                        <TouchableOpacity
-                            style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-                            activeOpacity={0.85}
-                            onPress={handleSubmit}
-                            disabled={submitting}
-                        >
-                            {submitting
-                                ? <ActivityIndicator size="small" color="#fff" />
-                                : <Text style={styles.submitBtnText}>Submit</Text>
-                            }
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                        {/* register new visitor form */}
+                        <View style={styles.formSection}>
+                            <Text style={styles.formSectionTitle}>Register New Visitor</Text>
+
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Full Name (First and Last Name)"
+                                placeholderTextColor={COLORS.muted}
+                                value={fullName}
+                                onChangeText={setFullName}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Contact No. (e.g. 09XXXXXXXXX) *"
+                                placeholderTextColor={COLORS.muted}
+                                value={contactNo}
+                                onChangeText={(text) => {
+                                    const digitsOnly = text.replace(/\D/g, '');
+                                    if (digitsOnly.length <= 11) setContactNo(digitsOnly);
+                                }}
+                                keyboardType="phone-pad"
+                                maxLength={11}
+                            />
+
+                            {/* purpose */}
+                            <TouchableOpacity
+                                style={styles.pickerWrapper}
+                                activeOpacity={0.8}
+                                onPress={() => { setPurposeOpen(!purposeOpen); setIdTypeOpen(false); }}
+                            >
+                                <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
+                                    {purpose || 'Purpose of Visit'}
+                                </Text>
+                                <MaterialIcons name={purposeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
+                            </TouchableOpacity>
+                            {purposeOpen && (
+                                <View style={styles.dropdownList}>
+                                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                        {PURPOSE_OPTIONS.map((item) => (
+                                            <TouchableOpacity
+                                                key={item}
+                                                style={[styles.dropdownListItem, purpose === item && styles.dropdownListItemActive]}
+                                                onPress={() => { setPurpose(item); setPurposeOpen(false); }}
+                                            >
+                                                <Text style={[styles.dropdownListItemText, purpose === item && styles.dropdownListItemTextActive]}>{item}</Text>
+                                                {purpose === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* id type */}
+                            <TouchableOpacity
+                                style={styles.pickerWrapper}
+                                activeOpacity={0.8}
+                                onPress={() => { setIdTypeOpen(!idTypeOpen); setPurposeOpen(false); }}
+                            >
+                                <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
+                                    {idType || 'ID Type'}
+                                </Text>
+                                <MaterialIcons name={idTypeOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
+                            </TouchableOpacity>
+                            {idTypeOpen && (
+                                <View style={styles.dropdownList}>
+                                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                        {ID_TYPES.map((item) => (
+                                            <TouchableOpacity
+                                                key={item}
+                                                style={[styles.dropdownListItem, idType === item && styles.dropdownListItemActive]}
+                                                onPress={() => { setIdType(item); setIdTypeOpen(false); }}
+                                            >
+                                                <Text style={[styles.dropdownListItemText, idType === item && styles.dropdownListItemTextActive]}>{item}</Text>
+                                                {idType === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* upload id */}
+                            <View style={styles.uploadBox}>
+                                <Text style={styles.uploadHint}>10 MB Maximum file size (.png / .jpg)</Text>
+                                <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
+                                    <MaterialIcons name="upload" size={16} color={COLORS.dark} />
+                                    <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
+                                        {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID Photo *'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* date & time */}
+                            <View style={styles.dateTimeRow}>
+                                <View style={[styles.dateTimeField, { flex: 1, marginRight: 8 }]}>
+                                    <Text style={styles.dateTimeLabel}>Date of Visit</Text>
+                                    <TouchableOpacity style={styles.dateTimeInput} onPress={openDatePicker} activeOpacity={0.7}>
+                                        <Text style={styles.dateTimeText}>{formatDisplayDate(selectedDateTime)}</Text>
+                                        <MaterialIcons name="calendar-today" size={16} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={[styles.dateTimeField, { flex: 1 }]}>
+                                    <Text style={styles.dateTimeLabel}>Time of Visit</Text>
+                                    <TouchableOpacity style={styles.dateTimeInput} onPress={openTimePicker} activeOpacity={0.7}>
+                                        <Text style={styles.dateTimeText}>{formatDisplayTime(selectedDateTime)}</Text>
+                                        <MaterialIcons name="access-time" size={16} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {Platform.OS === 'android' && showDatePicker && (
+                                <DateTimePicker value={selectedDateTime} mode="date" display="default" minimumDate={new Date()} onChange={onAndroidDateChange} />
+                            )}
+                            {Platform.OS === 'android' && showTimePicker && (
+                                <DateTimePicker value={selectedDateTime} mode="time" display="default" is24Hour={false} onChange={onAndroidTimeChange} />
+                            )}
+
+                            <TouchableOpacity
+                                style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                                activeOpacity={0.85}
+                                onPress={handleSubmit}
+                                disabled={submitting}
+                            >
+                                {submitting
+                                    ? <ActivityIndicator size="small" color="#fff" />
+                                    : <Text style={styles.submitBtnText}>Submit</Text>
+                                }
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </PremiumPullToRefresh>
 
             {/* bottom nav */}
             <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>

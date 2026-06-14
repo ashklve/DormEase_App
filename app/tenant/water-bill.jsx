@@ -23,6 +23,7 @@ import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -197,6 +198,7 @@ export default function WaterBillScreen() {
     const router = useRouter();
     const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+    const pullToRefreshRef = useRef(null);
 
     const drawerRef = useRef(null);
 
@@ -298,41 +300,48 @@ export default function WaterBillScreen() {
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-            <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
-                    <MaterialIcons name="menu" size={24} color={COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image
-                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                            style={styles.avatar}
-                        />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <View style={styles.headerSection}>
-                <View style={styles.headerTitleRow}>
-                    <View style={styles.headerIconBadge}>
-                        <Ionicons name="receipt-outline" size={20} color={COLORS.white} />
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                iconName="opacity"
+                headerHeight={56}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
+                            <MaterialIcons name="menu" size={24} color={COLORS.dark} />
+                        </TouchableOpacity>
+                        <View style={styles.topRowRight}>
+                            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image
+                                    source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                    style={styles.avatar}
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <Text style={styles.headerTitle}>Water Billing</Text>
-                </View>
-                <Text style={styles.headerSub}>View your current share and payment status</Text>
-            </View>
-
-            <TabBar activeTab={activeTab} onTabChange={handleTabChange} indicatorAnim={indicatorAnim} />
-
+                }
+            >
             <Animated.View style={[styles.tabContentWrapper, { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] }]}>
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
-                    }
+                    onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                    scrollEventThrottle={16}
+                    overScrollMode="never"
                 >
+                    <View style={styles.headerSection}>
+                        <View style={styles.headerTitleRow}>
+                            <View style={styles.headerIconBadge}>
+                                <Ionicons name="receipt-outline" size={20} color={COLORS.white} />
+                            </View>
+                            <Text style={styles.headerTitle}>Water Billing</Text>
+                        </View>
+                        <Text style={styles.headerSub}>View your current share and payment status</Text>
+                    </View>
+
+                    <TabBar activeTab={activeTab} onTabChange={handleTabChange} indicatorAnim={indicatorAnim} />
                     {activeTab === 0 && (
                         <>
                             {billing ? (
@@ -465,6 +474,7 @@ export default function WaterBillScreen() {
                     )}
                 </ScrollView>
             </Animated.View>
+            </PremiumPullToRefresh>
 
             <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />

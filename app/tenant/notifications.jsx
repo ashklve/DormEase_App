@@ -15,6 +15,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import styles, { NOTIF_COLORS } from '../../src/constants/notificationsstyles';
 import { useUser } from '../../src/context/UserContext';
 import client from '../../api/client';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import { addNotificationReceivedListener } from '../../src/services/pushNotifications';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -324,6 +325,8 @@ export default function NotificationsScreen() {
     const router = useRouter();
     const { avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+    const pullToRefreshRef = useRef(null);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
     const [activeTab, setActiveTab] = useState('notifications');
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -448,95 +451,97 @@ export default function NotificationsScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={NOTIF_COLORS.bg} />
 
-            {/* ─── Top row ─── */}
-            <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <MaterialIcons name="arrow-back" size={24} color={NOTIF_COLORS.dark} />
-                </TouchableOpacity>
-                <View style={styles.topRowRight}>
-                    <TouchableOpacity
-                        style={styles.iconBtn}
-                        onPress={() => router.push('/tenant/notifications')}
-                    >
-                        <Ionicons name="notifications-outline" size={22} color={NOTIF_COLORS.dark} />
-                        {unreadCount > 0 && (
-                            <View style={styles.badgeWrap}>
-                                <Text style={styles.badgeText}>
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image
-                            source={avatarUri ? { uri: avatarUri } : defaultPhoto}
-                            style={styles.avatar}
-                        />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* ─── Header ─── */}
-            <View style={styles.headerSection}>
-                <View style={styles.headerTitleRow}>
-                    <View style={styles.headerIconBadge}>
-                        <MaterialIcons name="notifications" size={20} color={NOTIF_COLORS.white} />
-                    </View>
-                    <Text style={styles.headerTitle}>Notifications</Text>
-                </View>
-                <Text style={styles.headerSub}>Stay updated on important updates</Text>
-            </View>
-
-            {/* ─── Filter pills ─── */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.filterScroller}
-                contentContainerStyle={styles.filterRow}
-            >
-                {FILTER_PILLS.map((pill) => {
-                    const isActive = activeFilter === pill.key;
-                    const hasUnread = pill.key === 'all'
-                        ? unreadCount > 0
-                        : notifications.some((n) => n.type === pill.key && !n.read);
-                    return (
-                        <TouchableOpacity
-                            key={pill.key}
-                            style={[styles.filterPill, isActive && styles.filterPillActive]}
-                            onPress={() => setActiveFilter(pill.key)}
-                            activeOpacity={0.75}
-                        >
-                            <MaterialIcons
-                                name={pill.icon}
-                                size={18}
-                                color={isActive ? NOTIF_COLORS.white : NOTIF_COLORS.primary}
-                            />
-                            {hasUnread && <View style={styles.filterUnreadDot} />}
+            <PremiumPullToRefresh
+                ref={pullToRefreshRef}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                iconName="notifications"
+                headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
+                header={
+                    <View style={styles.topRow}>
+                        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                            <MaterialIcons name="arrow-back" size={24} color={NOTIF_COLORS.dark} />
                         </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
+                        <View style={styles.topRowRight}>
+                            <TouchableOpacity
+                                style={styles.iconBtn}
+                                onPress={() => router.push('/tenant/notifications')}
+                            >
+                                <Ionicons name="notifications-outline" size={22} color={NOTIF_COLORS.dark} />
+                                {unreadCount > 0 && (
+                                    <View style={styles.badgeWrap}>
+                                        <Text style={styles.badgeText}>
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
+                                <Image
+                                    source={avatarUri ? { uri: avatarUri } : defaultPhoto}
+                                    style={styles.avatar}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                }
+            >
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={NOTIF_COLORS.primary} />
+                    </View>
+                ) : (
+                    <ScrollView
+                        scrollEnabled={scrollEnabled}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingBottom: 120 + Math.max(insets.bottom, 24),
+                        }}
+                        onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+                        scrollEventThrottle={16}
+                        overScrollMode="never"
+                    >
+                        {/* ─── Header ─── */}
+                        <View style={styles.headerSection}>
+                            <View style={styles.headerTitleRow}>
+                                <View style={styles.headerIconBadge}>
+                                    <MaterialIcons name="notifications" size={20} color={NOTIF_COLORS.white} />
+                                </View>
+                                <Text style={styles.headerTitle}>Notifications</Text>
+                            </View>
+                            <Text style={styles.headerSub}>Stay updated on important updates</Text>
+                        </View>
 
-            {/* ─── Loading ─── */}
-            {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={NOTIF_COLORS.primary} />
-                </View>
-            ) : (
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={[NOTIF_COLORS.primary]}
-                            tintColor={NOTIF_COLORS.primary}
-                        />
-                    }
-                    contentContainerStyle={{
-                        paddingBottom: 120 + Math.max(insets.bottom, 24),
-                    }}
-                >
+                        {/* ─── Filter pills ─── */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.filterScroller}
+                            contentContainerStyle={styles.filterRow}
+                        >
+                            {FILTER_PILLS.map((pill) => {
+                                const isActive = activeFilter === pill.key;
+                                const hasUnread = pill.key === 'all'
+                                    ? unreadCount > 0
+                                    : notifications.some((n) => n.type === pill.key && !n.read);
+                                return (
+                                    <TouchableOpacity
+                                        key={pill.key}
+                                        style={[styles.filterPill, isActive && styles.filterPillActive]}
+                                        onPress={() => setActiveFilter(pill.key)}
+                                        activeOpacity={0.75}
+                                    >
+                                        <MaterialIcons
+                                            name={pill.icon}
+                                            size={18}
+                                            color={isActive ? NOTIF_COLORS.white : NOTIF_COLORS.primary}
+                                        />
+                                        {hasUnread && <View style={styles.filterUnreadDot} />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
                     {/* ─── Count + mark all ─── */}
                     <View style={styles.tabRow}>
                         <Text style={styles.tabCountText}>
@@ -592,8 +597,9 @@ export default function NotificationsScreen() {
                     ) : (
                         <EmptyState />
                     )}
-                </ScrollView>
-            )}
+                    </ScrollView>
+                )}
+            </PremiumPullToRefresh>
 
             {/* ─── Bottom nav ─── */}
             <View

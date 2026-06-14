@@ -22,6 +22,7 @@ import styles, { COLORS } from '../../src/constants/profilestyles';
 import client from '../../api/client';
 import NotificationBell from '../../src/components/NotificationBell';
 import { useUser } from '../../src/context/UserContext';
+import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const buildAvatarUrl = (path) => {
@@ -273,6 +274,8 @@ export default function ProfileScreen() {
   const [user, setUser] = useState(null);
   const { setUser: setGlobalUser } = useUser();
   const [refreshing, setRefreshing] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const pullToRefreshRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
 
@@ -534,31 +537,36 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
+        <PremiumPullToRefresh
+          ref={pullToRefreshRef}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          iconName="person"
+          headerHeight={56}
+          onScrollEnabledChange={setScrollEnabled}
+          header={
+            <View style={styles.topRow}>
+              <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+              </TouchableOpacity>
+              <View style={styles.topRowRight}>
+                <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+              </View>
+            </View>
           }
         >
-          {/* ── Top Row ── */}
-          <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
-            </TouchableOpacity>
-            <View style={styles.topRowRight}>
-              <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-            </View>
-          </View>
+          <ScrollView
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
+            scrollEventThrottle={16}
+            overScrollMode="never"
+          >
 
           {/* ── Hero / Avatar ── */}
           <View style={styles.heroSection}>
@@ -854,6 +862,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
         </ScrollView>
+        </PremiumPullToRefresh>
       </KeyboardAvoidingView>
 
       {/* ── Bottom Nav ── */}
