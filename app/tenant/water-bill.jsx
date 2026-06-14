@@ -6,7 +6,6 @@ import {
     ScrollView,
     StatusBar,
     Image,
-    ActivityIndicator,
     RefreshControl,
     Alert,
     Animated,
@@ -23,6 +22,7 @@ import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -206,7 +206,7 @@ export default function WaterBillScreen() {
     const roomCode = user?.room_number ? `R${user.room_number}-01` : '';
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
-    // ── vacation guard ─────────────────────────────────────────────────────────
+    // vacation guard
     useEffect(() => {
         if (user?.is_on_vacation) {
             Alert.alert(
@@ -325,152 +325,146 @@ export default function WaterBillScreen() {
 
             <TabBar activeTab={activeTab} onTabChange={handleTabChange} indicatorAnim={indicatorAnim} />
 
-            {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-            ) : (
-                <Animated.View style={[styles.tabContentWrapper, { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] }]}>
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
-                        refreshControl={
-                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
-                        }
-                    >
-                        {activeTab === 0 && (
-                            <>
-                                {billing ? (
-                                    <View style={styles.billingCard}>
-                                        <View style={styles.billingCardHeader}>
-                                            <Text style={styles.billingCardLabel}>Current Billing</Text>
-                                            {billing.as_of ? (
-                                                <Text style={styles.billingCardDate}>as of {billing.as_of}</Text>
-                                            ) : null}
-                                        </View>
-                                        <View style={styles.billingRow}>
-                                            <Text style={styles.billingRowLabel}>Total Amount Due:</Text>
-                                            <Text style={styles.billingAmountDue}>₱{billing.amount_due ?? '0.00'}</Text>
-                                        </View>
-                                        <View style={styles.billingRow}>
-                                            <Text style={styles.billingRowLabel}>Due Date:</Text>
-                                            <Text style={styles.billingRowValue}>{billing.due_date ?? '—'}</Text>
-                                        </View>
-                                        {parseFloat(billing.past_due_amount || 0) > 0 && (
-                                            <>
-                                                <View style={styles.billingDivider} />
-                                                <View style={styles.billingRow}>
-                                                    <Text style={styles.billingRowLabel}>Current Month Charges:</Text>
-                                                    <Text style={styles.billingRowValue}>₱{billing.current_charges ?? '0.00'}</Text>
-                                                </View>
-                                                <View style={styles.billingRow}>
-                                                    <Text style={styles.billingRowLabel}>Past Due Balance:</Text>
-                                                    <Text style={styles.billingRowValueAccent}>₱{billing.past_due_amount ?? '0.00'}</Text>
-                                                </View>
-                                            </>
-                                        )}
-                                        <View style={styles.billingDivider} />
-                                        <View style={styles.statusRow}>
-                                            <Text style={styles.statusLabel}>Status:</Text>
-                                            <StatusBadge status={billing.status ?? 'Unpaid'} />
-                                        </View>
-                                        <Text style={styles.billingNote}>
-                                            Based on floor consumption and shared usage.
-                                        </Text>
+            <Animated.View style={[styles.tabContentWrapper, { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] }]}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
+                    }
+                >
+                    {activeTab === 0 && (
+                        <>
+                            {billing ? (
+                                <View style={styles.billingCard}>
+                                    <View style={styles.billingCardHeader}>
+                                        <Text style={styles.billingCardLabel}>Current Billing</Text>
+                                        {billing.as_of ? (
+                                            <Text style={styles.billingCardDate}>as of {billing.as_of}</Text>
+                                        ) : null}
                                     </View>
-                                ) : (
-                                    <Text style={styles.emptyText}>No current billing available.</Text>
-                                )}
-
-                                {billing && billing.past_due_bills && billing.past_due_bills.length > 0 && (
-                                    <>
-                                        <Text style={styles.sectionTitle}>Previous Unpaid Balance Details</Text>
-                                        <View style={styles.breakdownCard}>
-                                            {billing.past_due_bills.map((pastBill, index) => (
-                                                <View
-                                                    key={pastBill.id ?? index}
-                                                    style={[
-                                                        styles.breakdownRow,
-                                                        index === billing.past_due_bills.length - 1 && styles.breakdownRowLast
-                                                    ]}
-                                                >
-                                                    <View style={styles.pastDueRowLeft}>
-                                                        <Text style={styles.breakdownLabel}>{pastBill.billing_period}</Text>
-                                                        <Text style={styles.pastDueRowDueDate}>
-                                                            Due: {pastBill.due_date}
-                                                        </Text>
-                                                    </View>
-                                                    <View style={styles.pastDueRowRight}>
-                                                        <Text style={styles.pastDueRowAmount}>
-                                                            ₱{pastBill.amount}
-                                                        </Text>
-                                                        <Text style={styles.pastDueRowStatus}>
-                                                            {pastBill.status}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </>
-                                )}
-
-                                {breakdown ? (
-                                    <>
-                                        <Text style={styles.sectionTitle}>Billing Breakdown</Text>
-                                        <View style={styles.breakdownCard}>
-                                            <BreakdownRow label="Floor Consumption" value={`${breakdown.floor_consumption ?? '0'} m³`} />
-                                            <BreakdownRow label="Water Rate" value={`₱${breakdown.water_rate ?? '0'} per m³`} />
-                                            <BreakdownRow label="Total Floor Bill" value={`₱${breakdown.total_floor_bill ?? '0.00'}`} />
-                                            <BreakdownRow label="Rooms Sharing" value={`${breakdown.rooms_sharing ?? '0'}`} />
-                                            <BreakdownRow label="Your Room Share" value={`₱${breakdown.room_share ?? '0.00'}`} accent />
-                                            <BreakdownRow label="Occupants in Room" value={`${breakdown.occupants ?? '0'}`} isLast />
-                                        </View>
-                                    </>
-                                ) : null}
-
-                                {billing ? (
-                                    <View style={styles.payBtnWrapper}>
-                                        <TouchableOpacity
-                                            style={[styles.payBtn, !isUnpaid && styles.payBtnDisabled, { alignSelf: 'center', width: '70%' }]}
-                                            onPress={handlePayBill}
-                                            disabled={!isUnpaid}
-                                            activeOpacity={0.85}
-                                        >
-                                            <Text style={styles.payBtnText}>{isUnpaid ? 'Pay Bill' : 'Already Paid'}</Text>
-                                        </TouchableOpacity>
+                                    <View style={styles.billingRow}>
+                                        <Text style={styles.billingRowLabel}>Total Amount Due:</Text>
+                                        <Text style={styles.billingAmountDue}>₱{billing.amount_due ?? '0.00'}</Text>
                                     </View>
-                                ) : null}
-                            </>
-                        )}
+                                    <View style={styles.billingRow}>
+                                        <Text style={styles.billingRowLabel}>Due Date:</Text>
+                                        <Text style={styles.billingRowValue}>{billing.due_date ?? '—'}</Text>
+                                    </View>
+                                    {parseFloat(billing.past_due_amount || 0) > 0 && (
+                                        <>
+                                            <View style={styles.billingDivider} />
+                                            <View style={styles.billingRow}>
+                                                <Text style={styles.billingRowLabel}>Current Month Charges:</Text>
+                                                <Text style={styles.billingRowValue}>₱{billing.current_charges ?? '0.00'}</Text>
+                                            </View>
+                                            <View style={styles.billingRow}>
+                                                <Text style={styles.billingRowLabel}>Past Due Balance:</Text>
+                                                <Text style={styles.billingRowValueAccent}>₱{billing.past_due_amount ?? '0.00'}</Text>
+                                            </View>
+                                        </>
+                                    )}
+                                    <View style={styles.billingDivider} />
+                                    <View style={styles.statusRow}>
+                                        <Text style={styles.statusLabel}>Status:</Text>
+                                        <StatusBadge status={billing.status ?? 'Unpaid'} />
+                                    </View>
+                                    <Text style={styles.billingNote}>
+                                        Based on floor consumption and shared usage.
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.emptyText}>No current billing available.</Text>
+                            )}
 
-                        {activeTab === 1 && (
-                            <>
-                                {history.length > 0 ? (
-                                    <>
-                                        <Text style={styles.sectionTitle}>Payment History</Text>
-                                        <View style={styles.historyCard}>
-                                            {history.map((item, index) => (
-                                                <HistoryRow
-                                                    key={item.id ?? index}
-                                                    month={item.month}
-                                                    amount={`₱${item.amount}`}
-                                                    status={item.status}
-                                                    referenceNo={firstAvailable(item.reference_no, item.reference_number, item.ref_no, item.transaction_reference, item.transaction_id, item.payment?.reference_no, item.payment?.reference_number)}
-                                                    paymentDate={firstAvailable(item.payment_date, item.date_paid, item.paid_at, item.transaction_date, item.created_at, item.payment?.payment_date, item.payment?.paid_at)}
-                                                    paymentMethod={formatPaymentMethod(firstAvailable(item.payment_method, item.method, item.payment_mode, item.payment_type, item.payment?.payment_method, item.payment?.method, item.payment?.payment_mode))}
-                                                    isLast={index === history.length - 1}
-                                                />
-                                            ))}
-                                        </View>
-                                    </>
-                                ) : (
-                                    <Text style={styles.emptyText}>No payment history available.</Text>
-                                )}
-                            </>
-                        )}
-                    </ScrollView>
-                </Animated.View>
-            )}
+                            {billing && billing.past_due_bills && billing.past_due_bills.length > 0 && (
+                                <>
+                                    <Text style={styles.sectionTitle}>Previous Unpaid Balance Details</Text>
+                                    <View style={styles.breakdownCard}>
+                                        {billing.past_due_bills.map((pastBill, index) => (
+                                            <View
+                                                key={pastBill.id ?? index}
+                                                style={[
+                                                    styles.breakdownRow,
+                                                    index === billing.past_due_bills.length - 1 && styles.breakdownRowLast
+                                                ]}
+                                            >
+                                                <View style={styles.pastDueRowLeft}>
+                                                    <Text style={styles.breakdownLabel}>{pastBill.billing_period}</Text>
+                                                    <Text style={styles.pastDueRowDueDate}>
+                                                        Due: {pastBill.due_date}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.pastDueRowRight}>
+                                                    <Text style={styles.pastDueRowAmount}>
+                                                        ₱{pastBill.amount}
+                                                    </Text>
+                                                    <Text style={styles.pastDueRowStatus}>
+                                                        {pastBill.status}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+
+                            {breakdown ? (
+                                <>
+                                    <Text style={styles.sectionTitle}>Billing Breakdown</Text>
+                                    <View style={styles.breakdownCard}>
+                                        <BreakdownRow label="Floor Consumption" value={`${breakdown.floor_consumption ?? '0'} m³`} />
+                                        <BreakdownRow label="Water Rate" value={`₱${breakdown.water_rate ?? '0'} per m³`} />
+                                        <BreakdownRow label="Total Floor Bill" value={`₱${breakdown.total_floor_bill ?? '0.00'}`} />
+                                        <BreakdownRow label="Rooms Sharing" value={`${breakdown.rooms_sharing ?? '0'}`} />
+                                        <BreakdownRow label="Your Room Share" value={`₱${breakdown.room_share ?? '0.00'}`} accent />
+                                        <BreakdownRow label="Occupants in Room" value={`${breakdown.occupants ?? '0'}`} isLast />
+                                    </View>
+                                </>
+                            ) : null}
+
+                            {billing ? (
+                                <View style={styles.payBtnWrapper}>
+                                    <TouchableOpacity
+                                        style={[styles.payBtn, !isUnpaid && styles.payBtnDisabled, { alignSelf: 'center', width: '70%' }]}
+                                        onPress={handlePayBill}
+                                        disabled={!isUnpaid}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={styles.payBtnText}>{isUnpaid ? 'Pay Bill' : 'Already Paid'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : null}
+                        </>
+                    )}
+
+                    {activeTab === 1 && (
+                        <>
+                            {history.length > 0 ? (
+                                <>
+                                    <Text style={styles.sectionTitle}>Payment History</Text>
+                                    <View style={styles.historyCard}>
+                                        {history.map((item, index) => (
+                                            <HistoryRow
+                                                key={item.id ?? index}
+                                                month={item.month}
+                                                amount={`₱${item.amount}`}
+                                                status={item.status}
+                                                referenceNo={firstAvailable(item.reference_no, item.reference_number, item.ref_no, item.transaction_reference, item.transaction_id, item.payment?.reference_no, item.payment?.reference_number)}
+                                                paymentDate={firstAvailable(item.payment_date, item.date_paid, item.paid_at, item.transaction_date, item.created_at, item.payment?.payment_date, item.payment?.paid_at)}
+                                                paymentMethod={formatPaymentMethod(firstAvailable(item.payment_method, item.method, item.payment_mode, item.payment_type, item.payment?.payment_method, item.payment?.method, item.payment?.payment_mode))}
+                                                isLast={index === history.length - 1}
+                                            />
+                                        ))}
+                                    </View>
+                                </>
+                            ) : (
+                                <Text style={styles.emptyText}>No payment history available.</Text>
+                            )}
+                        </>
+                    )}
+                </ScrollView>
+            </Animated.View>
 
             <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
@@ -480,8 +474,12 @@ export default function WaterBillScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* Drawer */}
+            {/* drawer */}
             <DrawerMenu ref={drawerRef} />
+
+            {/* loading overlay — shown on every focus while data is fetching */}
+            <LoadingOverlay visible={loading} />
+
         </SafeAreaView>
     );
-}
+}   
