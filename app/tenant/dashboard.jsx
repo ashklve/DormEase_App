@@ -11,7 +11,7 @@ import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import DrawerMenu from '../../src/components/DrawerMenu';
-import LoadingOverlay from '../../components/LoadingOverlay';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
