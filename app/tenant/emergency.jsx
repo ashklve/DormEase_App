@@ -28,6 +28,7 @@ import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 import styles, { COLORS, CATEGORY_COLORS } from '../../src/constants/emergencystyles';
 import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
 
@@ -38,7 +39,6 @@ const SPEECH_LANGUAGE_OPTIONS = [
     { key: 'en', label: 'English', model: 'model-en-us' },
 ];
 
-// emergency categories
 const CATEGORIES = [
     { key: 'Medical', label: 'Medical', icon: 'medical-bag', lib: 'community' },
     { key: 'Fire/Smoke', label: 'Fire/Smoke', icon: 'fire', lib: 'community' },
@@ -48,10 +48,8 @@ const CATEGORIES = [
     { key: 'Other', label: 'Other', icon: 'dots-horizontal-circle', lib: 'community' },
 ];
 
-// number of waveform bars
 const BAR_COUNT = 28;
 
-// format seconds → HH:MM:SS
 const fmtTimer = (secs) => {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
@@ -65,7 +63,6 @@ const formatTenantRoomLocation = (roomNumber) => {
     return room.toLowerCase().startsWith('room ') ? room : `Room ${room}`;
 };
 
-// nav item
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -84,7 +81,6 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// animated waveform
 const Waveform = ({ isRecording }) => {
     const bars = useRef(
         Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
@@ -126,11 +122,17 @@ const Waveform = ({ isRecording }) => {
     );
 };
 
+// ── simple cache so overlay only shows once per session ───────────────────────
+const emergencyScreenCache = { loaded: false };
+
 export default function EmergencyScreen() {
     const router = useRouter();
-    const { avatarUri, user } = useUser();
+    const { avatarUri, user, fetchUser } = useUser();
     const insets = useSafeAreaInsets();
     const drawerRef = useRef(null);
+
+    // only show overlay on very first load
+    const [loading, setLoading] = useState(!emergencyScreenCache.loaded);
 
     // ── vacation guard ─────────────────────────────────────────────────────────
     useEffect(() => {
@@ -163,6 +165,23 @@ export default function EmergencyScreen() {
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((option) => option.key === speechLanguage)
         ?? SPEECH_LANGUAGE_OPTIONS[0];
 
+    // ── initial load — wait for user + vosk model, then hide overlay ──────────
+    useEffect(() => {
+        if (emergencyScreenCache.loaded) return;
+
+        const init = async () => {
+            try {
+                await fetchUser();
+                // model loading starts in its own effect below;
+                // we just need user data before showing the screen
+            } finally {
+                emergencyScreenCache.loaded = true;
+                setLoading(false);
+            }
+        };
+        init();
+    }, []);
+
     const stopRecordingTimer = useCallback(() => {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -175,9 +194,7 @@ export default function EmergencyScreen() {
         lastTimerTickRef.current = Date.now();
         timerRef.current = setInterval(() => {
             const now = Date.now();
-            if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) {
-                return;
-            }
+            if (lastTimerTickRef.current && now - lastTimerTickRef.current < 900) return;
             lastTimerTickRef.current = now;
             setRecordSecs((seconds) => seconds + 1);
         }, 1000);
@@ -231,18 +248,14 @@ export default function EmergencyScreen() {
         setModelLoading(true);
 
         ensureVoskModelLoaded(selectedSpeechLanguage.model)
-            .then(() => {
-                if (mounted) setModelLoaded(true);
-            })
+            .then(() => { if (mounted) setModelLoaded(true); })
             .catch((error) => {
                 console.error('failed to load Vosk model:', error);
                 if (mounted) {
                     Alert.alert('Voice Input Unavailable', `${selectedSpeechLanguage.label} speech recognition could not be loaded.`);
                 }
             })
-            .finally(() => {
-                if (mounted) setModelLoading(false);
-            });
+            .finally(() => { if (mounted) setModelLoading(false); });
 
         return () => {
             mounted = false;
@@ -305,14 +318,9 @@ export default function EmergencyScreen() {
     };
 
     const handleToggleRecord = () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
+        isRecording ? stopRecording() : startRecording();
     };
 
-    // panic alert — sends immediately with room info, no description required
     const handlePanicAlert = async () => {
         Alert.alert(
             'Send Panic Alert?',
@@ -338,7 +346,6 @@ export default function EmergencyScreen() {
         );
     };
 
-    // submit full emergency report
     const handleSubmit = async () => {
         const description = manualText.trim() || transcript.trim();
         if (!description && !selectedCategory) {
@@ -350,14 +357,13 @@ export default function EmergencyScreen() {
         try {
             await client.post('/emergency', {
                 type: selectedCategory || undefined,
-                description: description,
+                description,
                 location: formatTenantRoomLocation(user?.room_number),
                 input_type: hasRecording ? 'voice' : 'text',
                 language: speechLanguage,
             });
 
             Alert.alert('Submitted!', 'Your emergency report has been sent to staff.');
-            // reset form
             setSelectedCategory(null);
             setIsRecording(false);
             setRecordSecs(0);
@@ -418,7 +424,7 @@ export default function EmergencyScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 >
-                    {/* panic alert button */}
+                    {/* panic alert */}
                     <TouchableOpacity style={styles.panicBtn} activeOpacity={0.85} onPress={handlePanicAlert}>
                         <Text style={styles.panicBtnText}>SEND PANIC ALERT</Text>
                     </TouchableOpacity>
@@ -445,11 +451,7 @@ export default function EmergencyScreen() {
                                     activeOpacity={0.75}
                                     onPress={() => setSelectedCategory(active ? null : cat.key)}
                                 >
-                                    <MaterialCommunityIcons
-                                        name={cat.icon}
-                                        size={18}
-                                        color={colors.icon}
-                                    />
+                                    <MaterialCommunityIcons name={cat.icon} size={18} color={colors.icon} />
                                     <Text style={[styles.categoryChipText, { color: active ? colors.label : COLORS.dark }]}>
                                         {cat.label}
                                     </Text>
@@ -515,21 +517,18 @@ export default function EmergencyScreen() {
                                         : 'Tap to Speak'}
                         </Text>
 
-                        {/* transcript output */}
                         {!!transcript && (
                             <View style={styles.transcriptBox}>
                                 <Text style={styles.transcriptText}>{transcript}</Text>
                             </View>
                         )}
 
-                        {/* or divider */}
                         <View style={styles.orRow}>
                             <View style={styles.orLine} />
                             <Text style={styles.orText}>or</Text>
                             <View style={styles.orLine} />
                         </View>
 
-                        {/* manual text input */}
                         <TextInput
                             style={styles.textInput}
                             placeholder="Describe the emergency here"
@@ -553,15 +552,11 @@ export default function EmergencyScreen() {
                             : <Text style={styles.submitBtnText}>Submit</Text>
                         }
                     </TouchableOpacity>
-
                 </ScrollView>
             </KeyboardAvoidingView>
 
             {/* bottom nav */}
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
+            <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <NavItem iconName="home" label="Home" onPress={() => router.push('/tenant/dashboard')} />
                 <NavItem iconName="person-outline" label="Visitor" onPress={() => router.push('/tenant/visitors')} />
                 <NavItem iconName="warning" label="Emergency" isCenter isActive onPress={() => { }} />
@@ -570,6 +565,10 @@ export default function EmergencyScreen() {
             </View>
 
             <DrawerMenu ref={drawerRef} />
+
+            {/* loading overlay — only on first visit, skipped on return */}
+            <LoadingOverlay visible={loading} />
+
         </SafeAreaView>
     );
 }
