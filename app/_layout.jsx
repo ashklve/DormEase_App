@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { UserProvider } from '../src/context/UserContext';
 import PushNotificationBootstrap from '../src/components/PushNotificationBootstrap';
-import LoadingOverlay from '../components/LoadingOverlay';
+import LoadingOverlay from '../src/components/LoadingOverlay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 

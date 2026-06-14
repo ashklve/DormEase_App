@@ -3,7 +3,6 @@ import {
     View, Image, Animated, StyleSheet,
     Dimensions, Modal,
 } from 'react-native';
-import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 const PINK_PRIMARY = '#D63375';
@@ -16,7 +15,6 @@ export default function LoadingOverlay({ visible = false, onLoadComplete }) {
 
     useEffect(() => {
         if (visible) {
-            // fade + scale in
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 1,
@@ -31,7 +29,6 @@ export default function LoadingOverlay({ visible = false, onLoadComplete }) {
                 }),
             ]).start();
 
-            // start spin loop
             spinLoop.current = Animated.loop(
                 Animated.timing(spinAnim, {
                     toValue: 1,
@@ -41,9 +38,7 @@ export default function LoadingOverlay({ visible = false, onLoadComplete }) {
             );
             spinLoop.current.start();
         } else {
-            // stop spin, fade out, play sound
             if (spinLoop.current) spinLoop.current.stop();
-            playCompleteSound();
             Animated.timing(fadeAnim, {
                 toValue: 0,
                 duration: 400,
@@ -55,21 +50,6 @@ export default function LoadingOverlay({ visible = false, onLoadComplete }) {
             });
         }
     }, [visible]);
-
-    const playCompleteSound = async () => {
-        try {
-            await Audio.setAudioModeAsync({ playsInSilentModeIOS: false });
-            const { sound } = await Audio.Sound.createAsync(
-                { uri: 'https://www.soundjay.com/buttons/sounds/button-09a.mp3' },
-                { shouldPlay: true, volume: 0.6 }
-            );
-            sound.setOnPlaybackStatusUpdate((status) => {
-                if (status.didJustFinish) sound.unloadAsync();
-            });
-        } catch (e) {
-            // silent fail — sound is non-critical
-        }
-    };
 
     const rotate = spinAnim.interpolate({
         inputRange: [0, 1],
@@ -85,17 +65,14 @@ export default function LoadingOverlay({ visible = false, onLoadComplete }) {
         >
             <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
                 <Animated.View style={[styles.centerBox, { transform: [{ scale: scaleAnim }] }]}>
-
                     {/* spinning ring */}
                     <Animated.View style={[styles.spinnerRing, { transform: [{ rotate }] }]} />
-
                     {/* logo in center */}
                     <Image
-                        source={require('../assets/logo.png')}
+                        source={require('../../assets/logo.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
-
                 </Animated.View>
             </Animated.View>
         </Modal>
