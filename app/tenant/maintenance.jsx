@@ -134,7 +134,17 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function MaintenanceScreen() {
     const router = useRouter();
     const drawerRef = useRef(null);
-    const { avatarUri } = useUser();
+    const { user, avatarUri } = useUser();
+
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                "Access Restricted",
+                "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
+                [{ text: "OK", onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user]);
     const insets = useSafeAreaInsets();
 
     // ── Form state
@@ -216,6 +226,7 @@ export default function MaintenanceScreen() {
     };
 
     useEffect(() => {
+        if (user?.is_on_vacation) return;
         let mounted = true;
         setModelLoaded(false);
         setModelLoading(true);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -501,7 +501,7 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function MaintenanceHistoryScreen() {
     const router = useRouter();
-    const { avatarUri } = useUser();
+    const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
 
     const [requests, setRequests] = useState([]);

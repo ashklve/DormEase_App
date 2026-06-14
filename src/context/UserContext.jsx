@@ -43,6 +43,11 @@ export function UserProvider({ children }) {
         setUser((prev) => ({ ...prev, email, contact_number: contactNumber }));
     };
 
+    // Call this after a successful vacation status toggle
+    const updateVacationStatus = (isOnVacation, vacationNote) => {
+        setUser((prev) => ({ ...prev, is_on_vacation: isOnVacation, vacation_note: vacationNote }));
+    };
+
     // Convenience: the resolved avatar URI ready for <Image source={}> 
     const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
 
@@ -55,6 +60,7 @@ export function UserProvider({ children }) {
                 fetchUser,
                 updateProfilePhoto,
                 updateContactInfo,
+                updateVacationStatus,
                 setUser,
             }}
         >

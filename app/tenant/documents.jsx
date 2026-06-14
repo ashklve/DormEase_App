@@ -64,30 +64,40 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 
 export default function DocumentsScreen() {
     const router = useRouter();
-    const { avatarUri } = useUser();
+    const { user, avatarUri } = useUser();
     const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        if (user?.is_on_vacation) {
+            Alert.alert(
+                "Access Restricted",
+                "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
+                [{ text: "OK", onPress: () => router.replace('/tenant/dashboard') }]
+            );
+        }
+    }, [user]);
     const drawerRef = useRef(null);
 
-    const [formsExpanded,   setFormsExpanded]   = useState(true);
-    const [selectedOption,  setSelectedOption]  = useState(null);
-    const [dropdownOpen,    setDropdownOpen]    = useState(false);
+    const [formsExpanded, setFormsExpanded] = useState(true);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [purposeDropOpen, setPurposeDropOpen] = useState(false);
     const [selectedPurpose, setSelectedPurpose] = useState(null);
-    const [customPurpose,   setCustomPurpose]   = useState('');
-    const [customDocName,   setCustomDocName]   = useState('');
-    const [fullName,        setFullName]        = useState('');
-    const [contactNo,       setContactNo]       = useState('');
-    const [roomNo,          setRoomNo]          = useState('');
+    const [customPurpose, setCustomPurpose] = useState('');
+    const [customDocName, setCustomDocName] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [contactNo, setContactNo] = useState('');
+    const [roomNo, setRoomNo] = useState('');
     const [deliveryMethods, setDeliveryMethods] = useState(new Set(['digital']));
-    const [uploadedFile,    setUploadedFile]    = useState(null);
-    const [submitting,      setSubmitting]      = useState(false);
-    const [userInfo,        setUserInfo]        = useState(null);
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
     const [downloadableForms, setDownloadableForms] = useState([]);
-    const [docsLoading,     setDocsLoading]     = useState(true);
+    const [docsLoading, setDocsLoading] = useState(true);
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
-    const isForm        = selectedOption?.category === CATEGORY.FORM;
-    const isOtherDoc    = selectedOption?.isOther === true;
+    const isForm = selectedOption?.category === CATEGORY.FORM;
+    const isOtherDoc = selectedOption?.isOther === true;
 
     const resolvedPurpose = selectedPurpose === 'Other'
         ? customPurpose.trim()
@@ -108,9 +118,9 @@ export default function DocumentsScreen() {
             sectionLabel: 'Request a Certificate / Document',
             items: [
                 { id: 'cert_residency', label: 'Certificate of Residency', category: CATEGORY.CERTIFICATE },
-                { id: 'lease_copy',     label: 'Lease Contract Copy',      category: CATEGORY.CERTIFICATE },
-                { id: 'receipt_copy',   label: 'Acknowledgement Receipt',  category: CATEGORY.CERTIFICATE },
-                { id: 'other_doc',      label: 'Others',                   category: CATEGORY.CERTIFICATE, isOther: true },
+                { id: 'lease_copy', label: 'Lease Contract Copy', category: CATEGORY.CERTIFICATE },
+                { id: 'receipt_copy', label: 'Acknowledgement Receipt', category: CATEGORY.CERTIFICATE },
+                { id: 'other_doc', label: 'Others', category: CATEGORY.CERTIFICATE, isOther: true },
             ],
         },
     ];
@@ -129,17 +139,19 @@ export default function DocumentsScreen() {
     };
 
     useEffect(() => {
+        if (user?.is_on_vacation) return;
         client.get('/user').then((res) => {
             const u = res.data;
             setUserInfo(u);
             setFullName(`${u.first_name ?? ''} ${u.last_name ?? ''}`.trim());
             setContactNo(u.contact_number ?? '');
             setRoomNo(u.room_number ?? '');
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     useEffect(() => {
         const fetchForms = async () => {
+            if (user?.is_on_vacation) return;
             try {
                 setDocsLoading(true);
                 const res = await client.get('/tenant/forms');
@@ -222,16 +234,16 @@ export default function DocumentsScreen() {
                 : selectedOption.label;
 
             const formData = new FormData();
-            formData.append('full_name',       fullName.trim());
-            formData.append('contact_no',      contactNo.trim());
-            formData.append('room_no',         roomNo.trim());
-            formData.append('request_type',    selectedOption.id);
-            formData.append('request_label',   resolvedLabel);
-            formData.append('document_type',   resolvedLabel);
-            formData.append('category',        selectedOption.category);
+            formData.append('full_name', fullName.trim());
+            formData.append('contact_no', contactNo.trim());
+            formData.append('room_no', roomNo.trim());
+            formData.append('request_type', selectedOption.id);
+            formData.append('request_label', resolvedLabel);
+            formData.append('document_type', resolvedLabel);
+            formData.append('category', selectedOption.category);
 
             if (isCertificate) {
-                formData.append('purpose',         resolvedPurpose);
+                formData.append('purpose', resolvedPurpose);
                 formData.append('delivery_method', [...deliveryMethods].join(','));
                 if (isOtherDoc) {
                     formData.append('custom_document_name', customDocName.trim());
@@ -240,7 +252,7 @@ export default function DocumentsScreen() {
 
             if (isForm && uploadedFile) {
                 formData.append('attachment', {
-                    uri:  uploadedFile.uri,
+                    uri: uploadedFile.uri,
                     name: uploadedFile.name,
                     type: uploadedFile.mimeType ?? 'application/pdf',
                 });
@@ -694,11 +706,11 @@ export default function DocumentsScreen() {
             </KeyboardAvoidingView>
 
             <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-                <NavItem iconName="home"           label="Home"      isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor"   isActive={false} onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning"        label="Emergency" isCenter         onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop"     label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile"   isActive={false} onPress={() => router.push('/tenant/profile')} />
+                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
+                <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
+                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
+                <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
+                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
             <DrawerMenu ref={drawerRef} />

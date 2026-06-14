@@ -10,6 +10,9 @@ import {
   TextInput,
   Animated,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
+  Switch,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import styles, { COLORS } from '../../src/constants/profilestyles';
 import client from '../../api/client';
 import NotificationBell from '../../src/components/NotificationBell';
+import { useUser } from '../../src/context/UserContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const buildAvatarUrl = (path) => {
@@ -267,6 +271,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   const [user, setUser] = useState(null);
+  const { setUser: setGlobalUser } = useUser();
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
@@ -277,10 +282,17 @@ export default function ProfileScreen() {
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
 
+  // ── Vacation / break status state
+  const [isOnVacation, setIsOnVacation] = useState(false);
+  const [vacationNote, setVacationNote] = useState('');
+  const [vacationSaving, setVacationSaving] = useState(false);
+  const [vacationErrors, setVacationErrors] = useState([]);
+
   // ── Password state
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
+  const [pwError, setPwError] = useState('');
 
   const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
   const toastTimer = useRef(null);
@@ -305,8 +317,12 @@ export default function ProfileScreen() {
       if (isRefresh) setRefreshing(true);
       const res = await client.get('/user');
       setUser(res.data);
+      setGlobalUser(res.data);
       setEmail(res.data.email || '');
       setContactNumber(res.data.contact_number || '');
+      setIsOnVacation(res.data.is_on_vacation || false);
+      setVacationNote(res.data.vacation_note || '');
+      setVacationErrors([]);
     } catch (err) {
       console.error('profile fetch error:', err.message);
     } finally {
@@ -372,6 +388,32 @@ export default function ProfileScreen() {
     }
   };
 
+  // ── Update vacation status
+  const handleUpdateVacationStatus = async () => {
+    setVacationSaving(true);
+    setVacationErrors([]);
+    try {
+      await client.patch('/vacation-status', {
+        is_on_vacation: isOnVacation,
+        vacation_note: isOnVacation ? vacationNote : '',
+      });
+      showToast('success', 'Vacation status updated successfully!');
+      await fetchProfile({ isRefresh: false });
+    } catch (err) {
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        setVacationErrors(err.response.data.errors);
+        showToast('error', 'Cannot update vacation status.');
+      } else {
+        showToast('error', err.response?.data?.message || 'Failed to update vacation status.');
+      }
+
+      setIsOnVacation(user?.is_on_vacation || false);
+      setVacationNote(user?.vacation_note || '');
+    } finally {
+      setVacationSaving(false);
+    }
+  };
+
   // ── Password match indicator (only on confirm field)
   const pwMatchStatus =
     confirmPw.length === 0 ? null :
@@ -379,16 +421,37 @@ export default function ProfileScreen() {
 
   // ── Change password — refreshes profile data after success
   const handleChangePassword = async () => {
+    setPwError('');
     if (!currentPw || !newPw || !confirmPw) {
-      showToast('error', 'Please fill in all password fields.');
+      setPwError('Please fill in all password fields.');
       return;
     }
     if (newPw.length < 8) {
-      showToast('error', 'New password must be at least 8 characters.');
+      setPwError('New password must be at least 8 characters.');
+      return;
+    }
+    if (!/[A-Z]/.test(newPw)) {
+      setPwError('New password must contain at least one uppercase letter (A-Z).');
+      return;
+    }
+    if (!/[a-z]/.test(newPw)) {
+      setPwError('New password must contain at least one lowercase letter (a-z).');
+      return;
+    }
+    if (!/[0-9]/.test(newPw)) {
+      setPwError('New password must contain at least one number (0-9).');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPw)) {
+      setPwError('New password must contain at least one special character.');
       return;
     }
     if (newPw !== confirmPw) {
-      showToast('error', 'Passwords do not match. Please check and try again.');
+      setPwError('Passwords do not match. Please check and try again.');
+      return;
+    }
+    if (newPw === currentPw) {
+      setPwError('New password must be different from current password.');
       return;
     }
     try {
@@ -398,6 +461,7 @@ export default function ProfileScreen() {
         new_password: newPw,
         new_password_confirmation: confirmPw,
       });
+      setPwError('');
       showToast('success', 'Password changed successfully! 🎉');
       setCurrentPw('');
       setNewPw('');
@@ -405,7 +469,7 @@ export default function ProfileScreen() {
       // Refresh profile so is_temp_password banner clears if applicable
       await fetchProfile({ isRefresh: false });
     } catch (err) {
-      showToast('error', err.response?.data?.message || 'Failed to update password.');
+      setPwError(err.response?.data?.message || 'Failed to update password.');
     } finally {
       setSavingPw(false);
     }
@@ -441,6 +505,7 @@ export default function ProfileScreen() {
         transformRequest: (data) => data,
       });
       setUser((prev) => ({ ...prev, profile_photo: res.data.profile_photo }));
+      setGlobalUser((prev) => ({ ...prev, profile_photo: res.data.profile_photo }));
       showToast('success', 'Profile photo updated!');
     } catch {
       showToast('error', 'Failed to upload photo.');
@@ -457,191 +522,339 @@ export default function ProfileScreen() {
     email !== (user?.email || '') ||
     contactNumber !== (user?.contact_number || '');
 
+  const vacationDirty =
+    isOnVacation !== (user?.is_on_vacation || false) ||
+    (isOnVacation && vacationNote !== (user?.vacation_note || ''));
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: 120 + Math.max(insets.bottom, 24) },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
-        }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        {/* ── Top Row ── */}
-        <View style={styles.topRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
-          </TouchableOpacity>
-          <View style={styles.topRowRight}>
-            <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
-          </View>
-        </View>
-
-        {/* ── Hero / Avatar ── */}
-        <View style={styles.heroSection}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              source={
-                avatarUri
-                  ? { uri: avatarUri }
-                  : require('../../assets/def_icon.png')
-              }
-              style={styles.avatar}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 120 + Math.max(insets.bottom, 24) },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
             />
-            <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickPhoto}>
-              <Ionicons name="camera" size={14} color={COLORS.white} />
+          }
+        >
+          {/* ── Top Row ── */}
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
             </TouchableOpacity>
+            <View style={styles.topRowRight}>
+              <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
+            </View>
           </View>
-          <Text style={styles.heroName}>
-            {user?.first_name} {user?.last_name}
-          </Text>
-          <Text style={styles.heroEmail}>{user?.email}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
-            <Text style={[styles.statusText, { color: sc.text }]}>
-              {statusLabels[statusKey]}
+
+          {/* ── Hero / Avatar ── */}
+          <View style={styles.heroSection}>
+            <View style={styles.avatarWrapper}>
+              <Image
+                source={
+                  avatarUri
+                    ? { uri: avatarUri }
+                    : require('../../assets/def_icon.png')
+                }
+                style={styles.avatar}
+              />
+              <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickPhoto}>
+                <Ionicons name="camera" size={14} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.heroName}>
+              {user?.first_name} {user?.last_name}
             </Text>
+            <Text style={styles.heroEmail}>{user?.email}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+              <Text style={[styles.statusText, { color: sc.text }]}>
+                {statusLabels[statusKey]}
+              </Text>
+            </View>
+            {user?.is_on_vacation && (
+              <View style={[styles.statusBadge, { backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B', marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Text style={[styles.statusText, { color: '#B45309', fontWeight: 'bold' }]}>
+                  On Vacation
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
 
-        {/* ── Temporary password warning banner ── */}
-        {isTemp && (
-          <View style={styles.tempBanner}>
-            <Ionicons name="warning-outline" size={20} color="#D4A017" />
-            <Text style={styles.tempBannerText}>
-              You're using a temporary password. Please change it now to secure your account.
-            </Text>
+          {/* ── Temporary password warning banner ── */}
+          {isTemp && (
+            <View style={styles.tempBanner}>
+              <Ionicons name="warning-outline" size={20} color="#D4A017" />
+              <Text style={styles.tempBannerText}>
+                You're using a temporary password. Please change it now to secure your account.
+              </Text>
+            </View>
+          )}
+
+          {/* ── Toast ── */}
+          <Toast visible={toast.visible} type={toast.type} message={toast.message} />
+
+          {/* ── Residence Info (read-only) ── */}
+          <Text style={styles.sectionLabel}>Residence</Text>
+          <View style={styles.infoCard}>
+            <InfoRow
+              icon="bed-outline"
+              label="Room number"
+              value={user?.room_number}
+            />
+            <InfoRow
+              icon="business-outline"
+              label="Floor"
+              value={user?.floor != null ? `Floor ${user.floor}` : null}
+            />
+            <InfoRow
+              icon="home-outline"
+              label="Stay type"
+              value={user?.stay_type}
+            />
+            <InfoRow
+              icon="calendar-outline"
+              label="Move-in date"
+              value={fmt(user?.move_in_date)}
+            />
+            <InfoRow
+              icon="calendar-clear-outline"
+              label="Move-out date"
+              value={fmt(user?.move_out_date)}
+              last
+            />
           </View>
-        )}
 
-        {/* ── Toast ── */}
-        <Toast visible={toast.visible} type={toast.type} message={toast.message} />
+          {/* ── Vacation / break status section ── */}
+          <Text style={styles.sectionLabel}>Vacation / Break Status</Text>
+          <View style={styles.infoCard}>
+            <View style={[styles.infoRow, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={styles.infoIconWrapper}>
+                  <Ionicons name="boat-outline" size={18} color={COLORS.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>Vacation Mode</Text>
+                  <Text style={styles.infoValue}>I'm on vacation / break</Text>
+                </View>
+              </View>
+              <Switch
+                value={isOnVacation}
+                onValueChange={(val) => {
+                  setIsOnVacation(val);
+                  setVacationErrors([]);
+                }}
+                trackColor={{ false: '#767577', true: COLORS.primary }}
+                thumbColor={isOnVacation ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
 
-        {/* ── Residence Info (read-only) ── */}
-        <Text style={styles.sectionLabel}>Residence</Text>
-        <View style={styles.infoCard}>
-          <InfoRow
-            icon="bed-outline"
-            label="Room number"
-            value={user?.room_number}
-          />
-          <InfoRow
-            icon="business-outline"
-            label="Floor"
-            value={user?.floor != null ? `Floor ${user.floor}` : null}
-          />
-          <InfoRow
-            icon="home-outline"
-            label="Stay type"
-            value={user?.stay_type}
-          />
-          <InfoRow
-            icon="calendar-outline"
-            label="Move-in date"
-            value={fmt(user?.move_in_date)}
-          />
-          <InfoRow
-            icon="calendar-clear-outline"
-            label="Move-out date"
-            value={fmt(user?.move_out_date)}
-            last
-          />
-        </View>
+            {isOnVacation && (
+              <View style={[styles.infoRow, { flexDirection: 'column', alignItems: 'stretch', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, paddingBottom: 12, paddingRight: 12 }]}>
+                <Text style={styles.infoLabel}>Vacation Note (Optional)</Text>
+                <TextInput
+                  style={[styles.infoValue, { borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: 2, marginTop: 4 }]}
+                  value={vacationNote}
+                  onChangeText={setVacationNote}
+                  placeholder="e.g., Summer break, Family vacation"
+                  placeholderTextColor={COLORS.muted}
+                  maxLength={150}
+                />
+              </View>
+            )}
 
-        {/* ── Contact Info (editable — saved only when button pressed) ── */}
-        <Text style={styles.sectionLabel}>Contact</Text>
-        <View style={styles.infoCard}>
-          <EditableInfoRow
-            icon="call-outline"
-            label="Contact number"
-            value={contactNumber}
-            onChangeText={handlePhoneChange}
-            keyboardType="phone-pad"
-            error={phoneError}
-          />
-          <EditableInfoRow
-            icon="mail-outline"
-            label="Email"
-            value={email}
-            onChangeText={handleEmailChange}
-            keyboardType="email-address"
-            error={emailError}
-            last
-          />
-        </View>
+            {vacationErrors.length > 0 && (
+              <View style={{ padding: 12, backgroundColor: '#FEF2F2', borderRadius: 8, margin: 12, gap: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.danger }}>
+                  Preconditions not met:
+                </Text>
+                {vacationErrors.map((err, idx) => (
+                  <Text key={idx} style={{ fontSize: 11, color: COLORS.danger }}>
+                    • {err}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
 
-        {/* Save Contact button — only visible when something changed */}
-        {contactDirty && (
+          {vacationDirty && (
+            <TouchableOpacity
+              style={[styles.saveBtn, vacationSaving && styles.saveBtnDisabled, { marginBottom: 16 }]}
+              onPress={handleUpdateVacationStatus}
+              disabled={vacationSaving}
+              activeOpacity={0.85}
+            >
+              {vacationSaving ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="save-outline" size={18} color={COLORS.white} />
+                  <Text style={styles.saveBtnText}>Save Vacation Status</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* ── Contact Info (editable — saved only when button pressed) ── */}
+          <Text style={styles.sectionLabel}>Contact</Text>
+          <View style={styles.infoCard}>
+            <EditableInfoRow
+              icon="call-outline"
+              label="Contact number"
+              value={contactNumber}
+              onChangeText={handlePhoneChange}
+              keyboardType="phone-pad"
+              error={phoneError}
+            />
+            <EditableInfoRow
+              icon="mail-outline"
+              label="Email"
+              value={email}
+              onChangeText={handleEmailChange}
+              keyboardType="email-address"
+              error={emailError}
+              last
+            />
+          </View>
+
+          {/* Save Contact button — only visible when something changed */}
+          {contactDirty && (
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              onPress={handleUpdateContact}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="save-outline" size={18} color={COLORS.white} />
+                  <Text style={styles.saveBtnText}>Save Contact Info</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* ── Change Password ── */}
+          {/* inline error box — shown just above the section */}
+          {pwError ? (
+            <View style={styles.pwErrorBox}>
+              <Ionicons name="alert-circle" size={16} color="#922B21" />
+              <Text style={styles.pwErrorText}>{pwError}</Text>
+            </View>
+          ) : null}
+          <Text style={styles.sectionLabel}>Change password</Text>
+          <View style={styles.pwCard}>
+            <PwInput
+              label="Current password"
+              value={currentPw}
+              onChangeText={setCurrentPw}
+              first
+            />
+            <PwInput
+              label="New password"
+              value={newPw}
+              onChangeText={setNewPw}
+            />
+            {/* password requirements checklist */}
+            {newPw.length > 0 && (
+              <View style={styles.checklist}>
+                <View style={styles.checkItem}>
+                  <Ionicons
+                    name={newPw.length >= 8 ? "checkmark-circle" : "ellipse-outline"}
+                    size={14}
+                    color={newPw.length >= 8 ? COLORS.success : COLORS.muted}
+                  />
+                  <Text style={[styles.checkText, newPw.length >= 8 && styles.checkTextDone]}>
+                    At least 8 characters
+                  </Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Ionicons
+                    name={/[A-Z]/.test(newPw) ? "checkmark-circle" : "ellipse-outline"}
+                    size={14}
+                    color={/[A-Z]/.test(newPw) ? COLORS.success : COLORS.muted}
+                  />
+                  <Text style={[styles.checkText, /[A-Z]/.test(newPw) && styles.checkTextDone]}>
+                    At least one uppercase letter (A-Z)
+                  </Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Ionicons
+                    name={/[a-z]/.test(newPw) ? "checkmark-circle" : "ellipse-outline"}
+                    size={14}
+                    color={/[a-z]/.test(newPw) ? COLORS.success : COLORS.muted}
+                  />
+                  <Text style={[styles.checkText, /[a-z]/.test(newPw) && styles.checkTextDone]}>
+                    At least one lowercase letter (a-z)
+                  </Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Ionicons
+                    name={/[0-9]/.test(newPw) ? "checkmark-circle" : "ellipse-outline"}
+                    size={14}
+                    color={/[0-9]/.test(newPw) ? COLORS.success : COLORS.muted}
+                  />
+                  <Text style={[styles.checkText, /[0-9]/.test(newPw) && styles.checkTextDone]}>
+                    At least one number (0-9)
+                  </Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Ionicons
+                    name={/[^A-Za-z0-9]/.test(newPw) ? "checkmark-circle" : "ellipse-outline"}
+                    size={14}
+                    color={/[^A-Za-z0-9]/.test(newPw) ? COLORS.success : COLORS.muted}
+                  />
+                  <Text style={[styles.checkText, /[^A-Za-z0-9]/.test(newPw) && styles.checkTextDone]}>
+                    At least one special character (e.g. !@#$)
+                  </Text>
+                </View>
+              </View>
+            )}
+            {/* Confirm field shows live match / mismatch indicator */}
+            <PwInput
+              label="Confirm new password"
+              value={confirmPw}
+              onChangeText={setConfirmPw}
+              matchStatus={pwMatchStatus}
+            />
+          </View>
+
+          {/* Update Password button — disabled while passwords mismatch */}
           <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleUpdateContact}
-            disabled={saving}
+            style={[
+              styles.saveBtn,
+              (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled,
+            ]}
+            onPress={handleChangePassword}
+            disabled={savingPw || pwMatchStatus === 'mismatch'}
             activeOpacity={0.85}
           >
-            {saving ? (
+            {savingPw ? (
               <ActivityIndicator size="small" color={COLORS.white} />
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="save-outline" size={18} color={COLORS.white} />
-                <Text style={styles.saveBtnText}>Save Contact Info</Text>
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
+                <Text style={styles.saveBtnText}>Update Password</Text>
               </View>
             )}
           </TouchableOpacity>
-        )}
 
-        {/* ── Change Password ── */}
-        <Text style={styles.sectionLabel}>Change password</Text>
-        <View style={styles.pwCard}>
-          <PwInput
-            label="Current password"
-            value={currentPw}
-            onChangeText={setCurrentPw}
-            first
-          />
-          <PwInput
-            label="New password"
-            value={newPw}
-            onChangeText={setNewPw}
-          />
-          {/* Confirm field shows live match / mismatch indicator */}
-          <PwInput
-            label="Confirm new password"
-            value={confirmPw}
-            onChangeText={setConfirmPw}
-            matchStatus={pwMatchStatus}
-          />
-        </View>
-
-        {/* Update Password button — disabled while passwords mismatch */}
-        <TouchableOpacity
-          style={[
-            styles.saveBtn,
-            (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled,
-          ]}
-          onPress={handleChangePassword}
-          disabled={savingPw || pwMatchStatus === 'mismatch'}
-          activeOpacity={0.85}
-        >
-          {savingPw ? (
-            <ActivityIndicator size="small" color={COLORS.white} />
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
-              <Text style={styles.saveBtnText}>Update Password</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* ── Bottom Nav ── */}
       <View style={[
