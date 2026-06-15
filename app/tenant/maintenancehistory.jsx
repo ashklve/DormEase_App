@@ -22,6 +22,7 @@ import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -625,11 +626,6 @@ export default function MaintenanceHistoryScreen() {
                     </View>
                 }
             >
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={COLORS.primary} />
-                    </View>
-                ) : (
                     <ScrollView
                         scrollEnabled={scrollEnabled}
                         showsVerticalScrollIndicator={false}
@@ -804,7 +800,6 @@ export default function MaintenanceHistoryScreen() {
                         ))
                     )}
                     </ScrollView>
-                )}
             </PremiumPullToRefresh>
 
             {/* ── Bottom Nav ── */}
@@ -818,6 +813,7 @@ export default function MaintenanceHistoryScreen() {
                 <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
+            <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
 }
