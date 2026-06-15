@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,7 @@ import { useUser } from '../../src/context/UserContext';
 import client from '../../api/client';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import { addNotificationReceivedListener } from '../../src/services/pushNotifications';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -487,11 +488,6 @@ export default function NotificationsScreen() {
                     </View>
                 }
             >
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={NOTIF_COLORS.primary} />
-                    </View>
-                ) : (
                     <ScrollView
                         scrollEnabled={scrollEnabled}
                         showsVerticalScrollIndicator={false}
@@ -598,7 +594,6 @@ export default function NotificationsScreen() {
                         <EmptyState />
                     )}
                     </ScrollView>
-                )}
             </PremiumPullToRefresh>
 
             {/* ─── Bottom nav ─── */}
@@ -640,6 +635,7 @@ export default function NotificationsScreen() {
                     onPress={() => tabNavigate('profile', '/tenant/profile')}
                 />
             </View>
+            <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
 }

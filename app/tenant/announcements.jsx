@@ -24,6 +24,7 @@ import { scale, verticalScale, moderateScale } from '../../src/utils/scale';
 import { useUser } from '../../src/context/UserContext';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
@@ -758,11 +759,6 @@ export default function AnnouncementsScreen() {
           </View>
         }
       >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : (
           <ScrollView
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
@@ -835,7 +831,6 @@ export default function AnnouncementsScreen() {
             )}
           </View>
           </ScrollView>
-        )}
       </PremiumPullToRefresh>
 
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 24) }]}>
@@ -892,6 +887,7 @@ export default function AnnouncementsScreen() {
       />
 
       <DrawerMenu ref={drawerRef} />
+      <LoadingOverlay visible={loading} />
     </SafeAreaView>
   );
 }

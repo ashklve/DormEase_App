@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import styles, { COLORS } from '../../src/constants/settingsstyles';
 import { useUser } from '../../src/context/UserContext';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 // ── Animated Toggle ───────────────────────────────────────────────────────────
 const Toggle = ({ value, onToggle }) => {
@@ -97,14 +98,21 @@ export default function SettingsScreen() {
     const router = useRouter();
     const { user } = useUser();
 
+    const [loading, setLoading] = useState(true);
     // ── notification toggles
     const [pushEnabled, setPushEnabled] = useState(false);
 
     // ── Check real push permission status on mount
     useEffect(() => {
         const checkPushPermission = async () => {
-            const { status } = await Notifications.getPermissionsAsync();
-            setPushEnabled(status === 'granted');
+            try {
+                const { status } = await Notifications.getPermissionsAsync();
+                setPushEnabled(status === 'granted');
+            } catch (err) {
+                console.warn(err);
+            } finally {
+                setLoading(false);
+            }
         };
         checkPushPermission();
     }, []);
@@ -228,7 +236,7 @@ export default function SettingsScreen() {
                     <Text style={styles.logoutBtnText}>Log out</Text>
                 </TouchableOpacity>
             </View>
-
+            <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
 }

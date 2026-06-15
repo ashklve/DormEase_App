@@ -21,6 +21,7 @@ import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import styles, { COLORS } from '../../src/constants/recordsstyles';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -463,14 +464,6 @@ export default function TenantRecordsScreen() {
                     </View>
                 }
             >
-                {loading ? (
-                    <View style={styles.loadingWrap}>
-                        <ActivityIndicator size="large" color={COLORS.primary} />
-                        <Text style={styles.loadingText}>
-                            Loading your records...
-                        </Text>
-                    </View>
-                ) : (
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={[
@@ -572,7 +565,6 @@ export default function TenantRecordsScreen() {
                         ))
                     )}
                     </ScrollView>
-                )}
             </PremiumPullToRefresh>
 
             {/* bottom nav */}
@@ -613,6 +605,7 @@ export default function TenantRecordsScreen() {
             </View>
 
             <DrawerMenu ref={drawerRef} />
+            <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
 }

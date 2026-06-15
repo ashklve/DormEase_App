@@ -20,6 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import styles, { COLORS } from '../../src/constants/documentstyles';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 import NotificationBell from '../../src/components/NotificationBell';
 import client from '../../api/client';
 
@@ -714,6 +715,7 @@ export default function DocumentsScreen() {
             </View>
 
             <DrawerMenu ref={drawerRef} />
+            <LoadingOverlay visible={docsLoading} />
         </SafeAreaView>
     );
 }
