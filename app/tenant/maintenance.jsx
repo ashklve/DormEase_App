@@ -32,6 +32,7 @@ import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -47,7 +48,7 @@ const fmtTimer = (secs) => {
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 };
 
-// ── Waveform animation component ─────────────────────────────────────────────
+// waveform animation component
 const BAR_COUNT = 28;
 
 const Waveform = ({ isRecording }) => {
@@ -105,7 +106,7 @@ const Waveform = ({ isRecording }) => {
     );
 };
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
+// bottom nav item
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -130,7 +131,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+// main screen
 export default function MaintenanceScreen() {
     const router = useRouter();
     const drawerRef = useRef(null);
@@ -145,14 +146,22 @@ export default function MaintenanceScreen() {
             );
         }
     }, [user]);
+
     const insets = useSafeAreaInsets();
 
-    // ── Form state
+    // brief mount loading overlay
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 1500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // form state
     const [description, setDescription] = useState('');
-    const [photo, setPhoto] = useState(null); // { uri, fileName, type }
+    const [photo, setPhoto] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // ── Voice recorder state
+    // voice recorder state
     const [speechLanguage, setSpeechLanguage] = useState('tl');
     const [isRecording, setIsRecording] = useState(false);
     const [modelLoaded, setModelLoaded] = useState(false);
@@ -168,7 +177,7 @@ export default function MaintenanceScreen() {
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((o) => o.key === speechLanguage)
         ?? SPEECH_LANGUAGE_OPTIONS[0];
 
-    // ── Recording timer
+    // recording timer
     const stopRecordingTimer = useCallback(() => {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -305,7 +314,7 @@ export default function MaintenanceScreen() {
         else startRecording();
     };
 
-    // ── Camera
+    // camera
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -338,7 +347,7 @@ export default function MaintenanceScreen() {
 
     const handleRemovePhoto = () => setPhoto(null);
 
-    // ── Submit
+    // submit
     const handleSubmit = async () => {
         if (!description.trim()) {
             Alert.alert('Validation', 'Please describe the problem.');
@@ -393,7 +402,7 @@ export default function MaintenanceScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={20}
             >
-                {/* ── Top Row ── */}
+                {/* top row */}
                 <View style={styles.topRow}>
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -412,7 +421,7 @@ export default function MaintenanceScreen() {
                     </View>
                 </View>
 
-                {/* ── Header ── */}
+                {/* header */}
                 <View style={styles.headerSection}>
                     <View style={styles.headerTitleRow}>
                         <View style={styles.headerIconBadge}>
@@ -423,7 +432,7 @@ export default function MaintenanceScreen() {
                     <Text style={styles.headerSub}>Describe the problem by speaking or typing.</Text>
                 </View>
 
-                {/* ── Content ── */}
+                {/* content */}
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[
@@ -433,9 +442,9 @@ export default function MaintenanceScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 >
-                    {/* ── Voice / Description Section ── */}
+                    {/* voice / description section */}
                     <View style={styles.formCard}>
-                        {/* Label + History */}
+                        {/* label + history */}
                         <View style={styles.labelRow}>
                             <Text style={styles.fieldLabel}>Describe the problem</Text>
                             <TouchableOpacity
@@ -448,7 +457,7 @@ export default function MaintenanceScreen() {
                         </View>
                         <Text style={styles.fieldHint}>Speak or type the details of the problem</Text>
 
-                        {/* Language selector */}
+                        {/* language selector */}
                         <View style={styles.languageSelector}>
                             {SPEECH_LANGUAGE_OPTIONS.map((option) => {
                                 const active = speechLanguage === option.key;
@@ -475,7 +484,7 @@ export default function MaintenanceScreen() {
                             })}
                         </View>
 
-                        {/* Waveform recorder box */}
+                        {/* waveform recorder box */}
                         <TouchableOpacity
                             style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
                             activeOpacity={0.85}
@@ -502,21 +511,21 @@ export default function MaintenanceScreen() {
                                         : 'Tap to Speak'}
                         </Text>
 
-                        {/* Transcription result */}
+                        {/* transcription result */}
                         {(isRecording || hasRecording) && description ? (
                             <View style={styles.transcriptBox}>
                                 <Text style={styles.transcriptText}>{description}</Text>
                             </View>
                         ) : null}
 
-                        {/* Divider */}
+                        {/* divider */}
                         <View style={styles.orRow}>
                             <View style={styles.orLine} />
                             <Text style={styles.orText}>or</Text>
                             <View style={styles.orLine} />
                         </View>
 
-                        {/* Manual text input */}
+                        {/* manual text input */}
                         <TextInput
                             style={styles.descInput}
                             placeholder="Describe the problem here..."
@@ -529,7 +538,7 @@ export default function MaintenanceScreen() {
                         />
                     </View>
 
-                    {/* ── Photo Section ── */}
+                    {/* photo section */}
                     <View style={styles.formCard}>
                         <Text style={styles.fieldLabel}>Attach a Photo</Text>
                         <Text style={styles.fieldHint}>Optional — take a photo of the problem</Text>
@@ -541,7 +550,6 @@ export default function MaintenanceScreen() {
                                     style={styles.photoPreview}
                                     resizeMode="cover"
                                 />
-                                {/* Retake + Remove actions */}
                                 <View style={styles.photoActions}>
                                     <TouchableOpacity
                                         style={styles.photoActionBtn}
@@ -578,7 +586,7 @@ export default function MaintenanceScreen() {
                         )}
                     </View>
 
-                    {/* ── Submit ── */}
+                    {/* submit */}
                     <TouchableOpacity
                         style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
                         activeOpacity={0.85}
@@ -593,7 +601,7 @@ export default function MaintenanceScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* ── Bottom Nav ── */}
+            {/* bottom nav */}
             <View style={[
                 styles.bottomNav,
                 { paddingBottom: Math.max(insets.bottom, 24) },
@@ -605,8 +613,12 @@ export default function MaintenanceScreen() {
                 <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
             </View>
 
-            {/* ── Drawer ── */}
+            {/* drawer */}
             <DrawerMenu ref={drawerRef} />
+
+            {/* loading overlay — brief mount transition */}
+            <LoadingOverlay visible={loading} />
+
         </SafeAreaView>
     );
 }
