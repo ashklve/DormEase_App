@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, KeyboardAvoidingView, Platform, Animated,
-    Dimensions, StatusBar, Image,
+    Dimensions, StatusBar, Image, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -21,8 +21,6 @@ const ID_PREFIX = `TNT-${new Date().getFullYear()}-`;
 export default function LoginScreen() {
     const router = useRouter();
 
-    // 'account_id' | 'email'
-    const [loginMode, setLoginMode] = useState('account_id');
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -43,12 +41,6 @@ export default function LoginScreen() {
         ]).start();
     }, []);
 
-    const switchMode = (mode) => {
-        setLoginMode(mode);
-        setIdentifier('');
-        setError('');
-    };
-
     const handleToggle = () => {
         const newVal = !rememberMe;
         setRememberMe(newVal);
@@ -65,26 +57,25 @@ export default function LoginScreen() {
         outputRange: [2, 22],
     });
 
-    const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.com$/i.test(val.trim());
+    const handleForgotPassword = () => {
+        Alert.alert(
+            'Reset Password',
+            'To reset your password, please contact the admin.',
+            [{ text: 'OK' }]
+        );
+    };
 
     const handleLogin = async () => {
         setError('');
 
-        if (loginMode === 'account_id') {
-            if (!identifier.trim()) return setError('Please enter your 3-digit Account number');
-            if (!/^\d{3}$/.test(identifier.trim())) return setError('Account number must be exactly 3 digits (e.g. 001)');
-        } else {
-            if (!identifier.trim()) return setError('Please enter your email address');
-            if (!isValidEmail(identifier)) return setError('Please enter a valid email address ending in .com (e.g. example@gmail.com)');
-        }
+        if (!identifier.trim()) return setError('Please enter your 3-digit Account number');
+        if (!/^\d{3}$/.test(identifier.trim())) return setError('Account number must be exactly 3 digits (e.g. 001)');
 
         if (!password) return setError('Please enter your password');
         if (password.length < 6) return setError('Password must be at least 6 characters');
 
         // Build the full identifier to send to the API
-        const fullIdentifier = loginMode === 'account_id'
-            ? `${ID_PREFIX}${identifier.trim().padStart(3, '0')}`
-            : identifier.trim();
+        const fullIdentifier = `${ID_PREFIX}${identifier.trim().padStart(3, '0')}`;
         setLoading(true);
         try {
             const res = await loginTenant(fullIdentifier, password);
@@ -148,38 +139,6 @@ export default function LoginScreen() {
                         Welcome! Please enter your information below and get started.
                     </Text>
 
-                    {/* ── Login Mode Tab Switcher ── */}
-                    <View style={styles.tabRow}>
-                        <TouchableOpacity
-                            style={[styles.tabBtn, loginMode === 'account_id' && styles.tabBtnActive]}
-                            onPress={() => switchMode('account_id')}
-                            activeOpacity={0.8}
-                        >
-                            <MaterialIcons
-                                name="badge"
-                                size={15}
-                                color={loginMode === 'account_id' ? '#fff' : TEXT_MUTED}
-                            />
-                            <Text style={[styles.tabText, loginMode === 'account_id' && styles.tabTextActive]}>
-                                Account ID
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.tabBtn, loginMode === 'email' && styles.tabBtnActive]}
-                            onPress={() => switchMode('email')}
-                            activeOpacity={0.8}
-                        >
-                            <MaterialIcons
-                                name="email"
-                                size={15}
-                                color={loginMode === 'email' ? '#fff' : TEXT_MUTED}
-                            />
-                            <Text style={[styles.tabText, loginMode === 'email' && styles.tabTextActive]}>
-                                Email
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
                     {/* error message */}
                     {error ? (
                         <View style={styles.errorContainer}>
@@ -188,53 +147,34 @@ export default function LoginScreen() {
                         </View>
                     ) : null}
 
-                    {/* identifier input — adapts to login mode */}
+                    {/* identifier input */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            {loginMode === 'email' ? 'Email Address' : 'Account ID'}
-                        </Text>
+                        <Text style={styles.label}>Account ID</Text>
                         <View style={[styles.inputContainer, identifierFocused && styles.inputFocused]}>
                             <MaterialIcons
-                                name={loginMode === 'email' ? 'email' : 'badge'}
+                                name="badge"
                                 size={20}
                                 color={identifierFocused ? PINK_PRIMARY : TEXT_MUTED}
                             />
-                            {loginMode === 'account_id' ? (
-                                <>
-                                    {/* static prefix */}
-                                    <Text style={styles.idPrefix}>{ID_PREFIX}</Text>
-                                    {/* only 3 digits allowed */}
-                                    <TextInput
-                                        style={[styles.input, { marginLeft: 0, paddingLeft: 0, paddingHorizontal: 0 }]}
-                                        placeholder="001"
-                                        placeholderTextColor={TEXT_MUTED}
-                                        value={identifier}
-                                        onChangeText={(val) => {
-                                            // strip anything that isn't a digit, cap at 3 chars
-                                            const digits = val.replace(/\D/g, '').slice(0, 3);
-                                            setIdentifier(digits);
-                                        }}
-                                        onFocus={() => setIdentifierFocused(true)}
-                                        onBlur={() => setIdentifierFocused(false)}
-                                        keyboardType="number-pad"
-                                        maxLength={3}
-                                        autoCorrect={false}
-                                    />
-                                </>
-                            ) : (
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="example@.com"
-                                    placeholderTextColor={TEXT_MUTED}
-                                    value={identifier}
-                                    onChangeText={setIdentifier}
-                                    onFocus={() => setIdentifierFocused(true)}
-                                    onBlur={() => setIdentifierFocused(false)}
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                    autoCorrect={false}
-                                />
-                            )}
+                            {/* static prefix */}
+                            <Text style={styles.idPrefix}>{ID_PREFIX}</Text>
+                            {/* only 3 digits allowed */}
+                            <TextInput
+                                style={[styles.input, { marginLeft: 0, paddingLeft: 0, paddingHorizontal: 0 }]}
+                                placeholder="001"
+                                placeholderTextColor={TEXT_MUTED}
+                                value={identifier}
+                                onChangeText={(val) => {
+                                    // strip anything that isn't a digit, cap at 3 chars
+                                    const digits = val.replace(/\D/g, '').slice(0, 3);
+                                    setIdentifier(digits);
+                                }}
+                                onFocus={() => setIdentifierFocused(true)}
+                                onBlur={() => setIdentifierFocused(false)}
+                                keyboardType="number-pad"
+                                maxLength={3}
+                                autoCorrect={false}
+                            />
                         </View>
                     </View>
 
@@ -269,6 +209,14 @@ export default function LoginScreen() {
                                 />
                             </TouchableOpacity>
                         </View>
+                        {/* forgot password link */}
+                        <TouchableOpacity
+                            style={styles.forgotBtn}
+                            onPress={handleForgotPassword}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.forgotText}>Forgot password?</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* remember me toggle */}
@@ -406,38 +354,14 @@ const styles = StyleSheet.create({
         color: TEXT_DARK,
         marginLeft: 10,
     },
-    tabRow: {
-        flexDirection: 'row',
-        backgroundColor: '#F0E8EC',
-        borderRadius: 10,
-        padding: 3,
-        marginBottom: 20,
-        gap: 3,
+    forgotBtn: {
+        alignSelf: 'flex-end',
+        marginTop: 8,
     },
-    tabBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 9,
-        borderRadius: 8,
-        gap: 5,
-    },
-    tabBtnActive: {
-        backgroundColor: PINK_PRIMARY,
-        shadowColor: PINK_PRIMARY,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    tabText: {
+    forgotText: {
         fontSize: 13,
         fontWeight: '600',
-        color: TEXT_MUTED,
-    },
-    tabTextActive: {
-        color: '#fff',
+        color: PINK_PRIMARY,
     },
     eyeBtn: {
         padding: 6,
