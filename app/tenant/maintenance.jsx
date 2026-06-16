@@ -163,16 +163,25 @@ export default function MaintenanceScreen() {
 
     // voice recorder state
     const [speechLanguage, setSpeechLanguage] = useState('tl');
-    const [isRecording, setIsRecording] = useState(false);
+    const [recordingState, setRecordingState] = useState('idle'); // 'idle' | 'recording' | 'paused'
     const [modelLoaded, setModelLoaded] = useState(false);
     const [modelLoading, setModelLoading] = useState(true);
     const [recordSecs, setRecordSecs] = useState(0);
     const [hasRecording, setHasRecording] = useState(false);
+
+    const recordingStateRef = useRef('idle');
     const timerRef = useRef(null);
     const lastTimerTickRef = useRef(null);
     const transcribedRef = useRef('');
     const confirmedTranscriptRef = useRef('');
     const listenerRefs = useRef([]);
+
+    useEffect(() => {
+        recordingStateRef.current = recordingState;
+    }, [recordingState]);
+
+    const isRecording = recordingState === 'recording';
+    const isPaused = recordingState === 'paused';
 
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((o) => o.key === speechLanguage)
         ?? SPEECH_LANGUAGE_OPTIONS[0];
@@ -184,9 +193,11 @@ export default function MaintenanceScreen() {
         lastTimerTickRef.current = null;
     }, []);
 
-    const startRecordingTimer = useCallback(() => {
+    const startRecordingTimer = useCallback((isResume = false) => {
         stopRecordingTimer();
-        setRecordSecs(0);
+        if (!isResume) {
+            setRecordSecs(0);
+        }
         lastTimerTickRef.current = Date.now();
         timerRef.current = setInterval(() => {
             const now = Date.now();
@@ -225,7 +236,7 @@ export default function MaintenanceScreen() {
     }, [updateTranscript]);
 
     const handleSpeechLanguageChange = (nextLanguage) => {
-        if (isRecording || modelLoading || nextLanguage === speechLanguage) return;
+        if (recordingState !== 'idle' || modelLoading || nextLanguage === speechLanguage) return;
         setSpeechLanguage(nextLanguage);
         setDescription('');
         setHasRecording(false);
@@ -269,19 +280,18 @@ export default function MaintenanceScreen() {
         confirmedTranscriptRef.current = '';
         setDescription('');
         setHasRecording(false);
-        setIsRecording(true);
-        startRecordingTimer();
+        setRecordingState('recording');
+        startRecordingTimer(false);
 
         listenerRefs.current = [
             onPartialResult((text) => applyPartialTranscript(text)),
             onResult((text) => mergeTranscriptChunk(text)),
             onFinalResult((text) => {
                 mergeTranscriptChunk(text);
-                setHasRecording(true);
             }),
             onError((error) => {
                 console.error('Vosk recognition error:', error);
-                setIsRecording(false);
+                setRecordingState('idle');
                 stopRecordingTimer();
                 Alert.alert('Voice Input Error', String(error));
             }),
@@ -291,7 +301,52 @@ export default function MaintenanceScreen() {
             await new Promise((resolve) => setTimeout(resolve, 100));
             await start();
         } catch (error) {
-            setIsRecording(false);
+            setRecordingState('idle');
+            stopRecordingTimer();
+            clearVoskListeners();
+            Alert.alert('Voice Input Error', String(error));
+        }
+    };
+
+    const pauseRecording = async () => {
+        stopRecordingTimer();
+        setRecordingState('paused');
+        try {
+            await stop();
+        } catch (error) {
+            console.error('failed to stop Vosk recognizer:', error);
+        }
+    };
+
+    const resumeRecording = async () => {
+        if (!modelLoaded) {
+            Alert.alert('Voice Input Loading', 'Speech recognition is still loading. Please try again in a moment.');
+            return;
+        }
+
+        clearVoskListeners();
+        setRecordingState('recording');
+        startRecordingTimer(true);
+
+        listenerRefs.current = [
+            onPartialResult((text) => applyPartialTranscript(text)),
+            onResult((text) => mergeTranscriptChunk(text)),
+            onFinalResult((text) => {
+                mergeTranscriptChunk(text);
+            }),
+            onError((error) => {
+                console.error('Vosk recognition error:', error);
+                setRecordingState('idle');
+                stopRecordingTimer();
+                Alert.alert('Voice Input Error', String(error));
+            }),
+        ];
+
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            await start();
+        } catch (error) {
+            setRecordingState('idle');
             stopRecordingTimer();
             clearVoskListeners();
             Alert.alert('Voice Input Error', String(error));
@@ -300,18 +355,13 @@ export default function MaintenanceScreen() {
 
     const stopRecording = async () => {
         stopRecordingTimer();
-        setIsRecording(false);
+        setRecordingState('idle');
         try {
             await stop();
         } catch (error) {
             console.error('failed to stop Vosk recognizer:', error);
         }
         setHasRecording(Boolean(transcribedRef.current));
-    };
-
-    const handleToggleRecord = () => {
-        if (isRecording) stopRecording();
-        else startRecording();
     };
 
     // camera
@@ -461,16 +511,17 @@ export default function MaintenanceScreen() {
                         <View style={styles.languageSelector}>
                             {SPEECH_LANGUAGE_OPTIONS.map((option) => {
                                 const active = speechLanguage === option.key;
+                                const isSpeechBusy = recordingState !== 'idle' || modelLoading;
                                 return (
                                     <TouchableOpacity
                                         key={option.key}
                                         style={[
                                             styles.languageOption,
                                             active && styles.languageOptionActive,
-                                            (isRecording || modelLoading) && styles.languageOptionDisabled,
+                                            isSpeechBusy && styles.languageOptionDisabled,
                                         ]}
                                         onPress={() => handleSpeechLanguageChange(option.key)}
-                                        disabled={isRecording || modelLoading}
+                                        disabled={isSpeechBusy}
                                         activeOpacity={0.85}
                                     >
                                         <Text style={[
@@ -485,34 +536,69 @@ export default function MaintenanceScreen() {
                         </View>
 
                         {/* waveform recorder box */}
-                        <TouchableOpacity
-                            style={[styles.recorderBox, isRecording && styles.recorderBoxActive]}
-                            activeOpacity={0.85}
-                            onPress={handleToggleRecord}
-                            disabled={modelLoading}
-                        >
-                            {isRecording ? (
-                                <Waveform isRecording={isRecording} />
+                        <View style={[styles.recorderBox, (isRecording || isPaused) && styles.recorderBoxActive]}>
+                            {recordingState === 'idle' ? (
+                                <>
+                                    <TouchableOpacity
+                                        style={styles.micCircle}
+                                        activeOpacity={0.85}
+                                        onPress={startRecording}
+                                        disabled={modelLoading}
+                                    >
+                                        <MaterialIcons name="mic" size={28} color={COLORS.white} />
+                                    </TouchableOpacity>
+                                    <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+                                </>
                             ) : (
-                                <View style={styles.micCircle}>
-                                    <MaterialIcons name="mic" size={28} color={COLORS.white} />
-                                </View>
+                                <>
+                                    <Waveform isRecording={isRecording} />
+                                    <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
+
+                                    <View style={styles.controlRow}>
+                                        {isRecording ? (
+                                            <TouchableOpacity
+                                                style={[styles.controlBtn, styles.pauseBtn]}
+                                                activeOpacity={0.85}
+                                                onPress={pauseRecording}
+                                            >
+                                                <MaterialIcons name="pause" size={24} color={COLORS.white} />
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <TouchableOpacity
+                                                style={[styles.controlBtn, styles.resumeBtn]}
+                                                activeOpacity={0.85}
+                                                onPress={resumeRecording}
+                                            >
+                                                <MaterialIcons name="play-arrow" size={24} color={COLORS.white} />
+                                            </TouchableOpacity>
+                                        )}
+
+                                        <TouchableOpacity
+                                            style={[styles.controlBtn, styles.stopBtn]}
+                                            activeOpacity={0.85}
+                                            onPress={stopRecording}
+                                        >
+                                            <MaterialIcons name="stop" size={24} color={COLORS.white} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </>
                             )}
-                            <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
-                        </TouchableOpacity>
+                        </View>
 
                         <Text style={styles.tapToSpeak}>
                             {modelLoading
                                 ? `Loading ${selectedSpeechLanguage.label} Model...`
-                                : isRecording
-                                    ? 'Tap to stop recording'
-                                    : hasRecording
-                                        ? 'Tap to re-record'
-                                        : 'Tap to Speak'}
+                                : recordingState === 'recording'
+                                    ? 'Recording... Tap Pause or Stop'
+                                    : recordingState === 'paused'
+                                        ? 'Paused. Tap Resume or Stop'
+                                        : hasRecording
+                                            ? 'Tap to re-record'
+                                            : 'Tap to Speak'}
                         </Text>
 
                         {/* transcription result */}
-                        {(isRecording || hasRecording) && description ? (
+                        {(recordingState !== 'idle' || hasRecording) && description ? (
                             <View style={styles.transcriptBox}>
                                 <Text style={styles.transcriptText}>{description}</Text>
                             </View>
