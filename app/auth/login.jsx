@@ -16,15 +16,18 @@ const PINK_DARK = '#D63375';
 const PINK_FORM = '#FFF0F3';
 const TEXT_DARK = '#2D1B2E';
 const TEXT_MUTED = '#B5B7C0';
+const ID_PREFIX = `TNT-${new Date().getFullYear()}-`;
 
 export default function LoginScreen() {
     const router = useRouter();
 
-    const [accountId, setAccountId] = useState('');
+    // 'account_id' | 'email'
+    const [loginMode, setLoginMode] = useState('account_id');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [accountFocused, setAccountFocused] = useState(false);
+    const [identifierFocused, setIdentifierFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -39,6 +42,12 @@ export default function LoginScreen() {
             Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
         ]).start();
     }, []);
+
+    const switchMode = (mode) => {
+        setLoginMode(mode);
+        setIdentifier('');
+        setError('');
+    };
 
     const handleToggle = () => {
         const newVal = !rememberMe;
@@ -56,15 +65,29 @@ export default function LoginScreen() {
         outputRange: [2, 22],
     });
 
+    const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.com$/i.test(val.trim());
+
     const handleLogin = async () => {
         setError('');
-        if (!accountId.trim()) return setError('Please enter your Account ID');
+
+        if (loginMode === 'account_id') {
+            if (!identifier.trim()) return setError('Please enter your 3-digit Account number');
+            if (!/^\d{3}$/.test(identifier.trim())) return setError('Account number must be exactly 3 digits (e.g. 001)');
+        } else {
+            if (!identifier.trim()) return setError('Please enter your email address');
+            if (!isValidEmail(identifier)) return setError('Please enter a valid email address ending in .com (e.g. example@gmail.com)');
+        }
+
         if (!password) return setError('Please enter your password');
         if (password.length < 6) return setError('Password must be at least 6 characters');
 
+        // Build the full identifier to send to the API
+        const fullIdentifier = loginMode === 'account_id'
+            ? `${ID_PREFIX}${identifier.trim().padStart(3, '0')}`
+            : identifier.trim();
         setLoading(true);
         try {
-            const res = await loginTenant(accountId, password);
+            const res = await loginTenant(fullIdentifier, password);
 
             await AsyncStorage.setItem('auth_token', res.token);
 
@@ -125,6 +148,38 @@ export default function LoginScreen() {
                         Welcome! Please enter your information below and get started.
                     </Text>
 
+                    {/* ── Login Mode Tab Switcher ── */}
+                    <View style={styles.tabRow}>
+                        <TouchableOpacity
+                            style={[styles.tabBtn, loginMode === 'account_id' && styles.tabBtnActive]}
+                            onPress={() => switchMode('account_id')}
+                            activeOpacity={0.8}
+                        >
+                            <MaterialIcons
+                                name="badge"
+                                size={15}
+                                color={loginMode === 'account_id' ? '#fff' : TEXT_MUTED}
+                            />
+                            <Text style={[styles.tabText, loginMode === 'account_id' && styles.tabTextActive]}>
+                                Account ID
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.tabBtn, loginMode === 'email' && styles.tabBtnActive]}
+                            onPress={() => switchMode('email')}
+                            activeOpacity={0.8}
+                        >
+                            <MaterialIcons
+                                name="email"
+                                size={15}
+                                color={loginMode === 'email' ? '#fff' : TEXT_MUTED}
+                            />
+                            <Text style={[styles.tabText, loginMode === 'email' && styles.tabTextActive]}>
+                                Email
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     {/* error message */}
                     {error ? (
                         <View style={styles.errorContainer}>
@@ -133,26 +188,53 @@ export default function LoginScreen() {
                         </View>
                     ) : null}
 
-                    {/* account id input */}
+                    {/* identifier input — adapts to login mode */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Account ID</Text>
-                        <View style={[styles.inputContainer, accountFocused && styles.inputFocused]}>
+                        <Text style={styles.label}>
+                            {loginMode === 'email' ? 'Email Address' : 'Account ID'}
+                        </Text>
+                        <View style={[styles.inputContainer, identifierFocused && styles.inputFocused]}>
                             <MaterialIcons
-                                name="badge"
+                                name={loginMode === 'email' ? 'email' : 'badge'}
                                 size={20}
-                                color={accountFocused ? PINK_PRIMARY : TEXT_MUTED}
+                                color={identifierFocused ? PINK_PRIMARY : TEXT_MUTED}
                             />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. TNT-2026-001"
-                                placeholderTextColor={TEXT_MUTED}
-                                value={accountId}
-                                onChangeText={setAccountId}
-                                onFocus={() => setAccountFocused(true)}
-                                onBlur={() => setAccountFocused(false)}
-                                autoCapitalize="characters"
-                                autoCorrect={false}
-                            />
+                            {loginMode === 'account_id' ? (
+                                <>
+                                    {/* static prefix */}
+                                    <Text style={styles.idPrefix}>{ID_PREFIX}</Text>
+                                    {/* only 3 digits allowed */}
+                                    <TextInput
+                                        style={[styles.input, { marginLeft: 0, paddingLeft: 0, paddingHorizontal: 0 }]}
+                                        placeholder="001"
+                                        placeholderTextColor={TEXT_MUTED}
+                                        value={identifier}
+                                        onChangeText={(val) => {
+                                            // strip anything that isn't a digit, cap at 3 chars
+                                            const digits = val.replace(/\D/g, '').slice(0, 3);
+                                            setIdentifier(digits);
+                                        }}
+                                        onFocus={() => setIdentifierFocused(true)}
+                                        onBlur={() => setIdentifierFocused(false)}
+                                        keyboardType="number-pad"
+                                        maxLength={3}
+                                        autoCorrect={false}
+                                    />
+                                </>
+                            ) : (
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="example@.com"
+                                    placeholderTextColor={TEXT_MUTED}
+                                    value={identifier}
+                                    onChangeText={setIdentifier}
+                                    onFocus={() => setIdentifierFocused(true)}
+                                    onBlur={() => setIdentifierFocused(false)}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    autoCorrect={false}
+                                />
+                            )}
                         </View>
                     </View>
 
@@ -317,6 +399,45 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: TEXT_DARK,
         marginLeft: 10,
+    },
+    idPrefix: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: TEXT_DARK,
+        marginLeft: 10,
+    },
+    tabRow: {
+        flexDirection: 'row',
+        backgroundColor: '#F0E8EC',
+        borderRadius: 10,
+        padding: 3,
+        marginBottom: 20,
+        gap: 3,
+    },
+    tabBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 9,
+        borderRadius: 8,
+        gap: 5,
+    },
+    tabBtnActive: {
+        backgroundColor: PINK_PRIMARY,
+        shadowColor: PINK_PRIMARY,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    tabText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: TEXT_MUTED,
+    },
+    tabTextActive: {
+        color: '#fff',
     },
     eyeBtn: {
         padding: 6,
