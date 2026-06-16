@@ -31,6 +31,7 @@ import DrawerMenu from '../../src/components/DrawerMenu';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 import styles, { COLORS, CATEGORY_COLORS } from '../../src/constants/emergencystyles';
 import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
+import { isGibberish } from '../../src/utils/validation';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -400,6 +401,11 @@ export default function EmergencyScreen() {
         const description = manualText.trim() || transcript.trim();
         if (!description && !selectedCategory) {
             Alert.alert('Missing Info', 'Please describe the emergency or select a category.');
+            return;
+        }
+
+        if (description && isGibberish(description)) {
+            Alert.alert('Invalid Input', 'Please enter a clear description of the situation. Gibberish text or random characters are not allowed.');
             return;
         }
 
