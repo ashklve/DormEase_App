@@ -369,7 +369,60 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ── Skeleton ─────────────────────────────────────────────────────────────────
+
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: scale(16),
+    paddingTop: Platform.OS === 'ios' ? verticalScale(54) : (StatusBar.currentHeight ?? 24) + verticalScale(8),
+    paddingBottom: verticalScale(12),
+    backgroundColor: '#FDE8F0',
+    position: 'relative',
+  },
+  backBtn: {
+    position: 'absolute',
+    left: scale(16),
+    top: Platform.OS === 'ios' ? verticalScale(54) : (StatusBar.currentHeight ?? 24) + verticalScale(8),
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  topBarTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: '700',
+    color: COLORS.dark,
+  },
+
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: scale(20),
+    marginTop: scale(8),
+    marginBottom: scale(16),
+    paddingVertical: verticalScale(14),
+    borderRadius: scale(12),
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FBBCBC',
+  },
+  logoutBtnText: {
+    fontSize: moderateScale(15),
+    fontWeight: '700',
+    color: COLORS.danger,
+    letterSpacing: 0.3,
+  },
+
+  // ── Skeleton
   skeletonBox: {
     backgroundColor: COLORS.border,
     borderRadius: 8,
