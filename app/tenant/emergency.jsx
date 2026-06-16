@@ -276,6 +276,13 @@ export default function EmergencyScreen() {
         };
     }, [clearVoskListeners, selectedSpeechLanguage.label, selectedSpeechLanguage.model, stopRecordingTimer]);
 
+    useEffect(() => {
+        if (recordSecs >= 60 && recordingState === 'recording') {
+            stopRecording();
+            Alert.alert('Recording Limit Reached', 'Voice recording is limited to 1 minute.');
+        }
+    }, [recordSecs, recordingState]);
+
     const startRecording = async () => {
         if (!modelLoaded) {
             Alert.alert('Voice Input Loading', 'Speech recognition is still loading. Please try again in a moment.');
