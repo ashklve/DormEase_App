@@ -85,6 +85,35 @@ const formatVisitorTime = (timeStr) => {
     return formatDisplayTime(d);
 };
 
+// ── PH phone number formatter ─────────────────────────────────────────────────
+// Accepts 09XXXXXXXXX (11 digits) or 639XXXXXXXXX (12 digits)
+// Displays as: 0987-675-9875 or +63 987-675-9875
+const formatPHPhone = (raw) => {
+    // strip everything except digits and leading +
+    const digits = raw.replace(/\D/g, '');
+
+    // normalise to 11-digit local format for formatting logic
+    let local = digits;
+    if (digits.startsWith('63') && digits.length > 10) {
+        local = '0' + digits.slice(2); // 639... → 09...
+    }
+
+    if (local.startsWith('0')) {
+        // format: 0XXX-XXX-XXXX
+        const d = local.slice(1); // drop leading 0, work on remaining 10 digits
+        if (d.length <= 3) return '0' + d;
+        if (d.length <= 6) return `0${d.slice(0, 3)}-${d.slice(3)}`;
+        if (d.length <= 10) return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+        return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`; // cap at 11 digits
+    }
+
+    // fallback: just return raw digits (e.g. user typed partial 63... before 0)
+    return digits.slice(0, 12);
+};
+
+// Strip dashes/spaces to get raw digits for validation & submission
+const stripPHPhone = (formatted) => formatted.replace(/\D/g, '');
+
 // bottom nav item
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
@@ -306,6 +335,7 @@ export default function VisitorsScreen() {
     const [submitting, setSubmitting] = useState(false);
 
     const [fullName, setFullName] = useState('');
+    // contactNo holds the formatted display value (with dashes)
     const [contactNo, setContactNo] = useState('');
     const [purpose, setPurpose] = useState('');
     const [purposeOpen, setPurposeOpen] = useState(false);
@@ -317,6 +347,18 @@ export default function VisitorsScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [tempDateTime, setTempDateTime] = useState(new Date());
+
+    // ── Phone input handler ───────────────────────────────────────────────────
+    const handleContactNoChange = (text) => {
+        // strip everything non-digit from what the user typed
+        const digits = text.replace(/\D/g, '');
+
+        // cap at 11 digits (09XXXXXXXXX) or 12 if starts with 63
+        const maxLen = digits.startsWith('63') ? 12 : 11;
+        const capped = digits.slice(0, maxLen);
+
+        setContactNo(formatPHPhone(capped));
+    };
 
     const fetchVisitors = async () => {
         if (user?.is_on_vacation) return;
@@ -469,14 +511,14 @@ export default function VisitorsScreen() {
             return;
         }
 
-        const contactTrimmed = contactNo.trim();
-        if (!contactTrimmed) {
+        // strip formatting before validation
+        const rawDigits = stripPHPhone(contactNo);
+        if (!rawDigits) {
             Alert.alert('Required Field', 'Contact number is required.');
             return;
         }
-
-        if (!/^09\d{9}$/.test(contactTrimmed)) {
-            Alert.alert('Invalid Contact Number', 'Contact number must start with 09 and be exactly 11 digits.');
+        if (!/^09\d{9}$/.test(rawDigits) && !/^639\d{9}$/.test(rawDigits)) {
+            Alert.alert('Invalid Contact Number', 'Contact number must start with 09 and be exactly 11 digits (e.g. 0987-675-9875).');
             return;
         }
 
@@ -499,7 +541,8 @@ export default function VisitorsScreen() {
         try {
             const formData = new FormData();
             formData.append('visitor_name', nameTrimmed);
-            formData.append('contact_no', contactTrimmed);
+            // always submit raw 11-digit number to the API
+            formData.append('contact_no', rawDigits.startsWith('63') ? '0' + rawDigits.slice(2) : rawDigits);
             formData.append('purpose', purpose);
             formData.append('id_type', idType);
             formData.append('date_of_visit', formatSQLDate(selectedDateTime));
@@ -645,17 +688,16 @@ export default function VisitorsScreen() {
                                 value={fullName}
                                 onChangeText={setFullName}
                             />
+
+                            {/* ── PH phone input with auto-dash formatting ── */}
                             <TextInput
                                 style={styles.input}
-                                placeholder="Contact No. (e.g. 09XXXXXXXXX) *"
+                                placeholder="Contact No. (e.g. 0987-675-9875) *"
                                 placeholderTextColor={COLORS.muted}
                                 value={contactNo}
-                                onChangeText={(text) => {
-                                    const digitsOnly = text.replace(/\D/g, '');
-                                    if (digitsOnly.length <= 11) setContactNo(digitsOnly);
-                                }}
+                                onChangeText={handleContactNoChange}
                                 keyboardType="phone-pad"
-                                maxLength={11}
+                                maxLength={13} // 0XXX-XXX-XXXX = 13 chars
                             />
 
                             {/* purpose */}
