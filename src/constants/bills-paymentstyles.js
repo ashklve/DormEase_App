@@ -21,7 +21,17 @@ export default StyleSheet.create({
     paddingBottom: verticalScale(8),
   },
   backBtn: {
-    padding: 4,
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   topRowRight: {
     flexDirection: 'row',

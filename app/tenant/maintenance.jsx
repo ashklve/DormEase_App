@@ -32,6 +32,7 @@ import DrawerMenu from '../../src/components/DrawerMenu';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
+import { isGibberish } from '../../src/utils/validation';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -401,6 +402,10 @@ export default function MaintenanceScreen() {
     const handleSubmit = async () => {
         if (!description.trim()) {
             Alert.alert('Validation', 'Please describe the problem.');
+            return;
+        }
+        if (isGibberish(description)) {
+            Alert.alert('Invalid Input', 'Please enter a clear description of the problem. Gibberish text or random characters are not allowed.');
             return;
         }
         setSubmitting(true);

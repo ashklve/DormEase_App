@@ -611,8 +611,9 @@ export default function MaintenanceHistoryScreen() {
                         <TouchableOpacity
                             style={styles.backBtn}
                             onPress={() => router.push('/tenant/maintenance')}
+                            activeOpacity={0.7}
                         >
-                            <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+                            <MaterialIcons name="chevron-left" size={22} color={COLORS.dark} />
                         </TouchableOpacity>
                         <View style={styles.topRowRight}>
                             <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
