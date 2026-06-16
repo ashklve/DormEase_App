@@ -26,6 +26,24 @@ import client from '../../api/client';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
+// ── PH phone number formatter ─────────────────────────────────────────────────
+const formatPHPhone = (raw) => {
+    if (!raw) return '';
+    const digits = raw.replace(/\D/g, '');
+    let local = digits;
+    if (digits.startsWith('63') && digits.length > 10) {
+        local = '0' + digits.slice(2);
+    }
+    if (local.startsWith('0')) {
+        const d = local.slice(1);
+        if (d.length <= 3) return '0' + d;
+        if (d.length <= 6) return `0${d.slice(0, 3)}-${d.slice(3)}`;
+        if (d.length <= 10) return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+        return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
+    }
+    return digits.slice(0, 12);
+};
+
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
 const PREDEFINED_PURPOSES = [
@@ -145,8 +163,8 @@ export default function DocumentsScreen() {
             const u = res.data;
             setUserInfo(u);
             setFullName(`${u.first_name ?? ''} ${u.last_name ?? ''}`.trim());
-            setContactNo(u.contact_number ?? '');
-            setRoomNo(u.room_number ?? '');
+            setContactNo(u.contact_number ? formatPHPhone(u.contact_number) : '');
+            setRoomNo(u.room_number ? `Room ${u.room_number}` : '');
         }).catch(() => { });
     }, []);
 
@@ -264,8 +282,8 @@ export default function DocumentsScreen() {
             });
 
             setFullName(userInfo ? `${userInfo.first_name ?? ''} ${userInfo.last_name ?? ''}`.trim() : '');
-            setContactNo(userInfo?.contact_number ?? '');
-            setRoomNo(userInfo?.room_number ?? '');
+            setContactNo(userInfo?.contact_number ? formatPHPhone(userInfo.contact_number) : '');
+            setRoomNo(userInfo?.room_number ? `Room ${userInfo.room_number}` : '');
             setSelectedOption(null);
             setUploadedFile(null);
             setSelectedPurpose(null);
@@ -467,8 +485,14 @@ export default function DocumentsScreen() {
                                     placeholder="Contact No."
                                     placeholderTextColor={COLORS.muted}
                                     value={contactNo}
-                                    onChangeText={setContactNo}
+                                    onChangeText={(text) => {
+                                        const digits = text.replace(/\D/g, '');
+                                        const maxLen = digits.startsWith('63') ? 12 : 11;
+                                        const capped = digits.slice(0, maxLen);
+                                        setContactNo(formatPHPhone(capped));
+                                    }}
                                     keyboardType="phone-pad"
+                                    maxLength={13}
                                 />
                                 <Ionicons
                                     name="call-outline"
