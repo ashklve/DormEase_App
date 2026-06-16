@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../../api/client';
 
 // ── Build full avatar URL from a storage path ─────────────────────────────────
@@ -16,9 +17,17 @@ export function UserProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch once on app start
+    // Fetch once on app start — but only after token is confirmed present
     useEffect(() => {
-        fetchUser();
+        const init = async () => {
+            const token = await AsyncStorage.getItem('auth_token');
+            if (!token) {
+                setLoading(false);
+                return; // no token, don't attempt fetch — let login handle it
+            }
+            await fetchUser();
+        };
+        init();
     }, []);
 
     const fetchUser = async () => {
@@ -28,6 +37,11 @@ export function UserProvider({ children }) {
             setUser(res.data);
         } catch (err) {
             console.error('UserContext fetch error:', err.message);
+            if (err.response?.status === 401) {
+                // Token expired or invalid — clear it
+                await AsyncStorage.removeItem('auth_token');
+                setUser(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -48,7 +62,7 @@ export function UserProvider({ children }) {
         setUser((prev) => ({ ...prev, is_on_vacation: isOnVacation, vacation_note: vacationNote }));
     };
 
-    // Convenience: the resolved avatar URI ready for <Image source={}> 
+    // Convenience: the resolved avatar URI ready for <Image source={}>
     const avatarUri = user?.profile_photo ? buildAvatarUrl(user.profile_photo) : null;
 
     return (
