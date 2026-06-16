@@ -1,8 +1,8 @@
 import client from './client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const loginTenant = async (account_id, password) => {
-    const response = await client.post('/login', { account_id, password });
+export const loginTenant = async (identifier, password) => {
+    const response = await client.post('/login', { identifier, password });
     return response.data; // ← don't auto-save here anymore; let LoginScreen decide
 };
 
