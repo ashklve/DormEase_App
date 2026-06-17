@@ -16,8 +16,6 @@ import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
-
-// shows good morning / afternoon / evening based on current time
 const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -36,7 +34,6 @@ const formatBillAmount = (amount) => {
         : '0.00';
 };
 
-// hotlines banner component
 const HotlinesBanner = ({ onPress }) => (
     <TouchableOpacity
         onPress={onPress}
@@ -74,7 +71,6 @@ const HotlinesBanner = ({ onPress }) => (
     </TouchableOpacity>
 );
 
-// quick action card component
 const QuickActionCard = ({ iconName, title, description, onPress }) => (
     <TouchableOpacity style={styles.actionCard} onPress={onPress}>
         <View style={styles.actionIconBox}>
@@ -85,7 +81,6 @@ const QuickActionCard = ({ iconName, title, description, onPress }) => (
     </TouchableOpacity>
 );
 
-// bottom nav item component
 const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     <TouchableOpacity
         style={[styles.navItem, isCenter && styles.navCenter]}
@@ -110,7 +105,6 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-// single announcement row component on dashboard
 const AnnouncementItem = ({ title, date, preview, onPress }) => (
     <View style={styles.announcementCard}>
         <View style={styles.announceMegaphone}>
@@ -127,7 +121,6 @@ const AnnouncementItem = ({ title, date, preview, onPress }) => (
     </View>
 );
 
-// ── main screen ───────────────────────────────────────────────────────────────
 const Dashboard = () => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -137,12 +130,10 @@ const Dashboard = () => {
 
     const { user, avatarUri, fetchUser } = useUser();
 
-    // ── initialise state directly from cache so there is zero loading flash ──
     const [announcements, setAnnouncements] = useState(dashboardCache.announcements);
     const [currentBill, setCurrentBill] = useState(dashboardCache.currentBill);
     const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
     const [refreshing, setRefreshing] = useState(false);
-    // only show overlay on first load, skip if cache already has data
     const [loading, setLoading] = useState(!dashboardCache.loaded);
 
     const userData = {
@@ -156,7 +147,6 @@ const Dashboard = () => {
         pendingRequests,
     };
 
-    // ── all API calls — writes results to cache after each fetch ──────────────
     const fetchDashboardData = useCallback(async () => {
         const fetchAnnouncements = async () => {
             try {
@@ -205,18 +195,11 @@ const Dashboard = () => {
         };
 
         await Promise.all([fetchAnnouncements(), fetchCurrentBill(), fetchPendingRequests()]);
-
-        // mark as loaded so future mounts skip the fetch
         dashboardCache.loaded = true;
     }, []);
 
-    // ── on mount: skip fetch entirely if cache already has data ──────────────
     useEffect(() => {
-        if (dashboardCache.loaded) {
-            // cache hit — data already in state, no overlay needed
-            return;
-        }
-        // first ever load — fetch from API then hide overlay
+        if (dashboardCache.loaded) return;
         const init = async () => {
             await fetchUser();
             await fetchDashboardData();
@@ -225,7 +208,6 @@ const Dashboard = () => {
         init();
     }, []);
 
-    // ── pull-to-refresh — always forces a fresh fetch ─────────────────────────
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         fetchUser();
@@ -233,7 +215,6 @@ const Dashboard = () => {
         setRefreshing(false);
     }, [fetchDashboardData]);
 
-    // controls which bottom tab is active — fine to run on every focus, no API calls
     const [activeTab, setActiveTab] = useState('home');
     useFocusEffect(
         useCallback(() => {
@@ -241,17 +222,16 @@ const Dashboard = () => {
         }, [])
     );
 
-    // drawer ref
     const drawerRef = useRef(null);
-
-    // if user has a photo from the database use it, otherwise use the default
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
-    // navigate bottom tab and set active state
     const tabNavigate = (tab, route) => {
         setActiveTab(tab);
         if (route) router.push(route);
     };
+
+    // only show the 3 latest announcements on the dashboard
+    const latestAnnouncements = announcements.slice(0, 3);
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -285,7 +265,6 @@ const Dashboard = () => {
                     scrollEventThrottle={16}
                     overScrollMode="never"
                 >
-                {/* greeting */}
                 <View style={styles.greeting}>
                     <Text style={styles.greetTitle}>
                         {greeting}, {userData.firstName}! 👋
@@ -293,7 +272,6 @@ const Dashboard = () => {
                     <Text style={styles.greetSub}>Your dorm services are just a tap away.</Text>
                 </View>
 
-                {/* user card — tappable to go to profile */}
                 <TouchableOpacity
                     style={styles.userCard}
                     onPress={() => router.push('/tenant/profile')}
@@ -323,10 +301,8 @@ const Dashboard = () => {
                     </View>
                 </TouchableOpacity>
 
-                {/* hotlines banner */}
                 <HotlinesBanner onPress={() => router.push('/tenant/hotlines')} />
 
-                {/* quick actions */}
                 <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 12 }]}>
                     Quick Actions
                 </Text>
@@ -357,7 +333,6 @@ const Dashboard = () => {
                     />
                 </View>
 
-                {/* announcements — live from API */}
                 <View style={styles.announcementHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={styles.sectionTitle}>Announcements</Text>
@@ -372,12 +347,12 @@ const Dashboard = () => {
                     </TouchableOpacity>
                 </View>
 
-                {announcements.length === 0 ? (
+                {latestAnnouncements.length === 0 ? (
                     <Text style={{ paddingHorizontal: 20, color: COLORS.muted, fontSize: 13 }}>
                         No announcements yet.
                     </Text>
                 ) : (
-                    announcements.map((item) => (
+                    latestAnnouncements.map((item) => (
                         <AnnouncementItem
                             key={item.id}
                             title={item.title}
@@ -388,10 +363,23 @@ const Dashboard = () => {
                     ))
                 )}
 
+                {/* see all link below the 3 cards if there are more */}
+                {announcements.length > 3 && (
+                    <TouchableOpacity
+                        onPress={() => router.push('/tenant/announcements')}
+                        activeOpacity={0.7}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 4 }}
+                    >
+                        <Text style={{ fontSize: 13, color: COLORS.primary, fontWeight: '600' }}>
+                            View more announcements
+                        </Text>
+                        <MaterialIcons name="keyboard-arrow-down" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                )}
+
                 </ScrollView>
             </PremiumPullToRefresh>
 
-            {/* bottom nav */}
             <View style={[
                 styles.bottomNav,
                 { paddingBottom: Math.max(insets.bottom, 24) },
@@ -428,10 +416,7 @@ const Dashboard = () => {
                 />
             </View>
 
-            {/* drawer */}
             <DrawerMenu ref={drawerRef} />
-
-            {/* loading overlay — only on first load, skipped if cache hit */}
             <LoadingOverlay visible={loading} />
 
         </SafeAreaView>
