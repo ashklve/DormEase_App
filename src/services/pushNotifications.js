@@ -65,6 +65,7 @@ export const registerForPushNotificationsAsync = async () => {
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#CA5D86',
+                showBadge: true,
             });
         }
 
@@ -73,7 +74,13 @@ export const registerForPushNotificationsAsync = async () => {
         console.log('Push notification permission status:', finalStatus);
 
         if (existingPermission.status !== 'granted') {
-            const requestedPermission = await Notifications.requestPermissionsAsync();
+            const requestedPermission = await Notifications.requestPermissionsAsync({
+                ios: {
+                    allowAlert: true,
+                    allowBadge: true,
+                    allowSound: true,
+                },
+            });
             finalStatus = requestedPermission.status;
             console.log('Push notification requested permission status:', finalStatus);
         }
@@ -140,4 +147,17 @@ export const getLastNotificationRoute = () => {
     const data = response?.notification?.request?.content?.data;
 
     return data ? getNotificationRoute(data) : null;
+};
+
+export const setBadgeCount = async (count) => {
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+
+    try {
+        if (typeof Notifications.setBadgeCountAsync === 'function') {
+            await Notifications.setBadgeCountAsync(count);
+        }
+    } catch (error) {
+        console.warn('Failed to set badge count:', error.message);
+    }
 };
