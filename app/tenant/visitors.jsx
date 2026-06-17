@@ -511,6 +511,12 @@ export default function VisitorsScreen() {
             return;
         }
 
+        const nameRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'\-\.]+$/;
+        if (!nameRegex.test(nameTrimmed)) {
+            Alert.alert('Invalid Name', 'Full name must contain only letters, spaces, and basic punctuation (like hyphens, periods, or apostrophes).');
+            return;
+        }
+
         // strip formatting before validation
         const rawDigits = stripPHPhone(contactNo);
         if (!rawDigits) {

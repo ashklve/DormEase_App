@@ -139,7 +139,20 @@ export default function PaymentDetailScreen() {
                 allowsEditing: true,
                 quality: 0.85,
             });
-            if (!result.canceled) setProofUri(result.assets[0].uri);
+            if (!result.canceled) {
+                const asset = result.assets[0];
+                const uri = asset.uri;
+                const extension = uri.split('.').pop().toLowerCase();
+                if (extension !== 'jpg' && extension !== 'jpeg' && extension !== 'png') {
+                    Alert.alert('Invalid File Type', 'Only JPG and PNG images are allowed.');
+                    return;
+                }
+                if (asset.fileSize && asset.fileSize > 4 * 1024 * 1024) {
+                    Alert.alert('File Too Large', 'The payment proof image must be smaller than 4 MB.');
+                    return;
+                }
+                setProofUri(uri);
+            }
         } catch (err) {
             console.error('upload proof error:', err);
         }
@@ -228,7 +241,10 @@ export default function PaymentDetailScreen() {
                 }]
             );
         } catch (err) {
-            const msg = err.response?.data?.message ?? 'Failed to submit payment. Please try again.';
+            const errors = err.response?.data?.errors;
+            const msg = errors
+                ? Object.values(errors).flat().join('\n')
+                : (err.response?.data?.message ?? 'Failed to submit payment. Please try again.');
             Alert.alert('Error', msg);
         } finally {
             setSubmitting(false);
@@ -251,8 +267,9 @@ export default function PaymentDetailScreen() {
                     <TouchableOpacity
                         style={styles.backBtn}
                         onPress={() => router.back()}
+                        activeOpacity={0.7}
                     >
-                        <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+                        <MaterialIcons name="chevron-left" size={22} color={COLORS.dark} />
                     </TouchableOpacity>
                     <View style={styles.topRowRight}>
                         <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />

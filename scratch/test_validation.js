@@ -1,0 +1,52 @@
+import { isGibberish } from '../src/utils/validation.js';
+
+const testCases = [
+    'asdfghjk',
+    'sdfsdf',
+    'aaaa',
+    'asd',
+    'qwe',
+    'xyz',
+    'ng',
+    'Hello',
+    'World',
+    'leaking',
+    'pipe',
+    'bldg',
+    'brgy',
+    'asdf',
+    'qwerasdf',
+    'zxcvbnm',
+    'test',
+    'asdasd',
+    'laksjdhf',
+    'qweasd',
+    'asdewq',
+    'qawesadazxcv',
+    'gasgas',
+    'salsal',
+    'singsing',
+    'masdan',
+    'asdjf',
+    'asdasdasd',
+    'poiu',
+    'mnbv',
+    'plmokn',
+    'sewer',
+    'referee',
+    'free',
+    'wet',
+    'water',
+    'constantly',
+    'salamat',
+    'laga',
+    'akd',
+    'jfhk',
+    'poiq',
+    'laks',
+    'jdhf'
+];
+
+testCases.forEach(tc => {
+    console.log(`"${tc}" -> isGibberish: ${isGibberish(tc)}`);
+});

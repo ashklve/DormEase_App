@@ -422,4 +422,32 @@ export default StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 8,
     },
+    controlRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 24,
+        marginTop: 14,
+    },
+    controlBtn: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    pauseBtn: {
+        backgroundColor: '#FF85A1',
+    },
+    resumeBtn: {
+        backgroundColor: '#D63375',
+    },
+    stopBtn: {
+        backgroundColor: '#8A0F44',
+    },
 });
