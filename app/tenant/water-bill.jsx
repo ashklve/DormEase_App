@@ -221,6 +221,7 @@ export default function WaterBillScreen() {
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
     const [activeTab, setActiveTab] = useState(0);
 
     const indicatorAnim = useRef(new Animated.Value(0)).current;
@@ -306,6 +307,7 @@ export default function WaterBillScreen() {
                 onRefresh={onRefresh}
                 iconName="opacity"
                 headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
                 header={
                     <View style={styles.topRow}>
                         <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
@@ -325,6 +327,7 @@ export default function WaterBillScreen() {
             >
             <Animated.View style={[styles.tabContentWrapper, { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] }]}>
                 <ScrollView
+                    scrollEnabled={scrollEnabled}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
                     onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}

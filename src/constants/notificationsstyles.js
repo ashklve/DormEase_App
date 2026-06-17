@@ -1,4 +1,5 @@
 import { StyleSheet, Platform, StatusBar, Dimensions } from 'react-native';
+import { scale, verticalScale, moderateScale } from '../utils/scale';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -93,7 +94,17 @@ export default StyleSheet.create({
         paddingBottom: 8,
     },
     backBtn: {
-        padding: 4,
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(18),
+        backgroundColor: NOTIF_COLORS.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
     },
     topRowRight: {
         flexDirection: 'row',
@@ -160,16 +171,27 @@ export default StyleSheet.create({
     },
 
     /* ─── Tab / count row ─── */
-    filterUnreadDot: {
+    filterBadge: {
         position: 'absolute',
-        top: 7,
-        right: 7,
-        width: 9,
-        height: 9,
-        borderRadius: 5,
+        top: -6,
+        right: -6,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        paddingHorizontal: 3,
         backgroundColor: NOTIF_COLORS.primary,
         borderWidth: 1.5,
         borderColor: NOTIF_COLORS.white,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 5,
+    },
+    filterBadgeText: {
+        color: NOTIF_COLORS.white,
+        fontSize: 8,
+        fontWeight: '800',
+        lineHeight: 10,
+        textAlign: 'center',
     },
 
     tabRow: {

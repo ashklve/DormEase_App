@@ -332,6 +332,7 @@ export default function VisitorsScreen() {
     const [activePasses, setActivePasses] = useState(0);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     const [fullName, setFullName] = useState('');
@@ -598,6 +599,7 @@ export default function VisitorsScreen() {
                 onRefresh={onRefresh}
                 iconName="people"
                 headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
                 header={
                     <View style={styles.topRow}>
                         <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
@@ -621,6 +623,7 @@ export default function VisitorsScreen() {
                     keyboardVerticalOffset={20}
                 >
                     <ScrollView
+                        scrollEnabled={scrollEnabled}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={[
                             styles.scrollContent,

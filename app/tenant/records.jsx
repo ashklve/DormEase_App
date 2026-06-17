@@ -398,6 +398,7 @@ export default function TenantRecordsScreen() {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
     const [activeFilter, setActiveFilter] = useState('all');
 
     const fetchRecords = useCallback(async (isRefresh = false) => {
@@ -447,6 +448,7 @@ export default function TenantRecordsScreen() {
                 onRefresh={() => fetchRecords(true)}
                 iconName="assignment"
                 headerHeight={56}
+                onScrollEnabledChange={setScrollEnabled}
                 header={
                     <View style={styles.topRow}>
                         <TouchableOpacity style={styles.backBtn} onPress={() => drawerRef.current?.open()}>
@@ -465,6 +467,7 @@ export default function TenantRecordsScreen() {
                 }
             >
                     <ScrollView
+                        scrollEnabled={scrollEnabled}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={[
                             styles.scrollContent,
@@ -507,6 +510,7 @@ export default function TenantRecordsScreen() {
                             <View style={styles.filterChipRow}>
                                 <ScrollView
                                     horizontal
+                                    scrollEnabled={scrollEnabled}
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={styles.filterChipScrollContent}
                                 >
