@@ -222,6 +222,17 @@ const Dashboard = () => {
         }, [])
     );
 
+    // refetch fresh data whenever the dashboard regains focus (e.g. coming back from another tab),
+    // but only after the initial load has already happened, since that's handled separately above.
+    // this reuses onRefresh so the same pull-to-refresh spinner shows briefly while it updates.
+    useFocusEffect(
+        useCallback(() => {
+            if (dashboardCache.loaded) {
+                onRefresh();
+            }
+        }, [onRefresh])
+    );
+
     const drawerRef = useRef(null);
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
@@ -230,8 +241,16 @@ const Dashboard = () => {
         if (route) router.push(route);
     };
 
-    // only show the 3 latest announcements on the dashboard
-    const latestAnnouncements = announcements.slice(0, 3);
+    // sort by priority first (high > moderate > low); API already returns newest-first within that
+    const priorityRank = { high: 0, moderate: 1, low: 2 };
+    const sortedAnnouncements = [...announcements].sort((a, b) => {
+        const rankA = priorityRank[(a.priority ?? 'low').toLowerCase()] ?? 2;
+        const rankB = priorityRank[(b.priority ?? 'low').toLowerCase()] ?? 2;
+        return rankA - rankB;
+    });
+
+    // only show the 3 highest-priority/most recent announcements on the dashboard
+    const latestAnnouncements = sortedAnnouncements.slice(0, 3);
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
