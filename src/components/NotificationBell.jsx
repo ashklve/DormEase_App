@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import client from '../../api/client';
-import { addNotificationReceivedListener } from '../services/pushNotifications';
+import { addNotificationReceivedListener, setBadgeCount } from '../services/pushNotifications';
 
 export default function NotificationBell({
     style,
@@ -16,7 +16,9 @@ export default function NotificationBell({
     const fetchUnreadCount = useCallback(async () => {
         try {
             const res = await client.get('/notifications/unread-count', { timeout: 10000 });
-            setUnreadCount(Number(res.data?.count ?? 0));
+            const count = Number(res.data?.count ?? 0);
+            setUnreadCount(count);
+            setBadgeCount(count);
         } catch (err) {
             console.warn('fetch unread notification count error:', err.response?.data ?? err.message);
         }

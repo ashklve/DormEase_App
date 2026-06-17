@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -16,7 +16,7 @@ import styles, { NOTIF_COLORS } from '../../src/constants/notificationsstyles';
 import { useUser } from '../../src/context/UserContext';
 import client from '../../api/client';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
-import { addNotificationReceivedListener } from '../../src/services/pushNotifications';
+import { addNotificationReceivedListener, setBadgeCount } from '../../src/services/pushNotifications';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 import NotificationBell from '../../src/components/NotificationBell';
 
@@ -341,6 +341,10 @@ export default function NotificationsScreen() {
     const activeFilterUnreadCount = activeFilter === 'all'
         ? unreadCount
         : notifications.filter((n) => n.type === activeFilter && !n.read).length;
+
+    useEffect(() => {
+        setBadgeCount(unreadCount);
+    }, [unreadCount]);
 
     /* ─── Fetch ─── */
     const fetchNotifications = useCallback(async () => {

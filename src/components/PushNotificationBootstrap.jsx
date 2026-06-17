@@ -12,10 +12,14 @@ export default function PushNotificationBootstrap() {
     const { user } = useUser();
 
     useEffect(() => {
-        if (user?.role === 'tenant') {
+        const role = user?.role;
+        const accountId = user?.account_id;
+        const isTenant = role === 'tenant' || (accountId && String(accountId).startsWith('TNT'));
+
+        if (isTenant) {
             registerForPushNotificationsAsync();
         }
-    }, [user?.role]);
+    }, [user]);
 
     useEffect(() => {
         const subscription = addNotificationResponseListener((route) => {
