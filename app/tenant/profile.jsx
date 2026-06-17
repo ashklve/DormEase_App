@@ -11,7 +11,6 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  Switch,
   Alert,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -37,7 +36,23 @@ const fmt = (d) => {
 };
 
 const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const isValidPhone = (v) => /^[0-9]{11}$/.test(v.trim());
+const formatPHPhone = (raw) => {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  let local = digits;
+  if (digits.startsWith('63') && digits.length > 10) {
+    local = '0' + digits.slice(2);
+  }
+  if (local.startsWith('0')) {
+    const d = local.slice(1);
+    if (d.length <= 3) return '0' + d;
+    if (d.length <= 6) return `0${d.slice(0, 3)}-${d.slice(3)}`;
+    if (d.length <= 10) return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    return `0${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
+  }
+  return digits.slice(0, 12);
+};
+const isValidPhone = (v) => /^09\d{9}$/.test(v.replace(/\D/g, ''));
 
 const statusColors = {
   active:   { bg: '#E8F8EF', text: '#1A6E3C' },
@@ -144,7 +159,7 @@ const InfoRow = ({ icon, label, value, last = false }) => (
 );
 
 // ── Editable Info Row ─────────────────────────────────────────────────────────
-const EditableInfoRow = ({ icon, label, value, onChangeText, keyboardType = 'default', error = null, last = false }) => {
+const EditableInfoRow = ({ icon, label, value, onChangeText, keyboardType = 'default', error = null, last = false, ...rest }) => {
   const [focused, setFocused] = useState(false);
   const hasError = !!error;
 
@@ -165,6 +180,7 @@ const EditableInfoRow = ({ icon, label, value, onChangeText, keyboardType = 'def
             placeholderTextColor={COLORS.muted}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            {...rest}
           />
         </View>
         <Ionicons name={hasError ? 'alert-circle-outline' : 'pencil-outline'} size={15} color={hasError ? COLORS.danger : COLORS.muted} />
@@ -223,6 +239,38 @@ export default function ProfileScreen() {
   const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
   const toastTimer = useRef(null);
 
+  const vacationToggleAnim = useRef(new Animated.Value(isOnVacation ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(vacationToggleAnim, {
+      toValue: isOnVacation ? 1 : 0,
+      tension: 80,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, [isOnVacation]);
+
+  const handleVacationToggle = () => {
+    setIsOnVacation((prev) => {
+      const next = !prev;
+      setVacationErrors([]);
+      return next;
+    });
+  };
+
+  const handleShowVacationInfo = () => {
+    Alert.alert(
+      'Vacation Mode Info',
+      'Enabling Vacation Mode notifies the admin that you are away on vacation or break.\n\nPlease note that preconditions must be met (e.g. all outstanding bills must be paid, and your contract must be active) before you can save this status.\n\n⚠️ Warning: Turning this on will restrict you from accessing certain features (such as visitor registration, filing maintenance requests, viewing water bills, submitting emergency reports, and document requests) until vacation mode is turned off.',
+      [{ text: 'Got it', style: 'default' }]
+    );
+  };
+
+  const vacationThumbTranslate = vacationToggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, 22],
+  });
+
   useEffect(() => {
     fetchProfile();
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
@@ -241,7 +289,7 @@ export default function ProfileScreen() {
       setUser(res.data);
       setGlobalUser(res.data);
       setEmail(res.data.email || '');
-      setContactNumber(res.data.contact_number || '');
+      setContactNumber(res.data.contact_number ? formatPHPhone(res.data.contact_number) : '');
       setIsOnVacation(res.data.is_on_vacation || false);
       setVacationNote(res.data.vacation_note || '');
       setVacationErrors([]);
@@ -261,21 +309,38 @@ export default function ProfileScreen() {
   };
 
   const handlePhoneChange = (v) => {
-    const digits = v.replace(/[^0-9]/g, '');
-    setContactNumber(digits);
-    if (!digits) { setPhoneError('Contact number cannot be empty.'); return; }
-    setPhoneError(digits.length === 11 ? '' : 'Contact number must be exactly 11 digits.');
+    const digits = v.replace(/\D/g, '');
+    const capped = digits.slice(0, 11);
+    setContactNumber(formatPHPhone(capped));
+    if (!digits) {
+      setPhoneError('Contact number cannot be empty.');
+    } else if (digits.length !== 11) {
+      setPhoneError('Contact number must be exactly 11 digits.');
+    } else if (!digits.startsWith('09')) {
+      setPhoneError('Contact number must start with 09.');
+    } else {
+      setPhoneError('');
+    }
   };
 
   const handleUpdateContact = async () => {
+    const cleanPhone = contactNumber.replace(/\D/g, '');
     const eErr = !email ? 'Email cannot be empty.' : !isValidEmail(email) ? 'Enter a valid email address (must include @).' : '';
-    const pErr = !contactNumber ? 'Contact number cannot be empty.' : contactNumber.length !== 11 ? 'Contact number must be exactly 11 digits.' : '';
+    let pErr = '';
+    if (!cleanPhone) {
+      pErr = 'Contact number cannot be empty.';
+    } else if (cleanPhone.length !== 11) {
+      pErr = 'Contact number must be exactly 11 digits.';
+    } else if (!cleanPhone.startsWith('09')) {
+      pErr = 'Contact number must start with 09.';
+    }
+
     setEmailError(eErr);
     setPhoneError(pErr);
     if (eErr || pErr) return;
     try {
       setSaving(true);
-      await client.post('/profile/update', { email, contact_number: contactNumber });
+      await client.post('/profile/update', { email, contact_number: cleanPhone });
       showToast('success', 'Contact info updated successfully!');
       await fetchProfile({ isRefresh: false });
     } catch (err) {
@@ -394,7 +459,9 @@ export default function ProfileScreen() {
   const statusKey = user?.status || 'inactive';
   const sc = statusColors[statusKey] || statusColors.inactive;
   const isTemp = user?.is_temp_password === 1 || user?.is_temp_password === true;
-  const contactDirty = email !== (user?.email || '') || contactNumber !== (user?.contact_number || '');
+  const contactDirty =
+    email.trim() !== (user?.email || '').trim() ||
+    contactNumber.replace(/\D/g, '') !== (user?.contact_number || '').replace(/\D/g, '');
   const vacationDirty =
     isOnVacation !== (user?.is_on_vacation || false) ||
     (isOnVacation && vacationNote !== (user?.vacation_note || ''));
@@ -488,16 +555,25 @@ export default function ProfileScreen() {
                     <Ionicons name="boat-outline" size={18} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoLabel}>Vacation Mode</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.infoLabel}>Vacation Mode</Text>
+                      <TouchableOpacity onPress={handleShowVacationInfo} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="information-circle-outline" size={15} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.infoValue}>I'm on vacation / break</Text>
                   </View>
                 </View>
-                <Switch
-                  value={isOnVacation}
-                  onValueChange={(val) => { setIsOnVacation(val); setVacationErrors([]); }}
-                  trackColor={{ false: '#767577', true: COLORS.primary }}
-                  thumbColor="#f4f3f4"
-                />
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleVacationToggle}
+                  style={[styles.toggleTrack, isOnVacation && styles.toggleTrackActive]}
+                >
+                  <Animated.View style={[
+                    styles.toggleThumb,
+                    { transform: [{ translateX: vacationThumbTranslate }] }
+                  ]} />
+                </TouchableOpacity>
               </View>
               {isOnVacation && (
                 <View style={[styles.infoRow, { flexDirection: 'column', alignItems: 'stretch', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, paddingBottom: 12, paddingRight: 12 }]}>
@@ -543,7 +619,7 @@ export default function ProfileScreen() {
             {/* ── Contact Info ── */}
             <Text style={styles.sectionLabel}>Contact</Text>
             <View style={styles.infoCard}>
-              <EditableInfoRow icon="call-outline" label="Contact number" value={contactNumber} onChangeText={handlePhoneChange} keyboardType="phone-pad" error={phoneError} />
+              <EditableInfoRow icon="call-outline" label="Contact number" value={contactNumber} onChangeText={handlePhoneChange} keyboardType="phone-pad" error={phoneError} maxLength={13} />
               <EditableInfoRow icon="mail-outline" label="Email" value={email} onChangeText={handleEmailChange} keyboardType="email-address" error={emailError} last />
             </View>
 

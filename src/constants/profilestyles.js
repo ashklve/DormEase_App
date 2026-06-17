@@ -449,6 +449,29 @@ const styles = StyleSheet.create({
   checkTextDone: {
     color: COLORS.dark,
   },
+  // ── Custom Toggle
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 99,
+    backgroundColor: '#E5ECF6',
+    justifyContent: 'center',
+  },
+  toggleTrackActive: {
+    backgroundColor: COLORS.primary,
+  },
+  toggleThumb: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 2,
+    elevation: 2,
+  },
 });
 
 export default styles;
