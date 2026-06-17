@@ -18,6 +18,7 @@ import client from '../../api/client';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import { addNotificationReceivedListener } from '../../src/services/pushNotifications';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -337,6 +338,9 @@ export default function NotificationsScreen() {
     const [expandedNotifIds, setExpandedNotifIds] = useState({});
 
     const unreadCount = notifications.filter((n) => !n.read).length;
+    const activeFilterUnreadCount = activeFilter === 'all'
+        ? unreadCount
+        : notifications.filter((n) => n.type === activeFilter && !n.read).length;
 
     /* ─── Fetch ─── */
     const fetchNotifications = useCallback(async () => {
@@ -461,23 +465,15 @@ export default function NotificationsScreen() {
                 onScrollEnabledChange={setScrollEnabled}
                 header={
                     <View style={styles.topRow}>
-                        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                            <MaterialIcons name="arrow-back" size={24} color={NOTIF_COLORS.dark} />
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => router.back()}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialIcons name="chevron-left" size={22} color={NOTIF_COLORS.dark} />
                         </TouchableOpacity>
                         <View style={styles.topRowRight}>
-                            <TouchableOpacity
-                                style={styles.iconBtn}
-                                onPress={() => router.push('/tenant/notifications')}
-                            >
-                                <Ionicons name="notifications-outline" size={22} color={NOTIF_COLORS.dark} />
-                                {unreadCount > 0 && (
-                                    <View style={styles.badgeWrap}>
-                                        <Text style={styles.badgeText}>
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
+                            <NotificationBell style={styles.iconBtn} iconColor={NOTIF_COLORS.dark} />
                             <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
                                 <Image
                                     source={avatarUri ? { uri: avatarUri } : defaultPhoto}
@@ -512,15 +508,16 @@ export default function NotificationsScreen() {
                         {/* ─── Filter pills ─── */}
                         <ScrollView
                             horizontal
+                            scrollEnabled={scrollEnabled}
                             showsHorizontalScrollIndicator={false}
                             style={styles.filterScroller}
                             contentContainerStyle={styles.filterRow}
                         >
                             {FILTER_PILLS.map((pill) => {
                                 const isActive = activeFilter === pill.key;
-                                const hasUnread = pill.key === 'all'
-                                    ? unreadCount > 0
-                                    : notifications.some((n) => n.type === pill.key && !n.read);
+                                const count = pill.key === 'all'
+                                    ? unreadCount
+                                    : notifications.filter((n) => n.type === pill.key && !n.read).length;
                                 return (
                                     <TouchableOpacity
                                         key={pill.key}
@@ -533,7 +530,13 @@ export default function NotificationsScreen() {
                                             size={18}
                                             color={isActive ? NOTIF_COLORS.white : NOTIF_COLORS.primary}
                                         />
-                                        {hasUnread && <View style={styles.filterUnreadDot} />}
+                                        {count > 0 && (
+                                            <View style={styles.filterBadge}>
+                                                <Text style={styles.filterBadgeText}>
+                                                    {count > 99 ? '99+' : count}
+                                                </Text>
+                                            </View>
+                                        )}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -541,7 +544,7 @@ export default function NotificationsScreen() {
                     {/* ─── Count + mark all ─── */}
                     <View style={styles.tabRow}>
                         <Text style={styles.tabCountText}>
-                            {unreadCount ? `${unreadCount} unread` : 'Recents'}
+                            {activeFilterUnreadCount ? `${activeFilterUnreadCount} unread` : 'Recents'}
                         </Text>
                         <TouchableOpacity
                             style={styles.markAllBtn}
