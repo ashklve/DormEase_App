@@ -39,6 +39,11 @@ const priorityColors = {
   Low:      { bg: '#E5ECF6', text: '#B5B7C0' },
 };
 
+// Lower rank = shown first. Unknown/missing priority falls back to "Low".
+const PRIORITY_SORT_ORDER = { High: 0, Moderate: 1, Low: 2 };
+const getPriorityRank = (announcement) =>
+  PRIORITY_SORT_ORDER[announcement?.priority] ?? PRIORITY_SORT_ORDER.Low;
+
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 const MONTH_INDEX_BY_NAME = {
   jan: 0, january: 0,
@@ -540,7 +545,7 @@ export default function AnnouncementsScreen() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('This Week');
+  const [selectedFilter, setSelectedFilter] = useState('All Time');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -701,9 +706,13 @@ export default function AnnouncementsScreen() {
     () =>
       periodFilteredAnnouncements
         .filter((a) => !isAnnouncementArchived(a))
-        .sort((left, right) =>
-          Number(isAnnouncementPinned(right)) - Number(isAnnouncementPinned(left))
-        ),
+        .sort((left, right) => {
+          // Pinned items stay on top first (tenant's own explicit action).
+          const pinnedDiff = Number(isAnnouncementPinned(right)) - Number(isAnnouncementPinned(left));
+          if (pinnedDiff !== 0) return pinnedDiff;
+          // Within the same pinned/unpinned group, High priority surfaces first.
+          return getPriorityRank(left) - getPriorityRank(right);
+        }),
     [isAnnouncementArchived, isAnnouncementPinned, periodFilteredAnnouncements]
   );
 
