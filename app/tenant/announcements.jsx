@@ -259,9 +259,10 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={detailStyles.scrollContent}
         >
+          {/* ── Header with chevron back button ── */}
           <View style={detailStyles.header}>
-            <TouchableOpacity onPress={onClose} style={detailStyles.backBtn}>
-              <MaterialIcons name="arrow-back" size={24} color="#2D1B2E" />
+            <TouchableOpacity onPress={onClose} style={detailStyles.backBtn} activeOpacity={0.7}>
+              <MaterialIcons name="chevron-left" size={26} color={COLORS.dark} />
             </TouchableOpacity>
             <View style={detailStyles.headerTitleGroup}>
               <View style={detailStyles.headerIconBadge}>
@@ -942,13 +943,12 @@ const detailStyles = {
     borderBottomColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
+  // ── updated back button: plain, no background circle ──
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lightPink,
   },
   headerTitleGroup: {
     flexDirection: 'row',
