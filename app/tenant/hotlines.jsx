@@ -4,6 +4,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import NotificationBell from '../../src/components/NotificationBell';
+import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -75,6 +76,9 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 export default function HotlinesScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { avatarUri } = useUser();
+
+    const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
     const call = (number) => {
         const cleaned = number.replace(/[^0-9]/g, '');
@@ -86,13 +90,29 @@ export default function HotlinesScreen() {
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
             <View style={styles.topRow}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <MaterialIcons name="arrow-back" size={24} color={COLORS.dark} />
+                <TouchableOpacity
+                    style={[styles.backBtn, {
+                        width: 38,
+                        height: 38,
+                        borderRadius: 19,
+                        backgroundColor: COLORS.white,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 3,
+                        elevation: 2,
+                    }]}
+                    onPress={() => router.back()}
+                    activeOpacity={0.7}
+                >
+                    <MaterialIcons name="chevron-left" size={26} color={COLORS.dark} />
                 </TouchableOpacity>
                 <View style={styles.topRowRight}>
                     <NotificationBell style={styles.iconBtn} iconColor={COLORS.dark} />
                     <TouchableOpacity onPress={() => router.push('/tenant/profile')}>
-                        <Image source={defaultPhoto} style={styles.avatar} />
+                        <Image source={photoSource} style={styles.avatar} />
                     </TouchableOpacity>
                 </View>
             </View>
