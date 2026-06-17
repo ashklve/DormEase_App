@@ -1,11 +1,11 @@
 {
   "expo": {
-    "scheme": "dormease", 
-    "name": "DormEase_App",
+    "scheme": "dormease",
+    "name": "DormEase",
     "slug": "DormEase_App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/spicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -14,20 +14,72 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/spicon.png",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "DormEase uses your microphone to transcribe maintenance requests.",
+        "NSPhotoLibraryUsageDescription": "DormEase needs photo library access to save QR codes and upload payment proofs.",
+        "NSPhotoLibraryAddUsageDescription": "DormEase needs permission to save payment QR codes to your photo library.",
+        "NSCameraUsageDescription": "DormEase needs camera access to take photos of maintenance issues.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.dormease.app"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/spicon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ninerzaaa.dormease"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/spicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#CA5D86",
+          "defaultChannel": "default"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-vosk",
+        {
+          "models": [
+            "assets/model-en-us",
+            "assets/model-tl-ph"
+          ],
+          "iOSMicrophonePermission": "DormEase uses your microphone to transcribe maintenance requests."
+        }
+      ],
+      "expo-asset",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "DormEase needs camera access to take photos of maintenance issues."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4cf316c0-67bf-45fb-9cbf-16d9934c9b97"
+      }
+    },
+    "owner": "erzaaa"
   }
 }

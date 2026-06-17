@@ -1,0 +1,38 @@
+# EAS Build ignore file
+# Anything listed here will NOT be uploaded to EAS Build servers
+# NOTE: assets/ models are kept because react-native-vosk needs them bundled in the APK
+
+# ── Git internals ─────────────────────────────────────────────────────────
+.git/
+.gitattributes
+
+# ── IDE & editor files ────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── OS junk ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs & debug ──────────────────────────────────────────────────────────
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# ── Test & coverage ───────────────────────────────────────────────────────
+__tests__/
+coverage/
+.nyc_output/
+
+# ── Build artifacts (already generated on EAS side) ───────────────────────
+android/build/
+android/app/build/
+android/.gradle/
+ios/build/
+
+# ── Misc unnecessary files ────────────────────────────────────────────────
+.expo/
+docs/
