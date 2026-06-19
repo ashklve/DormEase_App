@@ -16,7 +16,7 @@ const PINK_DARK = '#D63375';
 const PINK_FORM = '#FFF0F3';
 const TEXT_DARK = '#2D1B2E';
 const TEXT_MUTED = '#B5B7C0';
-const ID_PREFIX = `TNT-${new Date().getFullYear()}-`;
+const ID_PREFIX = 'TNT-';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -68,14 +68,14 @@ export default function LoginScreen() {
     const handleLogin = async () => {
         setError('');
 
-        if (!identifier.trim()) return setError('Please enter your 3-digit Account number');
-        if (!/^\d{3}$/.test(identifier.trim())) return setError('Account number must be exactly 3 digits (e.g. 001)');
+        if (!identifier.trim()) return setError('Please enter your Account ID');
+        if (!/^\d{4}-\d{3}$/.test(identifier.trim())) return setError('Account ID must be in format XXXX-YYY (e.g. 2026-001)');
 
         if (!password) return setError('Please enter your password');
         if (password.length < 6) return setError('Password must be at least 6 characters');
 
         // Build the full identifier to send to the API
-        const fullIdentifier = `${ID_PREFIX}${identifier.trim().padStart(3, '0')}`;
+        const fullIdentifier = `${ID_PREFIX}${identifier.trim()}`;
         setLoading(true);
         try {
             const res = await loginTenant(fullIdentifier, password);
@@ -158,21 +158,25 @@ export default function LoginScreen() {
                             />
                             {/* static prefix */}
                             <Text style={styles.idPrefix}>{ID_PREFIX}</Text>
-                            {/* only 3 digits allowed */}
+                            {/* only 4 digits, a dash, and 3 digits allowed */}
                             <TextInput
                                 style={[styles.input, { marginLeft: 0, paddingLeft: 0, paddingHorizontal: 0 }]}
-                                placeholder="001"
+                                placeholder="2026-001"
                                 placeholderTextColor={TEXT_MUTED}
                                 value={identifier}
                                 onChangeText={(val) => {
-                                    // strip anything that isn't a digit, cap at 3 chars
-                                    const digits = val.replace(/\D/g, '').slice(0, 3);
-                                    setIdentifier(digits);
+                                    // strip anything that isn't a digit, cap at 7 digits
+                                    const digits = val.replace(/\D/g, '').slice(0, 7);
+                                    if (digits.length <= 4) {
+                                        setIdentifier(digits);
+                                    } else {
+                                        setIdentifier(`${digits.slice(0, 4)}-${digits.slice(4)}`);
+                                    }
                                 }}
                                 onFocus={() => setIdentifierFocused(true)}
                                 onBlur={() => setIdentifierFocused(false)}
                                 keyboardType="number-pad"
-                                maxLength={3}
+                                maxLength={8}
                                 autoCorrect={false}
                             />
                         </View>
