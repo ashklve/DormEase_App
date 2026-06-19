@@ -259,6 +259,9 @@ export default function EmergencyScreen() {
     });
 
     useSpeechRecognitionEvent("error", (event) => {
+        if (event.error === 'aborted') {
+            return;
+        }
         console.error('Speech recognition error event received:', event);
         if (lastStartEventTimeRef.current >= lastStartCallTimeRef.current) {
             isSessionActiveRef.current = false;
