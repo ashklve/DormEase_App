@@ -128,6 +128,28 @@ const Dashboard = () => {
     const pullToRefreshRef = useRef(null);
     const [scrollEnabled, setScrollEnabled] = useState(true);
 
+    const waveAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const waveAnimation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(waveAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+                Animated.timing(waveAnim, { toValue: -1, duration: 150, useNativeDriver: true }),
+                Animated.timing(waveAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+                Animated.timing(waveAnim, { toValue: -1, duration: 150, useNativeDriver: true }),
+                Animated.timing(waveAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+                Animated.delay(1200),
+            ])
+        );
+        waveAnimation.start();
+        return () => waveAnimation.stop();
+    }, [waveAnim]);
+
+    const waveRotation = waveAnim.interpolate({
+        inputRange: [-1, 1],
+        outputRange: ['-18deg', '18deg'],
+    });
+
     const { user, avatarUri, fetchUser } = useUser();
 
     const [announcements, setAnnouncements] = useState(dashboardCache.announcements);
@@ -285,9 +307,14 @@ const Dashboard = () => {
                     overScrollMode="never"
                 >
                 <View style={styles.greeting}>
-                    <Text style={styles.greetTitle}>
-                        {greeting}, {userData.firstName}! 👋
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Text style={styles.greetTitle}>
+                            {greeting}, {userData.firstName}!
+                        </Text>
+                        <Animated.View style={{ transform: [{ rotate: waveRotation }], marginLeft: 6 }}>
+                            <Text style={styles.greetTitle}>👋</Text>
+                        </Animated.View>
+                    </View>
                     <Text style={styles.greetSub}>Your dorm services are just a tap away.</Text>
                 </View>
 
