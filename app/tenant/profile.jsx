@@ -494,7 +494,7 @@ export default function ProfileScreen() {
           <ScrollView
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + Math.max(insets.bottom, 24) }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 70 + Math.max(insets.bottom, 16) }]}
             keyboardShouldPersistTaps="handled"
             onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
             scrollEventThrottle={16}
@@ -680,7 +680,7 @@ export default function ProfileScreen() {
               {savingPw ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
                   <Text style={styles.saveBtnText}>Update Password</Text>
                 </View>
@@ -694,7 +694,7 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+                <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
                 <Text style={styles.logoutBtnText}>Logout</Text>
               </View>
             </TouchableOpacity>

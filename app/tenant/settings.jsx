@@ -10,7 +10,7 @@ import {
     Linking,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import styles, { COLORS } from '../../src/constants/settingsstyles';
@@ -97,6 +97,7 @@ const NavRow = ({ icon, label, valueLabel, onPress, divider }) => (
 export default function SettingsScreen() {
     const router = useRouter();
     const { user } = useUser();
+    const insets = useSafeAreaInsets();
 
     const [loading, setLoading] = useState(true);
     // ── notification toggles
@@ -227,7 +228,7 @@ export default function SettingsScreen() {
             </ScrollView>
 
             {/* ── Log Out button ── */}
-            <View style={styles.logoutWrap}>
+            <View style={[styles.logoutWrap, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
                 <TouchableOpacity
                     style={styles.logoutBtn}
                     onPress={handleLogout}

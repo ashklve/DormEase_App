@@ -61,7 +61,7 @@ export default StyleSheet.create({
     scrollContent: {
         paddingHorizontal: scale(16),
         paddingTop: verticalScale(6),
-        paddingBottom: verticalScale(120),
+        paddingBottom: verticalScale(150),
     },
 
     // ── section label (above a group) ─────────────────────────────────────────
