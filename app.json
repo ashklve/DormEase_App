@@ -48,16 +48,6 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      [
-        "react-native-vosk",
-        {
-          "models": [
-            "assets/model-en-us",
-            "assets/model-tl-ph"
-          ],
-          "iOSMicrophonePermission": "DormEase uses your microphone to transcribe maintenance requests."
-        }
-      ],
       "expo-asset",
       "expo-status-bar",
       [
@@ -73,6 +63,16 @@
           "backgroundColor": "#ffffff",
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "DormEase uses your microphone to transcribe requests.",
+          "speechRecognitionPermission": "DormEase uses speech recognition to convert your speech to text.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ]
     ],

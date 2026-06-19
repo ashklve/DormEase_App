@@ -16,28 +16,20 @@ import {
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import {
-    onError,
-    onFinalResult,
-    onPartialResult,
-    onResult,
-    start,
-    stop,
-} from 'react-native-vosk';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 import styles, { COLORS, CATEGORY_COLORS } from '../../src/constants/emergencystyles';
-import { ensureVoskModelLoaded } from '../../src/utils/voskModelCache';
 import { isGibberish } from '../../src/utils/validation';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
 const SPEECH_LANGUAGE_OPTIONS = [
-    { key: 'tl', label: 'Tagalog', model: 'model-tl-ph' },
-    { key: 'en', label: 'English', model: 'model-en-us' },
+    { key: 'tl', label: 'Tagalog', langCode: 'fil-PH' },
+    { key: 'en', label: 'English', langCode: 'en-US' },
 ];
 
 const CATEGORIES = [
@@ -162,7 +154,121 @@ export default function EmergencyScreen() {
     const lastTimerTickRef = useRef(null);
     const transcribedRef = useRef('');
     const confirmedTranscriptRef = useRef('');
-    const listenerRefs = useRef([]);
+    const lastEventTimeRef = useRef(0);
+    const currentSessionTranscriptRef = useRef('');
+    const isSessionActiveRef = useRef(false);
+
+    // session tracking to prevent race conditions without UI freezing
+    const lastStartCallTimeRef = useRef(0);
+    const lastStartEventTimeRef = useRef(0);
+
+    useSpeechRecognitionEvent("start", () => {
+        console.log("Speech recognition start event received.");
+        isSessionActiveRef.current = true;
+        lastStartEventTimeRef.current = Date.now();
+    });
+
+    useSpeechRecognitionEvent("result", (event) => {
+        if (lastStartEventTimeRef.current < lastStartCallTimeRef.current) {
+            console.log("Speech result ignored because it belongs to a stale session.");
+            return;
+        }
+        if (!isSessionActiveRef.current) {
+            console.log("Speech result event received but ignored because session is not active");
+            return;
+        }
+
+        console.log("Speech recognition result event received:", JSON.stringify(event));
+        const text = event.results[0]?.transcript || '';
+        console.log("Extracted transcript:", text, "isFinal:", event.isFinal);
+        
+        const now = Date.now();
+        const timeDiff = now - lastEventTimeRef.current;
+        lastEventTimeRef.current = now;
+        console.log("Time since last speech event:", timeDiff, "ms");
+
+        // Detect if the engine started a new segment (e.g. after a pause)
+        if (currentSessionTranscriptRef.current) {
+            const prev = currentSessionTranscriptRef.current.trim().toLowerCase();
+            const next = text.trim().toLowerCase();
+            if (prev !== next) {
+                const prevWords = prev.split(/\s+/);
+                const nextWords = next.split(/\s+/);
+                
+                // It is a continuation if next starts with prev, or first word is same and length isn't shrinking
+                const isContinuation = next.startsWith(prev) || (nextWords[0] === prevWords[0] && nextWords.length >= prevWords.length);
+                
+                if (!isContinuation) {
+                    if (timeDiff > 800 || nextWords[0] !== prevWords[0]) {
+                        console.log("Detecting new segment. Committing previous text:", currentSessionTranscriptRef.current);
+                        const existing = confirmedTranscriptRef.current;
+                        confirmedTranscriptRef.current = existing 
+                            ? `${existing} ${currentSessionTranscriptRef.current}`.trim() 
+                            : currentSessionTranscriptRef.current;
+                        currentSessionTranscriptRef.current = '';
+                    }
+                }
+            }
+        }
+
+        if (event.isFinal) {
+            const existing = confirmedTranscriptRef.current;
+            confirmedTranscriptRef.current = existing ? `${existing} ${text}`.trim() : text;
+            currentSessionTranscriptRef.current = '';
+            
+            setTranscript(confirmedTranscriptRef.current);
+            setManualText(confirmedTranscriptRef.current);
+            transcribedRef.current = confirmedTranscriptRef.current;
+        } else {
+            currentSessionTranscriptRef.current = text;
+            const existing = confirmedTranscriptRef.current;
+            const merged = existing ? `${existing} ${text}` : text;
+            setTranscript(merged);
+            setManualText(merged);
+            transcribedRef.current = merged;
+        }
+    });
+
+    useSpeechRecognitionEvent("end", () => {
+        console.log("Speech recognition end event received.");
+        
+        if (lastStartEventTimeRef.current < lastStartCallTimeRef.current) {
+            console.log("Ignored end event for old session.");
+            return;
+        }
+
+        isSessionActiveRef.current = false;
+        
+        if (currentSessionTranscriptRef.current) {
+            const existing = confirmedTranscriptRef.current;
+            confirmedTranscriptRef.current = existing 
+                ? `${existing} ${currentSessionTranscriptRef.current}`.trim() 
+                : currentSessionTranscriptRef.current;
+            currentSessionTranscriptRef.current = '';
+            
+            setTranscript(confirmedTranscriptRef.current);
+            setManualText(confirmedTranscriptRef.current);
+            transcribedRef.current = confirmedTranscriptRef.current;
+        }
+
+        if (recordingStateRef.current === 'recording') {
+            setRecordingState('idle');
+            stopRecordingTimer();
+        }
+        setHasRecording(Boolean(transcribedRef.current));
+    });
+
+    useSpeechRecognitionEvent("error", (event) => {
+        console.error('Speech recognition error event received:', event);
+        if (lastStartEventTimeRef.current >= lastStartCallTimeRef.current) {
+            isSessionActiveRef.current = false;
+            if (recordingStateRef.current === 'recording') {
+                setRecordingState('idle');
+                stopRecordingTimer();
+                Alert.alert('Voice Input Error', event.message || 'Speech recognition failed.');
+            }
+        }
+    });
 
     useEffect(() => {
         recordingStateRef.current = recordingState;
@@ -174,15 +280,13 @@ export default function EmergencyScreen() {
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((option) => option.key === speechLanguage)
         ?? SPEECH_LANGUAGE_OPTIONS[0];
 
-    // ── initial load — wait for user + vosk model, then hide overlay ──────────
+    // ── initial load — wait for user + speech recognition readiness, then hide overlay ──────────
     useEffect(() => {
         if (emergencyScreenCache.loaded) return;
 
         const init = async () => {
             try {
                 await fetchUser();
-                // model loading starts in its own effect below;
-                // we just need user data before showing the screen
             } finally {
                 emergencyScreenCache.loaded = true;
                 setLoading(false);
@@ -211,35 +315,6 @@ export default function EmergencyScreen() {
         }, 1000);
     }, [stopRecordingTimer]);
 
-    const clearVoskListeners = useCallback(() => {
-        listenerRefs.current.forEach((listener) => listener?.remove?.());
-        listenerRefs.current = [];
-    }, []);
-
-    const updateTranscript = useCallback((text) => {
-        const nextText = String(text ?? '').trim();
-        if (!nextText) return;
-        transcribedRef.current = nextText;
-        setTranscript(nextText);
-        setManualText(nextText);
-    }, []);
-
-    const mergeTranscriptChunk = useCallback((text) => {
-        const chunk = String(text ?? '').trim();
-        if (!chunk) return;
-        const existing = confirmedTranscriptRef.current;
-        const nextText = existing ? `${existing} ${chunk}` : chunk;
-        confirmedTranscriptRef.current = nextText;
-        updateTranscript(nextText);
-    }, [updateTranscript]);
-
-    const applyPartialTranscript = useCallback((text) => {
-        const partial = String(text ?? '').trim();
-        if (!partial) return;
-        const existing = confirmedTranscriptRef.current;
-        updateTranscript(existing ? `${existing} ${partial}` : partial);
-    }, [updateTranscript]);
-
     const handleSpeechLanguageChange = (nextLanguage) => {
         if (recordingState !== 'idle' || modelLoading || nextLanguage === speechLanguage) return;
         setSpeechLanguage(nextLanguage);
@@ -252,29 +327,48 @@ export default function EmergencyScreen() {
     };
 
     useEffect(() => {
+        console.log("Emergency component mounted. user vacation status:", user?.is_on_vacation);
+        console.log("ExpoSpeechRecognitionModule object present:", !!ExpoSpeechRecognitionModule);
         if (user?.is_on_vacation) return;
         let mounted = true;
 
         setModelLoaded(false);
         setModelLoading(true);
 
-        ensureVoskModelLoaded(selectedSpeechLanguage.model)
-            .then(() => { if (mounted) setModelLoaded(true); })
-            .catch((error) => {
-                console.error('failed to load Vosk model:', error);
-                if (mounted) {
-                    Alert.alert('Voice Input Unavailable', `${selectedSpeechLanguage.label} speech recognition could not be loaded.`);
+        const checkPermissions = async () => {
+            console.log("checkPermissions started...");
+            try {
+                if (!ExpoSpeechRecognitionModule) {
+                    console.error("ExpoSpeechRecognitionModule is undefined! Make sure native code is compiled and installed.");
+                    return;
                 }
-            })
-            .finally(() => { if (mounted) setModelLoading(false); });
+                const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+                console.log("requestPermissionsAsync result:", result);
+                if (mounted) {
+                    if (result.granted) {
+                        console.log("Permissions successfully granted. Setting modelLoaded to true.");
+                        setModelLoaded(true);
+                    } else {
+                        console.warn('Speech recognition permission not granted:', result);
+                    }
+                }
+            } catch (error) {
+                console.error('failed to request speech recognition permissions:', error);
+            } finally {
+                if (mounted) setModelLoading(false);
+            }
+        };
+
+        checkPermissions();
 
         return () => {
             mounted = false;
             stopRecordingTimer();
-            clearVoskListeners();
-            stop();
+            if (ExpoSpeechRecognitionModule) {
+                ExpoSpeechRecognitionModule.abort();
+            }
         };
-    }, [clearVoskListeners, selectedSpeechLanguage.label, selectedSpeechLanguage.model, stopRecordingTimer]);
+    }, [user?.is_on_vacation, stopRecordingTimer]);
 
     useEffect(() => {
         if (recordSecs >= 60 && recordingState === 'recording') {
@@ -284,41 +378,48 @@ export default function EmergencyScreen() {
     }, [recordSecs, recordingState]);
 
     const startRecording = async () => {
+        console.log("startRecording called. modelLoaded:", modelLoaded, "modelLoading:", modelLoading);
         if (!modelLoaded) {
             Alert.alert('Voice Input Loading', 'Speech recognition is still loading. Please try again in a moment.');
             return;
         }
 
-        clearVoskListeners();
+        try {
+            console.log("Requesting permissions at start of recording...");
+            const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            console.log("Recording permissions result:", perm);
+            if (!perm.granted) {
+                Alert.alert('Permission Required', 'Speech recognition and microphone permissions are required.');
+                return;
+            }
+        } catch (err) {
+            console.error("Error checking permissions before recording:", err);
+        }
+
+        lastStartCallTimeRef.current = Date.now();
         transcribedRef.current = '';
         confirmedTranscriptRef.current = '';
+        currentSessionTranscriptRef.current = '';
+        lastEventTimeRef.current = Date.now();
+        isSessionActiveRef.current = true;
         setTranscript('');
         setManualText('');
         setHasRecording(false);
         setRecordingState('recording');
         startRecordingTimer(false);
 
-        listenerRefs.current = [
-            onPartialResult((text) => applyPartialTranscript(text)),
-            onResult((text) => mergeTranscriptChunk(text)),
-            onFinalResult((text) => {
-                mergeTranscriptChunk(text);
-            }),
-            onError((error) => {
-                console.error('Vosk recognition error:', error);
-                setRecordingState('idle');
-                stopRecordingTimer();
-                Alert.alert('Voice Input Error', String(error));
-            }),
-        ];
-
         try {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            await start();
+            console.log("Calling ExpoSpeechRecognitionModule.start with language:", selectedSpeechLanguage.langCode);
+            await ExpoSpeechRecognitionModule.start({
+                lang: selectedSpeechLanguage.langCode,
+                interimResults: true,
+                continuous: true,
+            });
+            console.log("ExpoSpeechRecognitionModule.start completed successfully.");
         } catch (error) {
+            console.error("Error starting speech recognition:", error);
             setRecordingState('idle');
             stopRecordingTimer();
-            clearVoskListeners();
             Alert.alert('Voice Input Error', String(error));
         }
     };
@@ -327,9 +428,9 @@ export default function EmergencyScreen() {
         stopRecordingTimer();
         setRecordingState('paused');
         try {
-            await stop();
+            await ExpoSpeechRecognitionModule.abort();
         } catch (error) {
-            console.error('failed to stop Vosk recognizer:', error);
+            console.error('failed to abort speech recognizer:', error);
         }
     };
 
@@ -339,31 +440,22 @@ export default function EmergencyScreen() {
             return;
         }
 
-        clearVoskListeners();
+        lastStartCallTimeRef.current = Date.now();
         setRecordingState('recording');
         startRecordingTimer(true);
-
-        listenerRefs.current = [
-            onPartialResult((text) => applyPartialTranscript(text)),
-            onResult((text) => mergeTranscriptChunk(text)),
-            onFinalResult((text) => {
-                mergeTranscriptChunk(text);
-            }),
-            onError((error) => {
-                console.error('Vosk recognition error:', error);
-                setRecordingState('idle');
-                stopRecordingTimer();
-                Alert.alert('Voice Input Error', String(error));
-            }),
-        ];
+        lastEventTimeRef.current = Date.now();
+        isSessionActiveRef.current = true;
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            await start();
+            await ExpoSpeechRecognitionModule.start({
+                lang: selectedSpeechLanguage.langCode,
+                interimResults: true,
+                continuous: true,
+            });
         } catch (error) {
+            console.error("Error resuming speech recognition:", error);
             setRecordingState('idle');
             stopRecordingTimer();
-            clearVoskListeners();
             Alert.alert('Voice Input Error', String(error));
         }
     };
@@ -372,11 +464,10 @@ export default function EmergencyScreen() {
         stopRecordingTimer();
         setRecordingState('idle');
         try {
-            await stop();
+            await ExpoSpeechRecognitionModule.abort();
         } catch (error) {
-            console.error('failed to stop Vosk recognizer:', error);
+            console.error('failed to abort speech recognizer:', error);
         }
-        setHasRecording(Boolean(transcribedRef.current));
     };
 
     const handlePanicAlert = async () => {
