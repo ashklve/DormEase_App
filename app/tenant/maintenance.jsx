@@ -155,7 +155,8 @@ export default function MaintenanceScreen() {
     const [submitting, setSubmitting] = useState(false);
 
     // voice recorder state
-    const [speechLanguage, setSpeechLanguage] = useState('tl');
+    const [speechLanguage, setSpeechLanguage] = useState(Platform.OS === 'ios' ? 'en' : 'tl');
+    const [supportedSpeechLanguages, setSupportedSpeechLanguages] = useState(Platform.OS === 'ios' ? ['en'] : ['tl', 'en']);
     const [recordingState, setRecordingState] = useState('idle'); // 'idle' | 'recording' | 'paused'
     const [modelLoaded, setModelLoaded] = useState(false);
     const [modelLoading, setModelLoading] = useState(true);
@@ -291,6 +292,7 @@ export default function MaintenanceScreen() {
     const isPaused = recordingState === 'paused';
 
     const selectedSpeechLanguage = SPEECH_LANGUAGE_OPTIONS.find((o) => o.key === speechLanguage)
+        ?? SPEECH_LANGUAGE_OPTIONS.find((o) => o.key === 'en')
         ?? SPEECH_LANGUAGE_OPTIONS[0];
 
     // recording timer
@@ -332,31 +334,71 @@ export default function MaintenanceScreen() {
         setModelLoaded(false);
         setModelLoading(true);
 
-        const checkPermissions = async () => {
-            console.log("checkPermissions started...");
+        const initSpeechRecognition = async () => {
+            console.log("initSpeechRecognition started...");
             try {
                 if (!ExpoSpeechRecognitionModule) {
                     console.error("ExpoSpeechRecognitionModule is undefined! Make sure native code is compiled and installed.");
                     return;
                 }
-                const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-                console.log("requestPermissionsAsync result:", result);
+
+                // 1. Check permissions
+                const permResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+                console.log("requestPermissionsAsync result:", permResult);
                 if (mounted) {
-                    if (result.granted) {
+                    if (permResult.granted) {
                         console.log("Permissions successfully granted. Setting modelLoaded to true.");
                         setModelLoaded(true);
                     } else {
-                        console.warn('Speech recognition permission not granted:', result);
+                        console.warn('Speech recognition permission not granted:', permResult);
+                    }
+                }
+
+                // 2. Query supported locales
+                try {
+                    const locales = await ExpoSpeechRecognitionModule.getSupportedLocales();
+                    console.log("Supported locales on this device:", locales);
+                    const hasTagalog = Platform.OS === 'android' && locales.some(locale => 
+                        locale.toLowerCase().startsWith('fil-') || 
+                        locale.toLowerCase().startsWith('tl-') || 
+                        locale.toLowerCase() === 'fil' || 
+                        locale.toLowerCase() === 'tl'
+                    );
+                    if (mounted) {
+                        if (hasTagalog) {
+                            setSupportedSpeechLanguages(['tl', 'en']);
+                        } else {
+                            setSupportedSpeechLanguages(['en']);
+                            setSpeechLanguage('en');
+                        }
+                    }
+                } catch (langErr) {
+                    console.warn("Failed to query native supported locales, applying platform defaults:", langErr);
+                    if (mounted) {
+                        if (Platform.OS === 'android') {
+                            setSupportedSpeechLanguages(['tl', 'en']);
+                        } else {
+                            setSupportedSpeechLanguages(['en']);
+                            setSpeechLanguage('en');
+                        }
                     }
                 }
             } catch (error) {
-                console.error('failed to request speech recognition permissions:', error);
+                console.error('failed to initialize speech recognition:', error);
+                if (mounted) {
+                    if (Platform.OS === 'android') {
+                        setSupportedSpeechLanguages(['tl', 'en']);
+                    } else {
+                        setSupportedSpeechLanguages(['en']);
+                        setSpeechLanguage('en');
+                    }
+                }
             } finally {
                 if (mounted) setModelLoading(false);
             }
         };
 
-        checkPermissions();
+        initSpeechRecognition();
 
         return () => {
             mounted = false;
@@ -615,7 +657,7 @@ export default function MaintenanceScreen() {
 
                         {/* language selector */}
                         <View style={styles.languageSelector}>
-                            {SPEECH_LANGUAGE_OPTIONS.map((option) => {
+                            {SPEECH_LANGUAGE_OPTIONS.filter(opt => supportedSpeechLanguages.includes(opt.key)).map((option) => {
                                 const active = speechLanguage === option.key;
                                 const isSpeechBusy = recordingState !== 'idle' || modelLoading;
                                 return (
