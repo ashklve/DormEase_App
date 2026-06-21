@@ -136,7 +136,12 @@ const isGibberishWord = (word) => {
 export const isGibberish = (text) => {
     if (!text || typeof text !== 'string') return false;
 
-    const cleanText = text.trim().toLowerCase();
+    // Normalize censored/masked words (e.g. f**k, s**t, ****) to a valid placeholder
+    let normalizedText = text.replace(/\b[a-z]*\*+[a-z]*\b/gi, 'censor');
+    normalizedText = normalizedText.replace(/\*+/g, 'censor');
+    normalizedText = normalizedText.replace(/\[[^\]]*censor[^\]]*\]/gi, 'censor');
+
+    const cleanText = normalizedText.trim().toLowerCase();
     if (!cleanText) return false;
 
     if (cleanText.length < 3) {

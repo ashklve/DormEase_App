@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import client from '../../api/client';
@@ -205,13 +205,57 @@ const parseStoredAnnouncementIds = (storedIds) => {
   }
 };
 
+const priorityStyles = {
+  High: { bg: '#FFF5F5', text: '#E53E3E', border: '#FEB2B2', icon: 'error-outline' },
+  Moderate: { bg: '#FFFDF5', text: '#D69E2E', border: '#FEEBC8', icon: 'warning-amber' },
+  Low: { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', icon: 'info-outline' },
+};
+
+const ImageLightbox = ({ visible, imageUri, onClose }) => {
+  if (!imageUri) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.lightboxContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        
+        {/* Close Button */}
+        <TouchableOpacity style={styles.lightboxCloseBtn} onPress={onClose} activeOpacity={0.7}>
+          <Ionicons name="close" size={26} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Scrollable Zoom Container */}
+        <ScrollView
+          contentContainerStyle={styles.lightboxScrollContainer}
+          maximumZoomScale={3}
+          minimumZoomScale={1}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.lightboxImage}
+            resizeMode="contain"
+          />
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+};
+
 const AnnouncementDetail = ({ item, visible, onClose }) => {
   const [imageRatio, setImageRatio] = useState(null);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
   if (!item) return null;
 
-  const p = priorityColors[item.priority] || { bg: '#E5ECF6', text: '#B5B7C0' };
+  const p = priorityStyles[item.priority] || priorityStyles.Low;
 
   const attachments = item.attachments
     ? item.attachments
@@ -247,6 +291,9 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
     return { name: 'attach-outline', color: '#CA5D86' };
   };
 
+  const wordCount = item.preview ? item.preview.split(/\s+/).length : 0;
+  const readTime = Math.max(1, Math.ceil(wordCount / 200));
+
   return (
     <Modal
       visible={visible}
@@ -254,42 +301,42 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       transparent={false}
       onRequestClose={onClose}
     >
-      <View
-        style={[
-          detailStyles.modalRoot,
-          { paddingTop: Math.max(insets.top + verticalScale(14), verticalScale(58)) },
-        ]}
-      >
+      <SafeAreaView style={styles.modalRoot} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={detailStyles.scrollContent}
+          contentContainerStyle={styles.modalScrollContent}
         >
-          {/* ── Header with chevron back button ── */}
-          <View style={detailStyles.header}>
-            <TouchableOpacity onPress={onClose} style={detailStyles.backBtn} activeOpacity={0.7}>
-              <MaterialIcons name="chevron-left" size={26} color={COLORS.dark} />
+          {/* ── Header ── */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={onClose} style={styles.modalBackBtn} activeOpacity={0.7}>
+              <MaterialIcons name="chevron-left" size={22} color={COLORS.dark} />
             </TouchableOpacity>
-            <View style={detailStyles.headerTitleGroup}>
-              <View style={detailStyles.headerIconBadge}>
-                <Ionicons name="megaphone-outline" size={18} color={COLORS.white} />
+            <View style={styles.modalHeaderTitleGroup}>
+              <View style={styles.modalHeaderIconBadge}>
+                <Ionicons name="megaphone" size={16} color={COLORS.white} />
               </View>
-              <Text style={detailStyles.headerTitle}>Announcement</Text>
+              <Text style={styles.modalHeaderTitle}>Announcement Details</Text>
             </View>
-            <View style={detailStyles.headerSpacer} />
+            <View style={styles.modalHeaderSpacer} />
           </View>
-
-          <View style={detailStyles.detailBody}>
-            <View style={detailStyles.postHeader}>
-              <View style={detailStyles.adminAvatar}>
-                <MaterialIcons name="campaign" size={22} color="#fff" />
+          <View style={styles.modalDetailBody}>
+            {/* ── Admin Badge Section ── */}
+            <View style={styles.modalPostHeader}>
+              <View style={styles.modalAdminAvatar}>
+                <Ionicons name="shield-checkmark" size={22} color={COLORS.white} />
               </View>
-              <View style={detailStyles.adminInfo}>
-                <Text style={detailStyles.adminName}>DormEase Admin</Text>
-                <View style={detailStyles.metaRow}>
-                  <Ionicons name="time-outline" size={12} color="#B5B7C0" />
-                  <Text style={detailStyles.metaText}>{item.date}</Text>
-                  <View style={[detailStyles.priorityBadge, { backgroundColor: p.bg }]}>
-                    <Text style={[detailStyles.priorityText, { color: p.text }]}>
+              <View style={styles.modalAdminInfo}>
+                <View style={styles.modalAdminNameRow}>
+                  <Text style={styles.modalAdminName}>DormEase Admin</Text>
+                  <MaterialIcons name="verified" size={15} color={COLORS.primary} style={styles.modalVerifiedIcon} />
+                </View>
+                <View style={styles.modalMetaRow}>
+                  <Ionicons name="calendar-outline" size={11} color={COLORS.muted} />
+                  <Text style={styles.modalMetaText}>{item.date}</Text>
+                  <View style={styles.modalMetaDivider} />
+                  <View style={[styles.modalPriorityBadge, { backgroundColor: p.bg, borderColor: p.border }]}>
+                    <MaterialIcons name={p.icon} size={11} color={p.text} />
+                    <Text style={[styles.modalPriorityText, { color: p.text }]}>
                       {item.priority}
                     </Text>
                   </View>
@@ -297,21 +344,31 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
               </View>
             </View>
 
-            <View>
-              <View style={detailStyles.titleSection}>
-                <Text style={detailStyles.title}>{item.title}</Text>
-              </View>
-              <View style={detailStyles.contentSection}>
-                <Text style={detailStyles.content}>{item.preview}</Text>
+            {/* ── Title & Read Time Section ── */}
+            <View style={styles.modalTitleSection}>
+              <Text style={styles.modalTitle}>{item.title}</Text>
+              <View style={styles.modalReadTimeRow}>
+                <Ionicons name="book-outline" size={13} color={COLORS.muted} />
+                <Text style={styles.modalReadTimeText}>{readTime} min read</Text>
               </View>
             </View>
 
+            {/* ── Main content text ── */}
+            <View style={styles.modalContentSection}>
+              <Text style={styles.modalContent}>{item.preview}</Text>
+            </View>
+
+            {/* ── Cover Image ── */}
             {item.image ? (
-              <View style={detailStyles.imageWrapper}>
+              <TouchableOpacity
+                style={styles.modalImageWrapper}
+                onPress={() => setLightboxVisible(true)}
+                activeOpacity={0.95}
+              >
                 <Image
                   source={{ uri: item.image }}
                   style={[
-                    { width: '100%' },
+                    styles.modalImage,
                     imageRatio ? { aspectRatio: imageRatio } : { height: 220 },
                   ]}
                   resizeMode="cover"
@@ -321,16 +378,17 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
                   }}
                   onError={() => console.log('image failed:', item.image)}
                 />
-              </View>
+              </TouchableOpacity>
             ) : null}
 
-            {attachments.length > 0 && <View style={detailStyles.divider} />}
+            {attachments.length > 0 && <View style={styles.modalDivider} />}
 
+            {/* ── Attachments cards ── */}
             {attachments.length > 0 && (
-              <View style={detailStyles.attachSection}>
-                <View style={detailStyles.attachTitleRow}>
-                  <Ionicons name="attach-outline" size={16} color={COLORS.primary} />
-                  <Text style={detailStyles.attachTitle}>
+              <View style={styles.modalAttachSection}>
+                <View style={styles.modalAttachTitleRow}>
+                  <Ionicons name="folder-open-outline" size={16} color={COLORS.primary} />
+                  <Text style={styles.modalAttachTitle}>
                     Attachments ({attachments.length})
                   </Text>
                 </View>
@@ -339,22 +397,24 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
                   return (
                     <TouchableOpacity
                       key={i}
-                      style={detailStyles.attachItem}
+                      style={styles.modalAttachItem}
                       onPress={() => openFile(path)}
                       activeOpacity={0.75}
                     >
-                      <View style={[detailStyles.attachIcon, { backgroundColor: icon.color + '20' }]}>
-                        <Ionicons name={icon.name} size={20} color={icon.color} />
+                      <View style={[styles.modalAttachIcon, { backgroundColor: icon.color + '15' }]}>
+                        <Ionicons name={icon.name} size={22} color={icon.color} />
                       </View>
-                      <View style={detailStyles.attachTextWrap}>
-                        <Text style={detailStyles.attachName} numberOfLines={1}>
+                      <View style={styles.modalAttachTextWrap}>
+                        <Text style={styles.modalAttachName} numberOfLines={1}>
                           {getFileName(path)}
                         </Text>
-                        <Text style={detailStyles.attachType}>
-                          {path.split('.').pop().toUpperCase()} - tap to open
+                        <Text style={styles.modalAttachType}>
+                          {path.split('.').pop().toUpperCase()} • tap to open
                         </Text>
                       </View>
-                      <Ionicons name="open-outline" size={18} color="#B5B7C0" />
+                      <View style={styles.modalAttachActionBtn}>
+                        <Ionicons name="eye-outline" size={16} color={COLORS.primary} />
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -362,7 +422,13 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
             )}
           </View>
         </ScrollView>
-      </View>
+      </SafeAreaView>
+
+      <ImageLightbox
+        visible={lightboxVisible}
+        imageUri={item.image}
+        onClose={() => setLightboxVisible(false)}
+      />
     </Modal>
   );
 };
@@ -442,11 +508,11 @@ const AnnouncementCard = ({
         </View>
 
         <TouchableOpacity
-          style={detailStyles.readMoreRow}
+          style={styles.readMoreRow}
           onPress={onPress}
           activeOpacity={0.75}
         >
-          <Text style={detailStyles.readMoreText}>Tap to read full announcement</Text>
+          <Text style={styles.readMoreText}>Tap to read full announcement</Text>
           <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
@@ -535,6 +601,8 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const openId = params?.openId;
   const insets = useSafeAreaInsets();
   const { avatarUri } = useUser();
   const drawerRef = useRef(null);
@@ -607,6 +675,17 @@ export default function AnnouncementsScreen() {
     setShowDetail(true);
     setActionMenuItem(null);
   };
+
+  useEffect(() => {
+    if (openId && announcements.length > 0) {
+      const match = announcements.find((a) => String(a.id ?? a.announcement_id) === String(openId));
+      if (match) {
+        openDetail(match);
+        // Clear route params so it doesn't reopen on navigation cycles
+        router.setParams({ openId: undefined });
+      }
+    }
+  }, [openId, announcements]);
 
   const toggleActionMenu = (item) => {
     const itemKey = getAnnouncementKey(item);
@@ -932,188 +1011,4 @@ const cardMenuStyles = {
     color: COLORS.dark,
     fontWeight: '600',
   },
-};
-
-const detailStyles = {
-  modalRoot: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(40),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(10),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
-  // ── updated back button: plain, no background circle ──
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIconBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-  },
-  headerTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: COLORS.dark,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  detailBody: {
-    paddingHorizontal: scale(18),
-    paddingTop: verticalScale(18),
-    paddingBottom: verticalScale(22),
-    backgroundColor: COLORS.white,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: verticalScale(18),
-    gap: 12,
-  },
-  adminAvatar: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adminInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  adminName: {
-    fontSize: moderateScale(14),
-    fontWeight: '700',
-    color: '#2D1B2E',
-    marginBottom: 4,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: moderateScale(11),
-    color: '#B5B7C0',
-  },
-  priorityBadge: {
-    borderRadius: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-  },
-  priorityText: {
-    fontSize: moderateScale(11),
-    fontWeight: '600',
-  },
-  titleSection: {
-    paddingBottom: verticalScale(8),
-  },
-  title: {
-    fontSize: moderateScale(20),
-    fontWeight: '800',
-    color: COLORS.dark,
-    lineHeight: 28,
-  },
-  contentSection: {
-    paddingBottom: 0,
-  },
-  content: {
-    fontSize: moderateScale(15),
-    color: COLORS.grayText,
-    lineHeight: 24,
-  },
-  imageWrapper: {
-    marginTop: verticalScale(18),
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: COLORS.white,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: verticalScale(18),
-  },
-  attachSection: {
-    gap: 10,
-  },
-  attachTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: verticalScale(4),
-  },
-  attachTitle: {
-    fontSize: moderateScale(13),
-    fontWeight: '700',
-    color: COLORS.dark,
-  },
-  attachItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.bg,
-    borderRadius: 12,
-    padding: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 12,
-  },
-  attachTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  attachIcon: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(10),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  attachName: {
-    fontSize: moderateScale(13),
-    color: '#2D1B2E',
-    fontWeight: '600',
-  },
-  attachType: {
-    fontSize: moderateScale(11),
-    color: '#B5B7C0',
-    marginTop: 2,
-  },
-  readMoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    gap: 2,
-  },
-  readMoreText: {
-    fontSize: moderateScale(11),
-    color: '#CA5D86',
-    fontWeight: '500',
-    flexShrink: 1,
-  },
-};
+};
