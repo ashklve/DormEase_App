@@ -359,46 +359,8 @@ export default function EmergencyScreen() {
                         console.warn('Speech recognition permission not granted:', permResult);
                     }
                 }
-
-                // 2. Query supported locales
-                try {
-                    const locales = await ExpoSpeechRecognitionModule.getSupportedLocales();
-                    console.log("Supported locales on this device:", locales);
-                    const hasTagalog = Platform.OS === 'android' && locales.some(locale => 
-                        locale.toLowerCase().startsWith('fil-') || 
-                        locale.toLowerCase().startsWith('tl-') || 
-                        locale.toLowerCase() === 'fil' || 
-                        locale.toLowerCase() === 'tl'
-                    );
-                    if (mounted) {
-                        if (hasTagalog) {
-                            setSupportedSpeechLanguages(['tl', 'en']);
-                        } else {
-                            setSupportedSpeechLanguages(['en']);
-                            setSpeechLanguage('en');
-                        }
-                    }
-                } catch (langErr) {
-                    console.warn("Failed to query native supported locales, applying platform defaults:", langErr);
-                    if (mounted) {
-                        if (Platform.OS === 'android') {
-                            setSupportedSpeechLanguages(['tl', 'en']);
-                        } else {
-                            setSupportedSpeechLanguages(['en']);
-                            setSpeechLanguage('en');
-                        }
-                    }
-                }
             } catch (error) {
                 console.error('failed to initialize speech recognition:', error);
-                if (mounted) {
-                    if (Platform.OS === 'android') {
-                        setSupportedSpeechLanguages(['tl', 'en']);
-                    } else {
-                        setSupportedSpeechLanguages(['en']);
-                        setSpeechLanguage('en');
-                    }
-                }
             } finally {
                 if (mounted) setModelLoading(false);
             }
