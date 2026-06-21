@@ -610,7 +610,7 @@ export default function MaintenanceHistoryScreen() {
                     <View style={styles.topRow}>
                         <TouchableOpacity
                             style={styles.backBtn}
-                            onPress={() => router.push('/tenant/maintenance')}
+                            onPress={() => router.back()}
                             activeOpacity={0.7}
                         >
                             <MaterialIcons name="chevron-left" size={22} color={COLORS.dark} />
