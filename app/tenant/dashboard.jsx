@@ -404,7 +404,12 @@ const Dashboard = () => {
                             title={item.title}
                             date={item.date}
                             preview={item.preview}
-                            onPress={() => router.push('/tenant/announcements')}
+                            onPress={() =>
+                                router.push({
+                                    pathname: '/tenant/announcements',
+                                    params: { openId: String(item.id) },
+                                })
+                            }
                         />
                     ))
                 )}
