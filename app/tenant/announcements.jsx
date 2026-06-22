@@ -301,7 +301,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.modalRoot} edges={['top']}>
+      <View style={[styles.modalRoot, { paddingTop: Math.max(insets.top, 20) }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.modalScrollContent}
@@ -422,7 +422,7 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
             )}
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       <ImageLightbox
         visible={lightboxVisible}
