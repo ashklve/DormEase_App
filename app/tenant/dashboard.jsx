@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated, RefreshControl, AppState } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -249,10 +249,23 @@ const Dashboard = () => {
     // this reuses onRefresh so the same pull-to-refresh spinner shows briefly while it updates.
     useFocusEffect(
         useCallback(() => {
+            // Refetch silently on focus if cache is already loaded (initial mount handled separately)
             if (dashboardCache.loaded) {
-                onRefresh();
+                fetchDashboardData();
             }
-        }, [onRefresh])
+
+            // Listen for app foregrounding to trigger a silent refetch
+            const handleAppStateChange = (nextAppState) => {
+                if (nextAppState === 'active') {
+                    fetchDashboardData();
+                }
+            };
+            const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+            return () => {
+                subscription.remove();
+            };
+        }, [fetchDashboardData])
     );
 
     const drawerRef = useRef(null);
