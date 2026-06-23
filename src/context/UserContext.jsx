@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../../api/client';
+import { AppState, Alert } from 'react-native';
+import { router } from 'expo-router';
 
 // ── Build full avatar URL from a storage path ─────────────────────────────────
 export const buildAvatarUrl = (path) => {
@@ -21,6 +23,19 @@ export function UserProvider({ children }) {
     useEffect(() => {
         const init = async () => {
             const token = await AsyncStorage.getItem('auth_token');
+            const keepLoggedIn = await AsyncStorage.getItem('keep_logged_in');
+
+            if (token && keepLoggedIn !== 'true') {
+                // Not kept logged in — clear session on fresh startup
+                await AsyncStorage.removeItem('auth_token');
+                await AsyncStorage.removeItem('auth_user');
+                await AsyncStorage.removeItem('keep_logged_in');
+                await AsyncStorage.removeItem('background_timestamp');
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
             if (!token) {
                 setLoading(false);
                 return; // no token, don't attempt fetch — let login handle it
@@ -28,6 +43,45 @@ export function UserProvider({ children }) {
             await fetchUser();
         };
         init();
+    }, []);
+
+    // Listen for background state transitions to handle session expiration
+    useEffect(() => {
+        const handleAppStateChange = async (nextAppState) => {
+            if (nextAppState === 'background') {
+                await AsyncStorage.setItem('background_timestamp', Date.now().toString());
+            } else if (nextAppState === 'active') {
+                const bgTimeStr = await AsyncStorage.getItem('background_timestamp');
+                if (bgTimeStr) {
+                    const bgTime = parseInt(bgTimeStr, 10);
+                    const elapsed = Date.now() - bgTime;
+                    
+                    const token = await AsyncStorage.getItem('auth_token');
+                    const keepLoggedIn = await AsyncStorage.getItem('keep_logged_in');
+
+                    // If token exists, "Keep me logged in" is false, and elapsed time > 15 minutes (900,000 ms)
+                    if (token && keepLoggedIn !== 'true' && elapsed > 15 * 60 * 1000) {
+                        await AsyncStorage.removeItem('auth_token');
+                        await AsyncStorage.removeItem('auth_user');
+                        await AsyncStorage.removeItem('keep_logged_in');
+                        await AsyncStorage.removeItem('background_timestamp');
+                        setUser(null);
+                        Alert.alert(
+                            'Session Expired',
+                            'Your session has expired due to inactivity. Please log in again.'
+                        );
+                        router.replace('/auth/login');
+                    } else {
+                        await AsyncStorage.removeItem('background_timestamp');
+                    }
+                }
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     const fetchUser = async () => {

@@ -24,6 +24,8 @@ export const loadSession = async () => {
 export const clearSession = async () => {
     await AsyncStorage.removeItem('auth_token');
     await AsyncStorage.removeItem('auth_user');
+    await AsyncStorage.removeItem('keep_logged_in');
+    await AsyncStorage.removeItem('background_timestamp');
 };
 
 // keep this if anything else in your app still calls logoutTenant

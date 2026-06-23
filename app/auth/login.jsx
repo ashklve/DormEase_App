@@ -88,6 +88,9 @@ export default function LoginScreen() {
 
             if (rememberMe) {
                 await saveSession(res.token, res.user);
+                await AsyncStorage.setItem('keep_logged_in', 'true');
+            } else {
+                await AsyncStorage.setItem('keep_logged_in', 'false');
             }
 
             // redirect to change password first if temp
