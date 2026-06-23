@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   RefreshControl,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -621,6 +622,9 @@ export default function AnnouncementsScreen() {
   const [readAnnouncementIds, setReadAnnouncementIds] = useState([]);
   const [archivedAnnouncementIds, setArchivedAnnouncementIds] = useState([]);
   const [pinnedAnnouncementIds, setPinnedAnnouncementIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOffline, setIsOffline] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -649,9 +653,22 @@ export default function AnnouncementsScreen() {
       setLoading(true);
       const res = await client.get('/announcements', { timeout: 15000 });
       setAnnouncements(res.data);
+      setIsOffline(false);
+      await AsyncStorage.setItem('cached_announcements', JSON.stringify(res.data));
     } catch (error) {
       console.error('announcements error:', error.message);
-      setAnnouncements([]);
+      setIsOffline(true);
+      try {
+        const cached = await AsyncStorage.getItem('cached_announcements');
+        if (cached) {
+          setAnnouncements(JSON.parse(cached));
+        } else {
+          setAnnouncements([]);
+        }
+      } catch (cacheErr) {
+        console.error('failed to load cached announcements:', cacheErr);
+        setAnnouncements([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -662,8 +679,19 @@ export default function AnnouncementsScreen() {
     try {
       const res = await client.get('/announcements');
       setAnnouncements(res.data);
+      setIsOffline(false);
+      await AsyncStorage.setItem('cached_announcements', JSON.stringify(res.data));
     } catch (error) {
       console.error('refresh failed:', error);
+      setIsOffline(true);
+      try {
+        const cached = await AsyncStorage.getItem('cached_announcements');
+        if (cached) {
+          setAnnouncements(JSON.parse(cached));
+        }
+      } catch (cacheErr) {
+        console.error('failed to load cached announcements on refresh:', cacheErr);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -814,6 +842,17 @@ export default function AnnouncementsScreen() {
     return activeAnnouncements;
   }, [activeAnnouncements, activeTab, archivedAnnouncements, isAnnouncementPinned, isAnnouncementRead]);
 
+  const filteredAnnouncements = useMemo(() => {
+    if (!searchQuery.trim()) return visibleAnnouncements;
+    const query = searchQuery.toLowerCase().trim();
+    return visibleAnnouncements.filter((a) => {
+      const titleMatch = (a.title ?? '').toLowerCase().includes(query);
+      const previewMatch = (a.preview ?? '').toLowerCase().includes(query);
+      const contentMatch = (a.content ?? '').toLowerCase().includes(query);
+      return titleMatch || previewMatch || contentMatch;
+    });
+  }, [visibleAnnouncements, searchQuery]);
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -867,6 +906,54 @@ export default function AnnouncementsScreen() {
             <Text style={styles.headerSub}>View notices and announcements</Text>
           </View>
 
+          <View style={styles.searchWrapper}>
+            <View style={[styles.searchContainer, searchFocused && styles.searchContainerFocused]}>
+              <Ionicons
+                name="search"
+                size={18}
+                color={searchFocused ? COLORS.primary : COLORS.muted}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search announcements..."
+                placeholderTextColor={COLORS.muted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.muted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {searchQuery.trim().length > 0 && (
+            <View style={styles.searchResultsContainer}>
+              <Text style={styles.searchResultsText}>
+                Showing {filteredAnnouncements.length} matching {filteredAnnouncements.length === 1 ? 'notice' : 'notices'}
+              </Text>
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBadge}>
+                <Text style={styles.searchClearBadgeText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isOffline && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline" size={20} color="#DF0404" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.offlineTitle}>Offline Mode</Text>
+                <Text style={styles.offlineText}>Displaying cached announcements. Check your connection.</Text>
+              </View>
+            </View>
+          )}
+
           <View style={styles.filterRow}>
             <TouchableOpacity style={styles.filterBtn}>
               <Ionicons name="options-outline" size={16} color="#fff" />
@@ -895,10 +982,10 @@ export default function AnnouncementsScreen() {
           </View>
 
           <View style={{ paddingHorizontal: 16, gap: 12 }}>
-            {visibleAnnouncements.length === 0 ? (
+            {filteredAnnouncements.length === 0 ? (
               <Text style={styles.emptyText}>No announcements here.</Text>
             ) : (
-              visibleAnnouncements.map((item) => (
+              filteredAnnouncements.map((item) => (
                 <AnnouncementCard
                   key={getAnnouncementKey(item)}
                   item={item}

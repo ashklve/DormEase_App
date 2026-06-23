@@ -993,6 +993,91 @@ navCenterCircle: {
     flexShrink: 1,
   },
 
+  // Search Bar Styles
+  searchWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5ECF6',
+    // Premium Drop Shadow
+    shadowColor: '#CA5D86',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  searchContainerFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#FFF9FC',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.dark,
+    padding: 0,
+  },
+  searchResultsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    marginTop: -4,
+  },
+  searchResultsText: {
+    fontSize: 12,
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+  searchClearBadge: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  searchClearBadgeText: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+
+  // Offline Banner Styles
+  offlineBanner: {
+    backgroundColor: '#FFF0F0',
+    borderColor: '#FFD3D3',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  offlineTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DF0404',
+  },
+  offlineText: {
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+
   // Image Lightbox Styles
   lightboxContainer: {
     flex: 1,
