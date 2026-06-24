@@ -1,27 +1,37 @@
-// src/cache/dashboardCache.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CACHE_KEY = 'dashboard_water_bill_cache_v1';
+const CACHE_KEY = 'dashboard_cache_v1';
 
 export const dashboardCache = {
-    async save(payload) {
-        try {
-            await AsyncStorage.setItem(
-                CACHE_KEY,
-                JSON.stringify({ ...payload, cachedAt: Date.now() })
-            );
-        } catch (err) {
-            console.error('dashboardCache.save error:', err);
-        }
-    },
+    announcements: [],
+    currentBill: '0.00',
+    pendingRequests: 0,
+    user: null,
+    loaded: false,
 
-    async load() {
-        try {
-            const raw = await AsyncStorage.getItem(CACHE_KEY);
-            return raw ? JSON.parse(raw) : null;
-        } catch (err) {
-            console.error('dashboardCache.load error:', err);
-            return null;
-        }
-    },
+    waterBilling: null,
+    waterBreakdown: null,
+    waterPaymentHistory: [],
 };
+
+export async function hydrateDashboardCache() {
+    try {
+        const raw = await AsyncStorage.getItem(CACHE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            Object.assign(dashboardCache, parsed);
+        }
+    } catch (err) {
+        console.error('hydrateDashboardCache error:', err);
+    } finally {
+        dashboardCache.loaded = true;
+    }
+}
+
+export async function persistDashboardCache() {
+    try {
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(dashboardCache));
+    } catch (err) {
+        console.error('persistDashboardCache error:', err);
+    }
+}
