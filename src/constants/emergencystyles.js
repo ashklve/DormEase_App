@@ -137,7 +137,6 @@ export default StyleSheet.create({
         marginBottom: 14,
     },
 
-    // form card
     formCard: {
         backgroundColor: COLORS.card,
         marginHorizontal: 20,
@@ -146,6 +145,27 @@ export default StyleSheet.create({
         marginBottom: 14,
         borderWidth: 1,
         borderColor: COLORS.border,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+    historyBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    historyBtnText: {
+        fontSize: 11,
+        color: COLORS.primary,
+        fontWeight: '600',
     },
 
     // section label
