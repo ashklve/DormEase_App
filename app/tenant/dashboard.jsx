@@ -154,6 +154,7 @@ const Dashboard = () => {
 
     const [announcements, setAnnouncements] = useState(dashboardCache.announcements);
     const [currentBill, setCurrentBill] = useState(dashboardCache.currentBill);
+    const [pastDueAmount, setPastDueAmount] = useState(dashboardCache.pastDueAmount ?? 0);
     const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(!dashboardCache.loaded);
@@ -185,18 +186,25 @@ const Dashboard = () => {
             try {
                 const res = await client.get('/water-bill', { timeout: 30000 });
                 const currentBilling = res.data.current_billing;
-                const amountDue = parseFloat(String(currentBilling?.amount_due ?? '0').replace(/,/g, '')) || 0;
-                const pastDueAmount = parseFloat(String(currentBilling?.past_due_amount ?? '0').replace(/,/g, '')) || 0;
-                const total = amountDue + pastDueAmount;
-                const amount = formatBillAmount(total);
+
+                // amount_due is already the TOTAL owed (current charges + past due combined),
+                // so we just display it directly instead of adding past_due_amount again.
+                const totalDue = parseFloat(String(currentBilling?.amount_due ?? '0').replace(/,/g, '')) || 0;
+                const pastDue = parseFloat(String(currentBilling?.past_due_amount ?? '0').replace(/,/g, '')) || 0;
+
+                const amount = formatBillAmount(totalDue);
                 dashboardCache.currentBill = amount;
+                dashboardCache.pastDueAmount = pastDue;
                 setCurrentBill(amount);
+                setPastDueAmount(pastDue);
             } catch (err) {
                 if (err.response?.status !== 404) {
                     console.error('failed to load current bill:', err);
                 }
                 dashboardCache.currentBill = '0.00';
+                dashboardCache.pastDueAmount = 0;
                 setCurrentBill('0.00');
+                setPastDueAmount(0);
             }
         };
 
@@ -358,6 +366,23 @@ const Dashboard = () => {
                             <Text style={styles.statValue}>{userData.pendingRequests}</Text>
                         </View>
                     </View>
+
+                    {pastDueAmount > 0 && (
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginTop: 10,
+                            backgroundColor: 'rgba(255,255,255,0.15)',
+                            borderRadius: 8,
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                        }}>
+                            <MaterialIcons name="error-outline" size={14} color={COLORS.white} />
+                            <Text style={{ color: COLORS.white, fontSize: 12, marginLeft: 6 }}>
+                                Includes ₱{formatBillAmount(pastDueAmount)} past due
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
 
                 <HotlinesBanner onPress={() => router.push('/tenant/hotlines')} />
