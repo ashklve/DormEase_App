@@ -74,7 +74,7 @@ const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
     </TouchableOpacity>
 );
 
-const Waveform = ({ isRecording }) => {
+const Waveform = ({ isRecording, volumeAnim }) => {
     const bars = useRef(
         Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
     ).current;
@@ -87,9 +87,9 @@ const Waveform = ({ isRecording }) => {
         const anims = bars.map((b, i) =>
             Animated.loop(
                 Animated.sequence([
-                    Animated.delay(i * 30),
-                    Animated.timing(b, { toValue: 0.3 + Math.random() * 0.7, duration: 200 + Math.random() * 200, useNativeDriver: true }),
-                    Animated.timing(b, { toValue: 0.2 + Math.random() * 0.3, duration: 200 + Math.random() * 200, useNativeDriver: true }),
+                    Animated.delay(i * 40),
+                    Animated.timing(b, { toValue: 0.3 + Math.random() * 0.7, duration: 180 + Math.random() * 80, useNativeDriver: true }),
+                    Animated.timing(b, { toValue: 0.2 + Math.random() * 0.2, duration: 180 + Math.random() * 80, useNativeDriver: true }),
                 ])
             )
         );
@@ -99,18 +99,21 @@ const Waveform = ({ isRecording }) => {
 
     return (
         <View style={styles.waveformRow}>
-            {bars.map((anim, i) => (
-                <Animated.View
-                    key={i}
-                    style={{
-                        width: 3,
-                        height: 36,
-                        borderRadius: 2,
-                        backgroundColor: COLORS.primary,
-                        transform: [{ scaleY: anim }],
-                    }}
-                />
-            ))}
+            {bars.map((anim, i) => {
+                const combinedScale = Animated.multiply(anim, volumeAnim);
+                return (
+                    <Animated.View
+                        key={i}
+                        style={{
+                            width: 3,
+                            height: 36,
+                            borderRadius: 2,
+                            backgroundColor: COLORS.primary,
+                            transform: [{ scaleY: combinedScale }],
+                        }}
+                    />
+                );
+            })}
         </View>
     );
 };
@@ -274,8 +277,29 @@ export default function EmergencyScreen() {
         }
     });
 
+    const volumeAnim = useRef(new Animated.Value(1.0)).current;
+
+    useSpeechRecognitionEvent("volumechange", (event) => {
+        if (recordingStateRef.current !== 'recording') return;
+        const rawVal = event.value;
+        const zeroToOne = Math.max(0, Math.min(1, (rawVal + 2) / 12));
+        const normalized = 0.2 + zeroToOne * 0.8;
+        Animated.timing(volumeAnim, {
+            toValue: normalized,
+            duration: 80,
+            useNativeDriver: true,
+        }).start();
+    });
+
     useEffect(() => {
         recordingStateRef.current = recordingState;
+        if (recordingState !== 'recording') {
+            Animated.timing(volumeAnim, {
+                toValue: 1.0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
     }, [recordingState]);
 
     const isRecording = recordingState === 'recording';
@@ -421,6 +445,10 @@ export default function EmergencyScreen() {
                 lang: selectedSpeechLanguage.langCode,
                 interimResults: true,
                 continuous: true,
+                volumeChangeEventOptions: {
+                    enabled: true,
+                    intervalMillis: 80,
+                },
             });
             console.log("ExpoSpeechRecognitionModule.start completed successfully.");
         } catch (error) {
@@ -458,6 +486,10 @@ export default function EmergencyScreen() {
                 lang: selectedSpeechLanguage.langCode,
                 interimResults: true,
                 continuous: true,
+                volumeChangeEventOptions: {
+                    enabled: true,
+                    intervalMillis: 80,
+                },
             });
         } catch (error) {
             console.error("Error resuming speech recognition:", error);
@@ -623,7 +655,16 @@ export default function EmergencyScreen() {
 
                     {/* voice recorder */}
                     <View style={styles.formCard}>
-                        <Text style={styles.sectionLabel}>Describe the emergency</Text>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.sectionLabel}>Describe the emergency</Text>
+                            <TouchableOpacity
+                                style={styles.historyBtn}
+                                onPress={() => router.push('/tenant/emergencyhistory')}
+                            >
+                                <Ionicons name="time-outline" size={13} color={COLORS.primary} />
+                                <Text style={styles.historyBtnText}>History</Text>
+                            </TouchableOpacity>
+                        </View>
                         <Text style={styles.sectionSub}>Speak or type the situation</Text>
 
                         <View style={styles.languageSelector}>
@@ -668,7 +709,7 @@ export default function EmergencyScreen() {
                                 </>
                             ) : (
                                 <>
-                                    <Waveform isRecording={isRecording} />
+                                    <Waveform isRecording={isRecording} volumeAnim={volumeAnim} />
                                     <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
 
                                     <View style={styles.controlRow}>

@@ -908,8 +908,7 @@ navCenterCircle: {
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    width: '100%',
   },
   modalImage: {
     width: '100%',
@@ -1105,6 +1104,29 @@ navCenterCircle: {
   lightboxImage: {
     width: SCREEN_WIDTH,
     height: '100%',
+  },
+
+  // Carousel Styles
+  carouselDotContainer: {
+    position: 'absolute',
+    bottom: verticalScale(12),
+    flexDirection: 'row',
+    alignSelf: 'center',
+    gap: scale(6),
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(5),
+    borderRadius: scale(12),
+  },
+  carouselDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  carouselDotActive: {
+    backgroundColor: COLORS.white,
+    width: scale(14),
   },
 
 });
