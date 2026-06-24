@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { UserProvider } from '../src/context/UserContext';
 import PushNotificationBootstrap from '../src/components/PushNotificationBootstrap';
-import QuickEmergencyTrigger from '../src/components/QuickEmergencyTrigger';
 import LoadingOverlay from '../src/components/LoadingOverlay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hydrateDashboardCache } from '../src/cache/dashboardCache';
@@ -28,7 +27,6 @@ export default function RootLayout() {
     return (
         <UserProvider>
             <PushNotificationBootstrap />
-            <QuickEmergencyTrigger />
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="welcome" />
