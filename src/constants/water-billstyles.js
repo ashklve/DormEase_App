@@ -472,6 +472,22 @@ export default StyleSheet.create({
     opacity: 0.5,
   },
 
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F1F1',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+},
+offlineBannerText: {
+    fontSize: 12,
+    color: '#777',
+},
+
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
