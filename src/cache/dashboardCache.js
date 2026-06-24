@@ -1,9 +1,27 @@
-// Simple in-memory cache that lives for the entire app session.
-// Survives screen unmounts — resets only when the app is fully closed.
+// src/cache/dashboardCache.js
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CACHE_KEY = 'dashboard_water_bill_cache_v1';
+
 export const dashboardCache = {
-    announcements: [],
-    currentBill: '0.00',
-    pendingRequests: 0,
-    user: null,
-    loaded: false,
+    async save(payload) {
+        try {
+            await AsyncStorage.setItem(
+                CACHE_KEY,
+                JSON.stringify({ ...payload, cachedAt: Date.now() })
+            );
+        } catch (err) {
+            console.error('dashboardCache.save error:', err);
+        }
+    },
+
+    async load() {
+        try {
+            const raw = await AsyncStorage.getItem(CACHE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (err) {
+            console.error('dashboardCache.load error:', err);
+            return null;
+        }
+    },
 };
