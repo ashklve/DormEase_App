@@ -44,6 +44,35 @@ const formatPHPhone = (raw) => {
     return digits.slice(0, 12);
 };
 
+// ── Gibberish / nonsense-input validation ─────────────────────────────────────
+const KEYBOARD_PATTERNS = /(asdf|qwer|zxcv|jkl|hjkl|qwerty)/i;
+
+const isGibberish = (text) => {
+    const trimmed = (text ?? '').trim();
+    if (trimmed.length < 3) return false; // let "required field" checks catch empties
+
+    const lettersOnly = trimmed.replace(/[^a-zA-Z]/g, '');
+    if (lettersOnly.length === 0) return true; // no letters at all (e.g. "!!!!", "1234")
+
+    if (/(.)\1{3,}/.test(trimmed)) return true; // repeated chars, e.g. "aaaaa"
+    if (KEYBOARD_PATTERNS.test(trimmed.replace(/\s/g, ''))) return true; // keysmash patterns
+
+    const vowels = (lettersOnly.match(/[aeiouAEIOU]/g) || []).length;
+    const vowelRatio = vowels / lettersOnly.length;
+    if (lettersOnly.length >= 6 && vowelRatio < 0.15) return true; // very low vowel ratio
+
+    return false;
+};
+
+// ── Manual pickup instructions ────────────────────────────────────────────────
+const PICKUP_INFO = {
+    address: 'DormEase Admin Office, Ground Floor, Building A',
+    hours: 'Monday – Friday, 8:00 AM – 5:00 PM',
+    note: 'Bring a valid ID and be ready to sign upon claiming your document.',
+};
+
+const PURPOSE_MAX_LENGTH = 255;
+
 const CATEGORY = { FORM: 'form', CERTIFICATE: 'certificate' };
 
 const PREDEFINED_PURPOSES = [
@@ -113,6 +142,7 @@ export default function DocumentsScreen() {
     const [userInfo, setUserInfo] = useState(null);
     const [downloadableForms, setDownloadableForms] = useState([]);
     const [docsLoading, setDocsLoading] = useState(true);
+    const [formSearchQuery, setFormSearchQuery] = useState('');
 
     const isCertificate = selectedOption?.category === CATEGORY.CERTIFICATE;
     const isForm = selectedOption?.category === CATEGORY.FORM;
@@ -121,6 +151,10 @@ export default function DocumentsScreen() {
     const resolvedPurpose = selectedPurpose === 'Other'
         ? customPurpose.trim()
         : (selectedPurpose ?? '');
+
+    const filteredForms = downloadableForms.filter((f) =>
+        f.label.toLowerCase().includes(formSearchQuery.trim().toLowerCase())
+    );
 
     const dropdownSections = [
         {
@@ -225,6 +259,10 @@ export default function DocumentsScreen() {
             Alert.alert('Missing Field', 'Please enter your full name.');
             return;
         }
+        if (isGibberish(fullName)) {
+            Alert.alert('Invalid Input', 'Please enter your real full name.');
+            return;
+        }
         if (!selectedOption) {
             Alert.alert('Missing Field', 'Please select a request type.');
             return;
@@ -237,12 +275,20 @@ export default function DocumentsScreen() {
             Alert.alert('Missing Field', 'Please specify the document you are requesting.');
             return;
         }
+        if (isCertificate && isOtherDoc && isGibberish(customDocName)) {
+            Alert.alert('Invalid Input', 'Please enter a valid document name, not random characters.');
+            return;
+        }
         if (isCertificate && !selectedPurpose) {
             Alert.alert('Missing Field', 'Please select a purpose for your request.');
             return;
         }
         if (isCertificate && selectedPurpose === 'Other' && !customPurpose.trim()) {
             Alert.alert('Missing Field', 'Please describe your purpose in the text field.');
+            return;
+        }
+        if (isCertificate && selectedPurpose === 'Other' && isGibberish(customPurpose)) {
+            Alert.alert('Invalid Input', 'Please enter a valid purpose, not random characters.');
             return;
         }
 
@@ -418,20 +464,49 @@ export default function DocumentsScreen() {
                                     </Text>
                                 </View>
 
+                                {!docsLoading && downloadableForms.length > 0 && (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: COLORS.bg,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        height: 38,
+                                        marginTop: 10,
+                                        marginBottom: 8,
+                                    }}>
+                                        <MaterialIcons name="search" size={16} color={COLORS.muted} />
+                                        <TextInput
+                                            style={{ flex: 1, marginLeft: 6, fontSize: 13, color: COLORS.dark }}
+                                            placeholder="Search form name..."
+                                            placeholderTextColor={COLORS.muted}
+                                            value={formSearchQuery}
+                                            onChangeText={setFormSearchQuery}
+                                        />
+                                        {formSearchQuery.length > 0 && (
+                                            <TouchableOpacity onPress={() => setFormSearchQuery('')}>
+                                                <MaterialIcons name="close" size={16} color={COLORS.muted} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+
                                 {docsLoading ? (
                                     <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
-                                ) : downloadableForms.length === 0 ? (
+                                ) : filteredForms.length === 0 ? (
                                     <View style={styles.hintBox}>
                                         <MaterialIcons name="info-outline" size={13} color={COLORS.primary} />
-                                        <Text style={styles.hintBoxText}>No forms available yet.</Text>
+                                        <Text style={styles.hintBoxText}>
+                                            {formSearchQuery ? 'No forms match your search.' : 'No forms available yet.'}
+                                        </Text>
                                     </View>
                                 ) : (
-                                    downloadableForms.map((form, index) => (
+                                    filteredForms.map((form, index) => (
                                         <View
                                             key={String(form.id)}
                                             style={[
                                                 styles.formRow,
-                                                index < downloadableForms.length - 1 && styles.formRowBorder,
+                                                index < filteredForms.length - 1 && styles.formRowBorder,
                                             ]}
                                         >
                                             <View style={styles.formRowLeft}>
@@ -680,15 +755,27 @@ export default function DocumentsScreen() {
                                 )}
 
                                 {selectedPurpose === 'Other' && (
-                                    <TextInput
-                                        style={[styles.input, { marginTop: 8, textAlignVertical: 'top' }]}
-                                        placeholder="Please describe your purpose..."
-                                        placeholderTextColor={COLORS.muted}
-                                        value={customPurpose}
-                                        onChangeText={setCustomPurpose}
-                                        multiline
-                                        numberOfLines={3}
-                                    />
+                                    <>
+                                        <TextInput
+                                            style={[styles.input, { marginTop: 8, textAlignVertical: 'top' }]}
+                                            placeholder="Please describe your purpose..."
+                                            placeholderTextColor={COLORS.muted}
+                                            value={customPurpose}
+                                            onChangeText={(text) => setCustomPurpose(text.slice(0, PURPOSE_MAX_LENGTH))}
+                                            multiline
+                                            numberOfLines={3}
+                                            maxLength={PURPOSE_MAX_LENGTH}
+                                        />
+                                        <Text style={{
+                                            alignSelf: 'flex-end',
+                                            fontSize: 11,
+                                            color: customPurpose.length >= PURPOSE_MAX_LENGTH ? COLORS.denied ?? '#D63375' : COLORS.muted,
+                                            marginTop: 2,
+                                            marginBottom: 8,
+                                        }}>
+                                            {customPurpose.length} / {PURPOSE_MAX_LENGTH} characters
+                                        </Text>
+                                    </>
                                 )}
 
                                 <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
@@ -709,6 +796,40 @@ export default function DocumentsScreen() {
                                     sublabel="Pick up at the admin office"
                                     isLast
                                 />
+
+                                {deliveryMethods.has('printed') && (
+                                    <View style={{
+                                        backgroundColor: COLORS.bg,
+                                        borderRadius: 10,
+                                        padding: 12,
+                                        marginTop: 10,
+                                    }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                            <MaterialIcons name="store" size={14} color={COLORS.primary} />
+                                            <Text style={{ fontWeight: '600', fontSize: 12, color: COLORS.dark }}>
+                                                Pickup Instructions
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
+                                            <MaterialIcons name="location-on" size={13} color={COLORS.muted} style={{ marginTop: 1 }} />
+                                            <Text style={{ fontSize: 12, color: COLORS.muted, flex: 1 }}>
+                                                {PICKUP_INFO.address}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
+                                            <MaterialIcons name="schedule" size={13} color={COLORS.muted} style={{ marginTop: 1 }} />
+                                            <Text style={{ fontSize: 12, color: COLORS.muted, flex: 1 }}>
+                                                {PICKUP_INFO.hours}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
+                                            <MaterialIcons name="edit" size={13} color={COLORS.muted} style={{ marginTop: 1 }} />
+                                            <Text style={{ fontSize: 12, color: COLORS.muted, flex: 1 }}>
+                                                {PICKUP_INFO.note}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
                             </>
                         )}
 
