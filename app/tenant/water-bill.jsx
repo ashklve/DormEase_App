@@ -258,22 +258,41 @@ export default function WaterBillScreen() {
         });
     };
 
+    const [isOffline, setIsOffline] = useState(false);
+
     const fetchWaterBill = async () => {
         if (user?.is_on_vacation) return;
         try {
             const res = await client.get('/water-bill');
-            setBilling(res.data.current_billing ?? null);
-            setBreakdown(res.data.breakdown ?? null);
-            setHistory(res.data.payment_history ?? []);
+            const payload = {
+                current_billing: res.data.current_billing ?? null,
+                breakdown: res.data.breakdown ?? null,
+                payment_history: res.data.payment_history ?? [],
+            };
+            setBilling(payload.current_billing);
+            setBreakdown(payload.breakdown);
+            setHistory(payload.payment_history);
+            setIsOffline(false);
+            await dashboardCache.save(payload); // cache the fresh data
         } catch (err) {
             const status = err.response?.status;
             if (status === 404) {
                 setBilling(null);
                 setBreakdown(null);
                 setHistory([]);
+                setIsOffline(false);
             } else {
-                console.error('fetch water bill error:', err.message);
-                Alert.alert('Error', 'Failed to load water billing data.');
+                // Likely offline / network error — fall back to cache
+                const cached = await dashboardCache.load();
+                if (cached) {
+                    setBilling(cached.current_billing ?? null);
+                    setBreakdown(cached.breakdown ?? null);
+                    setHistory(cached.payment_history ?? []);
+                    setIsOffline(true);
+                } else {
+                    console.error('fetch water bill error:', err.message);
+                    Alert.alert('Error', 'Failed to load water billing data.');
+                }
             }
         } finally {
             setLoading(false);
@@ -351,6 +370,15 @@ export default function WaterBillScreen() {
                         </View>
                         <Text style={styles.headerSub}>View your current share and payment status</Text>
                     </View>
+                    
+                    {isOffline && (
+                        <View style={styles.offlineBanner}>
+                            <MaterialIcons name="wifi-off" size={16} color={COLORS.muted} />
+                            <Text style={styles.offlineBannerText}>
+                                You're offline — showing last saved billing data.
+                            </Text>
+                        </View>
+                    )}
 
                     <TabBar activeTab={activeTab} onTabChange={handleTabChange} indicatorAnim={indicatorAnim} />
 
