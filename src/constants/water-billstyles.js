@@ -488,6 +488,22 @@ offlineBannerText: {
     color: '#777',
 },
 
+  rejectionNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFE9EE',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 8,
+},
+rejectionNoticeText: {
+    fontSize: 12.5,
+    color: '#DC3545',
+    fontWeight: '600',
+    flex: 1,
+},
+
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
