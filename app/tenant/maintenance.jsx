@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -133,15 +133,20 @@ export default function MaintenanceScreen() {
     const drawerRef = useRef(null);
     const { user, avatarUri } = useUser();
 
-    useEffect(() => {
-        if (user?.is_on_vacation) {
-            Alert.alert(
-                "Access Restricted",
-                "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
-                [{ text: "OK", onPress: () => router.replace('/tenant/dashboard') }]
-            );
-        }
-    }, [user]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.is_on_vacation) {
+                Alert.alert(
+                    "Access Restricted",
+                    "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
+                    [
+                        { text: "Cancel", onPress: () => router.replace('/tenant/dashboard'), style: "cancel" },
+                        { text: "Go to Profile", onPress: () => router.replace('/tenant/profile') }
+                    ]
+                );
+            }
+        }, [user?.is_on_vacation])
+    );
 
     const insets = useSafeAreaInsets();
 

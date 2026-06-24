@@ -102,11 +102,15 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
             <Animated.View style={[drawerStyles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
 
                 {/* user info */}
-                <View style={drawerStyles.drawerTop}>
+                <TouchableOpacity
+                    style={drawerStyles.drawerTop}
+                    onPress={() => navigate('/tenant/profile')}
+                    activeOpacity={0.7}
+                >
                     <Image source={photoSource} style={drawerStyles.avatar} />
                     <Text style={drawerStyles.drawerUsername}>{userData.username}</Text>
                     <Text style={drawerStyles.drawerRoom}>{userData.roomCode}</Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* close button */}
                 <TouchableOpacity style={drawerStyles.drawerCloseBtn} onPress={close}>
@@ -119,6 +123,12 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
                     iconName="home-outline"
                     label="Dashboard"
                     onPress={() => navigate('/tenant/dashboard')}
+                />
+
+                <DrawerItem
+                    iconName="person-outline"
+                    label="Profile"
+                    onPress={() => navigate('/tenant/profile')}
                 />
 
                 <DrawerItem
