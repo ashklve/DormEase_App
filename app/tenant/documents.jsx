@@ -47,6 +47,32 @@ const formatPHPhone = (raw) => {
 // ── Gibberish / nonsense-input validation ─────────────────────────────────────
 const KEYBOARD_PATTERNS = /(asdf|qwer|zxcv|jkl|hjkl|qwerty)/i;
 
+// A small dictionary of common English + Tagalog/Filipino words used as a
+// "sanity anchor" — real input (even short phrases, in English or Taglish)
+// almost always contains at least one of these. Not meant to be exhaustive;
+// it's a cheap signal, not a full dictionary check.
+const COMMON_WORDS = new Set([
+    // English
+    'the', 'for', 'and', 'to', 'of', 'in', 'is', 'on', 'at', 'my', 'me', 'i',
+    'need', 'want', 'this', 'that', 'will', 'be', 'used', 'use', 'requirement',
+    'application', 'school', 'work', 'job', 'bank', 'loan', 'visa', 'travel',
+    'court', 'legal', 'record', 'copy', 'document', 'request', 'proof', 'id',
+    'residency', 'lease', 'rent', 'apply', 'applying', 'employment', 'personal',
+    'keeping', 'process', 'processing', 'requirements', 'a', 'an', 'as', 'it',
+    'with', 'have', 'has', 'had', 'submit', 'submitting', 'get', 'getting',
+    // Tagalog / Filipino — common function words (appear in almost any sentence)
+    'ang', 'ng', 'nang', 'sa', 'na', 'mga', 'ko', 'mo', 'niya', 'namin', 'natin',
+    'nila', 'akin', 'iyo', 'kanya', 'amin', 'atin', 'kanila', 'ako', 'ikaw', 'ka',
+    'siya', 'kami', 'tayo', 'kayo', 'sila', 'para', 'kasi', 'pero', 'at', 'din',
+    'rin', 'lang', 'lamang', 'ito', 'iyan', 'iyon', 'dito', 'diyan', 'doon',
+    'kung', 'kapag', 'dahil', 'upang', 'gusto', 'kailangan', 'gagamit', 'gagamitin',
+    'kukunin', 'kunin', 'hihingi', 'humingi', 'magpa', 'magpapa', 'pagpapa',
+    // Tagalog — document/request-related vocabulary
+    'trabaho', 'paaralan', 'eskwela', 'banko', 'pautang', 'paaplay', 'aplikasyon',
+    'kontrata', 'paupahan', 'paninirahan', 'tirahan', 'sertipiko', 'dokumento',
+    'kahilingan', 'patunay', 'rekord', 'kopya', 'pangangailangan', 'paalala',
+]);
+
 const isGibberish = (text) => {
     const trimmed = (text ?? '').trim();
     if (trimmed.length < 3) return false; // let "required field" checks catch empties
@@ -59,7 +85,24 @@ const isGibberish = (text) => {
 
     const vowels = (lettersOnly.match(/[aeiouAEIOU]/g) || []).length;
     const vowelRatio = vowels / lettersOnly.length;
-    if (lettersOnly.length >= 6 && vowelRatio < 0.15) return true; // very low vowel ratio
+    if (lettersOnly.length >= 6 && vowelRatio < 0.15) return true; // very low vowel ratio (consonant-heavy keysmash)
+    if (lettersOnly.length >= 6 && vowelRatio > 0.75) return true; // unnaturally high vowel ratio (vowel-heavy keysmash)
+
+    // Unlikely consonant clusters: 4+ consonants in a row almost never occurs in real English words/phrases.
+    if (/[bcdfghjklmnpqrstvwxyz]{4,}/i.test(lettersOnly)) return true;
+
+    // Special-character density: lots of symbols/digits mixed into what should be prose.
+    const specialCharCount = trimmed.replace(/[a-zA-Z\s]/g, '').length;
+    if (trimmed.length >= 6 && specialCharCount / trimmed.length > 0.25) return true;
+
+    // Sanity anchor: longer inputs should contain at least one recognizable common word.
+    // Short inputs (under ~12 letters) are allowed through since legit short answers
+    // (e.g. "Visa", "Diploma") may not be in our small dictionary.
+    if (lettersOnly.length >= 12) {
+        const words = trimmed.toLowerCase().match(/[a-z]+/g) || [];
+        const hasCommonWord = words.some((w) => COMMON_WORDS.has(w));
+        if (!hasCommonWord) return true;
+    }
 
     return false;
 };
@@ -264,8 +307,8 @@ export default function DocumentsScreen() {
             Alert.alert('Missing Field', 'Please enter your full name.');
             return;
         }
-        if (isGibberish(fullName)) {
-            Alert.alert('Invalid Input', 'Please enter your real full name.');
+       if (isGibberish(customPurpose)) {
+            Alert.alert('Invalid Input', 'Please enter a valid purpose, not random characters.');
             return;
         }
         if (!selectedOption) {
