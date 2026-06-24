@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
@@ -131,15 +131,20 @@ export default function EmergencyScreen() {
     const [loading, setLoading] = useState(!emergencyScreenCache.loaded);
 
     // ── vacation guard ─────────────────────────────────────────────────────────
-    useEffect(() => {
-        if (user?.is_on_vacation) {
-            Alert.alert(
-                'Access Restricted',
-                'You cannot submit emergency reports while on vacation status. Please turn off vacation mode in your profile first.',
-                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
-            );
-        }
-    }, [user?.is_on_vacation]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.is_on_vacation) {
+                Alert.alert(
+                    'Access Restricted',
+                    'You cannot submit emergency reports while on vacation status. Please turn off vacation mode in your profile first.',
+                    [
+                        { text: 'Cancel', onPress: () => router.replace('/tenant/dashboard'), style: 'cancel' },
+                        { text: 'Go to Profile', onPress: () => router.replace('/tenant/profile') }
+                    ]
+                );
+            }
+        }, [user?.is_on_vacation])
+    );
 
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [speechLanguage, setSpeechLanguage] = useState(Platform.OS === 'ios' ? 'en' : 'tl');

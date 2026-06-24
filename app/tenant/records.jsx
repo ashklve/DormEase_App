@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -498,15 +498,20 @@ export default function TenantRecordsScreen() {
     const insets = useSafeAreaInsets();
     const pullToRefreshRef = useRef(null);
 
-    useEffect(() => {
-        if (user?.is_on_vacation) {
-            Alert.alert(
-                "Access Restricted",
-                "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
-                [{ text: "OK", onPress: () => router.replace('/tenant/dashboard') }]
-            );
-        }
-    }, [user]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.is_on_vacation) {
+                Alert.alert(
+                    "Access Restricted",
+                    "You cannot access this feature while on vacation. Please turn off your vacation status in your profile.",
+                    [
+                        { text: "Cancel", onPress: () => router.replace('/tenant/dashboard'), style: "cancel" },
+                        { text: "Go to Profile", onPress: () => router.replace('/tenant/profile') }
+                    ]
+                );
+            }
+        }, [user?.is_on_vacation])
+    );
     const drawerRef = useRef(null);
 
     const [records, setRecords] = useState([]);

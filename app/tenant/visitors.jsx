@@ -387,15 +387,20 @@ export default function VisitorsScreen() {
     const pullToRefreshRef = useRef(null);
 
     // vacation guard
-    useEffect(() => {
-        if (user?.is_on_vacation) {
-            Alert.alert(
-                'Access Restricted',
-                'You cannot register visitors while on vacation status. Please turn off vacation mode in your profile first.',
-                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
-            );
-        }
-    }, [user?.is_on_vacation]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.is_on_vacation) {
+                Alert.alert(
+                    'Access Restricted',
+                    'You cannot register visitors while on vacation status. Please turn off vacation mode in your profile first.',
+                    [
+                        { text: 'Cancel', onPress: () => router.replace('/tenant/dashboard'), style: 'cancel' },
+                        { text: 'Go to Profile', onPress: () => router.replace('/tenant/profile') }
+                    ]
+                );
+            }
+        }, [user?.is_on_vacation])
+    );
 
     const drawerRef = useRef(null);
 

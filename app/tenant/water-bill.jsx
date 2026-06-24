@@ -217,15 +217,20 @@ export default function WaterBillScreen() {
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
     // vacation guard
-    useEffect(() => {
-        if (user?.is_on_vacation) {
-            Alert.alert(
-                'Access Restricted',
-                'You cannot view or pay water bills while on vacation status. Please turn off vacation mode in your profile first.',
-                [{ text: 'OK', onPress: () => router.replace('/tenant/dashboard') }]
-            );
-        }
-    }, [user?.is_on_vacation]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.is_on_vacation) {
+                Alert.alert(
+                    'Access Restricted',
+                    'You cannot view or pay water bills while on vacation status. Please turn off vacation mode in your profile first.',
+                    [
+                        { text: 'Cancel', onPress: () => router.replace('/tenant/dashboard'), style: 'cancel' },
+                        { text: 'Go to Profile', onPress: () => router.replace('/tenant/profile') }
+                    ]
+                );
+            }
+        }, [user?.is_on_vacation])
+    );
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
