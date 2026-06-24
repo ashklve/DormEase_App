@@ -407,15 +407,72 @@ export default function ProfileScreen() {
   };
 
   const handlePickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { showToast('error', 'Permission to access camera roll is required.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
+    Alert.alert(
+      'Update Profile Photo',
+      'Choose an option to update your profile photo:',
+      [
+        {
+          text: 'Camera',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: 'Gallery',
+          onPress: handleChooseFromGallery,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('error', 'Permission to access camera is required.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        await uploadPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Profile photo capture error:', error);
+      showToast('error', 'Failed to capture photo.');
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('error', 'Permission to access gallery is required.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        await uploadPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Profile photo gallery error:', error);
+      showToast('error', 'Failed to select photo.');
+    }
+  };
+
+  const uploadPhoto = async (uri) => {
     const formData = new FormData();
-    formData.append('profile_photo', { uri: asset.uri, name: 'profile.jpg', type: 'image/jpeg' });
+    formData.append('profile_photo', { uri, name: 'profile.jpg', type: 'image/jpeg' });
     try {
       setSaving(true);
       const res = await client.post('/profile/photo', formData, {
