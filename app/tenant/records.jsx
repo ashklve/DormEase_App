@@ -17,6 +17,8 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -182,6 +184,7 @@ const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
 const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
     const fade = useRef(new Animated.Value(0)).current;
     const slide = useRef(new Animated.Value(16)).current;
+    const [sharingPath, setSharingPath] = useState(null);
 
     useEffect(() => {
         Animated.parallel([
@@ -190,11 +193,35 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
         ]).start();
     }, []);
 
+    const buildFileUrl = (path) =>
+        `${client.defaults.baseURL.replace('/api', '')}/storage/${path}`;
+
     const openFile = async (path) => {
         try {
-            await Linking.openURL(`${client.defaults.baseURL.replace('/api', '')}/storage/${path}`);
+            await Linking.openURL(buildFileUrl(path));
         } catch {
             Alert.alert('Error', 'Could not open file. Please try again.');
+        }
+    };
+
+    const handleShareFile = async (path, label) => {
+        try {
+            const isAvailable = await Sharing.isAvailableAsync();
+            if (!isAvailable) {
+                Alert.alert('Not Supported', 'Sharing is not available on this device.');
+                return;
+            }
+
+            setSharingPath(path);
+            const fileName = path.split('/').pop();
+            const localUri = `${FileSystem.cacheDirectory}${fileName}`;
+
+            const { uri } = await FileSystem.downloadAsync(buildFileUrl(path), localUri);
+            await Sharing.shareAsync(uri, { dialogTitle: label ?? 'Share Document' });
+        } catch {
+            Alert.alert('Error', 'Could not share file. Please try again.');
+        } finally {
+            setSharingPath(null);
         }
     };
 
@@ -342,7 +369,18 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
                             <Text style={[styles.fileBtnTitle, styles.fileBtnTitleFulfilled]}>Document Ready</Text>
                             <Text style={[styles.fileBtnSub, styles.fileBtnSubFulfilled]}>Tap to view fulfilled document</Text>
                         </View>
-                        <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
+                        <TouchableOpacity
+                            onPress={() => handleShareFile(item.fulfilled_file, item.document_type)}
+                            disabled={sharingPath === item.fulfilled_file}
+                            style={{ padding: 6 }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            {sharingPath === item.fulfilled_file ? (
+                                <ActivityIndicator size="small" color={COLORS.success} />
+                            ) : (
+                                <MaterialIcons name="ios-share" size={16} color={COLORS.success} />
+                            )}
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 ) : !isDownloadableForm && !needsResubmission && (
                     /* only show "awaiting" placeholder for certificate requests, not downloadable forms, not when resubmission is needed */
@@ -371,7 +409,18 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
                             <Text style={[styles.fileBtnTitle, styles.fileBtnTitlePrimary]}>Your Submitted Form</Text>
                             <Text style={[styles.fileBtnSub, styles.fileBtnSubAttachment]}>Tap to view your uploaded file</Text>
                         </View>
-                        <MaterialIcons name="open-in-new" size={16} color={COLORS.primary} />
+                        <TouchableOpacity
+                            onPress={() => handleShareFile(item.attachment, item.document_type)}
+                            disabled={sharingPath === item.attachment}
+                            style={{ padding: 6 }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            {sharingPath === item.attachment ? (
+                                <ActivityIndicator size="small" color={COLORS.primary} />
+                            ) : (
+                                <MaterialIcons name="ios-share" size={16} color={COLORS.primary} />
+                            )}
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 )}
 
