@@ -1283,6 +1283,7 @@ export default function AnnouncementsScreen() {
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 + Math.max(insets.bottom, 24), gap: 12 }}
+            keyboardShouldPersistTaps="handled"
             onScroll={(e) => pullToRefreshRef.current?.handleScroll(e)}
             scrollEventThrottle={16}
             overScrollMode="never"

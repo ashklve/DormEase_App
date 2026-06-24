@@ -13,7 +13,7 @@ import {
     Animated,
     PanResponder,
 } from 'react-native';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -182,7 +182,17 @@ const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
 };
 
 // record card
-const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
+const RecordCard = React.memo(({
+    item,
+    index,
+    onDelete,
+    onResubmit,
+    resubmitting,
+    isSelectionMode,
+    isSelected,
+    onToggleSelect,
+    onLongPress
+}) => {
     const fade = useRef(new Animated.Value(0)).current;
     const slide = useRef(new Animated.Value(16)).current;
     const [sharingPath, setSharingPath] = useState(null);
@@ -206,19 +216,6 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
     };
 
     // ── FIXED: handleShareFile ──────────────────────────────────────────────
-    // Root cause: FileSystem.downloadAsync makes its own raw network request,
-    // completely separate from the `client` axios instance. The auth token is
-    // attached to normal API calls via client.js's request interceptor, which
-    // reads it fresh from AsyncStorage('auth_token') on every call — it is
-    // never stored on `client.defaults.headers`. Since downloadAsync bypasses
-    // that interceptor entirely, the download to the protected /storage route
-    // had no Authorization header at all, so it likely got back a 401/403 (or
-    // an HTML error page) instead of the real file — and the bare `catch {}`
-    // swallowed the real error, always showing the same generic alert.
-    //
-    // Fix: read the token directly from AsyncStorage (same key, same way the
-    // interceptor does) and pass it explicitly into downloadAsync's headers.
-    // Also log the real error so future issues are debuggable.
     const handleShareFile = async (path, label) => {
         try {
             const isAvailable = await Sharing.isAvailableAsync();
@@ -231,11 +228,6 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
             const fileName = path.split('/').pop();
             const localUri = `${FileSystem.cacheDirectory}${fileName}`;
 
-            // client.js attaches the auth token via a request interceptor that reads
-            // it fresh from AsyncStorage on every call — it's never stored on
-            // client.defaults.headers. So we read it the same way here, since
-            // downloadAsync makes its own request and won't go through client's
-            // interceptor at all.
             const token = await AsyncStorage.getItem('auth_token');
 
             const downloadResult = await FileSystem.downloadAsync(
@@ -250,8 +242,6 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
 
             await Sharing.shareAsync(downloadResult.uri, { dialogTitle: label ?? 'Share Document' });
         } catch (err) {
-            // Log the real error instead of swallowing it silently — makes future
-            // debugging possible instead of guessing blind.
             console.error('share file error:', err?.message ?? err);
             Alert.alert('Error', 'Could not share file. Please try again.');
         } finally {
@@ -279,6 +269,18 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
                 },
             ]
         );
+    };
+
+    const handlePress = () => {
+        if (isSelectionMode && canDelete) {
+            onToggleSelect(item.doc_request_id);
+        }
+    };
+
+    const handleCardLongPress = () => {
+        if (!isSelectionMode && canDelete) {
+            onLongPress(item.doc_request_id);
+        }
     };
 
     const hasFulfilled = !!item.fulfilled_file;
@@ -321,7 +323,7 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
                     </View>
                 </View>
 
-                {/* meta */}
+                {/* purpose */}
                 {!!item.purpose && (
                     <View style={styles.metaRow}>
                         <MaterialIcons name="notes" size={13} color={COLORS.muted} />
@@ -330,6 +332,8 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
                         </Text>
                     </View>
                 )}
+
+                {/* dates & delivery */}
                 <View style={styles.metaGroup}>
                     <View style={styles.metaRow}>
                         <MaterialIcons name="event" size={12} color={COLORS.muted} />
@@ -362,7 +366,7 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
 
                 <View style={styles.divider} />
 
-                {/* resubmission needed — show resubmit button instead of awaiting placeholder */}
+                {/* resubmission */}
                 {needsResubmission && (
                     <TouchableOpacity
                         style={[styles.fileBtn, styles.fileBtnAttachment]}
@@ -462,21 +466,56 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
         </View>
     );
 
+    const innerCard = (
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            {isSelectionMode && (
+                <View style={{ paddingLeft: 14 }}>
+                    <MaterialCommunityIcons
+                        name={!canDelete ? "minus-circle-outline" : (isSelected ? "checkbox-marked" : "checkbox-blank-outline")}
+                        size={22}
+                        color={!canDelete ? "#D1D5DB" : (isSelected ? COLORS.primary : COLORS.muted)}
+                    />
+                </View>
+            )}
+            <View style={{ flex: 1 }}>
+                {isSelectionMode ? (
+                    <TouchableOpacity
+                        activeOpacity={canDelete ? 0.9 : 1}
+                        onPress={handlePress}
+                        disabled={!canDelete}
+                        style={[
+                            isSelected && { backgroundColor: '#FFF2F6', borderRadius: 14, overflow: 'hidden' }
+                        ]}
+                    >
+                        {cardContent}
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        onLongPress={handleCardLongPress}
+                    >
+                        {cardContent}
+                    </TouchableOpacity>
+                )}
+            </View>
+        </View>
+    );
+
     return (
         <Animated.View style={[styles.cardAnimated, { opacity: fade, transform: [{ translateY: slide }] }]}>
-            {canDelete ? (
+            {canDelete && !isSelectionMode ? (
                 <SwipeableWrapper
                     actionIconName={actionIconName}
                     onAction={handleDelete}
                 >
-                    {cardContent}
+                    {innerCard}
                 </SwipeableWrapper>
             ) : (
-                cardContent
+                innerCard
             )}
         </Animated.View>
     );
-};
+});
 
 // empty state
 const EmptyState = () => (
@@ -520,6 +559,10 @@ export default function TenantRecordsScreen() {
     const [scrollEnabled, setScrollEnabled] = useState(true);
     const [activeFilter, setActiveFilter] = useState('all');
     const [resubmittingId, setResubmittingId] = useState(null);
+
+    // Selection Mode states
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     const fetchRecords = useCallback(async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
@@ -598,6 +641,85 @@ export default function TenantRecordsScreen() {
     const fulfilledCount = records.filter(r => r.fulfilled_file).length;
     const pendingCount = records.filter(r => r.status === 'pending').length;
 
+    // Selection helper callbacks
+    const toggleSelectRequest = useCallback((requestId) => {
+        setSelectedIds((prev) => {
+            if (prev.includes(requestId)) {
+                const next = prev.filter(id => id !== requestId);
+                if (next.length === 0) {
+                    setIsSelectionMode(false);
+                }
+                return next;
+            } else {
+                return [...prev, requestId];
+            }
+        });
+    }, []);
+
+    const enterSelectionMode = useCallback((requestId) => {
+        setIsSelectionMode(true);
+        setSelectedIds([requestId]);
+    }, []);
+
+    const handleSelectAll = useCallback(() => {
+        const deletableRequests = filtered.filter(r => ['pending', 'approved', 'ready', 'denied'].includes(r.status));
+        const deletableIds = deletableRequests.map(r => r.doc_request_id);
+
+        if (deletableIds.length === 0) {
+            Alert.alert('No Deletable Requests', 'There are no deletable requests in the current list to select.');
+            return;
+        }
+
+        const allSelected = deletableIds.every(id => selectedIds.includes(id));
+        if (allSelected) {
+            setSelectedIds([]);
+            setIsSelectionMode(false);
+        } else {
+            setSelectedIds(deletableIds);
+        }
+    }, [filtered, selectedIds]);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedIds.length === 0) return;
+
+        const undeletableSelected = records.filter(r => selectedIds.includes(r.doc_request_id) && !['pending', 'approved', 'ready', 'denied'].includes(r.status));
+        if (undeletableSelected.length > 0) {
+            Alert.alert(
+                'Invalid Selection',
+                'Some of the selected requests are currently processing or need resubmission and cannot be deleted.'
+            );
+            return;
+        }
+
+        Alert.alert(
+            'Delete Selected',
+            `Are you sure you want to delete the ${selectedIds.length} selected request(s)?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await Promise.all(selectedIds.map(id => client.delete(`/document-requests/${id}`)));
+                            Alert.alert('Success', 'Selected requests deleted successfully.');
+                            setSelectedIds([]);
+                            setIsSelectionMode(false);
+                            fetchRecords();
+                        } catch (err) {
+                            console.error('bulk delete error:', err.response?.data ?? err.message);
+                            Alert.alert('Error', 'Failed to delete some requests. Please try again.');
+                            fetchRecords();
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [selectedIds, records, fetchRecords]);
+
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -605,7 +727,7 @@ export default function TenantRecordsScreen() {
             <PremiumPullToRefresh
                 ref={pullToRefreshRef}
                 refreshing={refreshing}
-                onRefresh={() => fetchRecords(true)}
+                onRefresh={isSelectionMode ? undefined : () => fetchRecords(true)}
                 iconName="assignment"
                 headerHeight={56}
                 onScrollEnabledChange={setScrollEnabled}
@@ -665,60 +787,131 @@ export default function TenantRecordsScreen() {
                             </View>
                         )}
 
-                        {/* filter chips with counts */}
+                        {/* filter chips or selection controls */}
                         {records.length > 0 && (
                             <View style={styles.filterChipRow}>
-                                <ScrollView
-                                    horizontal
-                                    scrollEnabled={scrollEnabled}
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={styles.filterChipScrollContent}
-                                >
-                                    {FILTERS.map(f => {
-                                        const count = f.key === 'all'
-                                            ? records.length
-                                            : records.filter(r => r.status === f.key).length;
-                                        const isActive = activeFilter === f.key;
-                                        return (
+                                {isSelectionMode ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingHorizontal: 20, height: 44 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                             <TouchableOpacity
-                                                key={f.key}
-                                                onPress={() => setActiveFilter(f.key)}
-                                                activeOpacity={0.75}
-                                                style={[
-                                                    styles.filterChip,
-                                                    {
-                                                        backgroundColor: isActive ? COLORS.primary : COLORS.card,
-                                                        borderColor: isActive ? COLORS.primary : COLORS.border,
-                                                    },
-                                                ]}
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: 16,
+                                                    backgroundColor: COLORS.white,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: COLORS.border,
+                                                }}
+                                                onPress={() => {
+                                                    setIsSelectionMode(false);
+                                                    setSelectedIds([]);
+                                                }}
+                                                activeOpacity={0.7}
                                             >
-                                                <Text style={[
-                                                    styles.filterChipText,
-                                                    { color: isActive ? COLORS.white : COLORS.dark },
-                                                ]}>
-                                                    {f.label}
-                                                </Text>
-                                                {count > 0 && (
-                                                    <View style={[
-                                                        styles.filterChipCount,
-                                                        {
-                                                            backgroundColor: isActive
-                                                                ? 'rgba(255,255,255,0.25)'
-                                                                : COLORS.primaryLight,
-                                                        },
-                                                    ]}>
-                                                        <Text style={[
-                                                            styles.filterChipCountText,
-                                                            { color: isActive ? COLORS.white : COLORS.primary },
-                                                        ]}>
-                                                            {count}
-                                                        </Text>
-                                                    </View>
-                                                )}
+                                                <MaterialIcons name="close" size={16} color={COLORS.dark} />
                                             </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.dark }}>
+                                                {selectedIds.length} Selected
+                                            </Text>
+                                        </View>
+                                        
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <TouchableOpacity
+                                                style={{
+                                                    paddingHorizontal: 10,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 14,
+                                                    backgroundColor: COLORS.primaryLight,
+                                                    borderWidth: 1,
+                                                    borderColor: COLORS.border,
+                                                }}
+                                                onPress={handleSelectAll}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
+                                                    {filtered.filter(r => ['pending', 'approved', 'ready', 'denied'].includes(r.status)).length === selectedIds.length
+                                                        ? 'Deselect All'
+                                                        : 'Select All'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: 16,
+                                                    backgroundColor: selectedIds.length > 0 ? '#FEE2E2' : COLORS.white,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: selectedIds.length > 0 ? '#FCA5A5' : COLORS.border,
+                                                }}
+                                                onPress={handleBulkDelete}
+                                                disabled={selectedIds.length === 0}
+                                                activeOpacity={0.7}
+                                            >
+                                                <MaterialIcons
+                                                    name="delete-outline"
+                                                    size={18}
+                                                    color={selectedIds.length > 0 ? "#DC2626" : COLORS.muted}
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <ScrollView
+                                        horizontal
+                                        scrollEnabled={scrollEnabled}
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.filterChipScrollContent}
+                                    >
+                                        {FILTERS.map(f => {
+                                            const count = f.key === 'all'
+                                                ? records.length
+                                                : records.filter(r => r.status === f.key).length;
+                                            const isActive = activeFilter === f.key;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={f.key}
+                                                    onPress={() => setActiveFilter(f.key)}
+                                                    activeOpacity={0.75}
+                                                    style={[
+                                                        styles.filterChip,
+                                                        {
+                                                            backgroundColor: isActive ? COLORS.primary : COLORS.card,
+                                                            borderColor: isActive ? COLORS.primary : COLORS.border,
+                                                        },
+                                                    ]}
+                                                >
+                                                    <Text style={[
+                                                        styles.filterChipText,
+                                                        { color: isActive ? COLORS.white : COLORS.dark },
+                                                    ]}>
+                                                        {f.label}
+                                                    </Text>
+                                                    {count > 0 && (
+                                                        <View style={[
+                                                            styles.filterChipCount,
+                                                            {
+                                                                backgroundColor: isActive
+                                                                    ? 'rgba(255,255,255,0.25)'
+                                                                    : COLORS.primaryLight,
+                                                            },
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.filterChipCountText,
+                                                                { color: isActive ? COLORS.white : COLORS.primary },
+                                                            ]}>
+                                                                {count}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                )}
                             </View>
                         )}
                     {filtered.length === 0 ? (
@@ -732,6 +925,10 @@ export default function TenantRecordsScreen() {
                                 onDelete={handleDeleteRequest}
                                 onResubmit={handleResubmit}
                                 resubmitting={resubmittingId === item.doc_request_id}
+                                isSelectionMode={isSelectionMode}
+                                isSelected={selectedIds.includes(item.doc_request_id)}
+                                onToggleSelect={toggleSelectRequest}
+                                onLongPress={enterSelectionMode}
                             />
                         ))
                     )}
