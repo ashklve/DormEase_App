@@ -197,6 +197,28 @@ export default StyleSheet.create({
         color:      COLORS.white,
         fontWeight: '600',
     },
+    urgencyBtn: {
+        flexDirection:     'row',
+        alignItems:        'center',
+        gap:               6,
+        backgroundColor:   COLORS.white,
+        borderRadius:      20,
+        paddingVertical:   8,
+        paddingHorizontal: 14,
+        borderWidth:       1.5,
+        borderColor:       COLORS.primary,
+    },
+    urgencyBtnText: {
+        fontSize:   13,
+        color:      COLORS.primary,
+        fontWeight: '600',
+    },
+    resultCount: {
+        marginLeft: 'auto',
+        fontSize:   12,
+        color:      COLORS.muted,
+        fontWeight: '500',
+    },
     filterDropdown: {
         position:        'absolute',
         top:             38,
