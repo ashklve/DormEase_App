@@ -12,6 +12,8 @@ import {
   RefreshControl,
   Dimensions,
   TextInput,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +30,7 @@ import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const CAROUSEL_WIDTH = SCREEN_WIDTH - scale(36);
 const FILTER_OPTIONS = ['Today', 'This Week', 'This Month', 'All Time'];
 const ANNOUNCEMENT_TABS = ['All', 'Unread', 'Pinned', 'Archive'];
 const READ_STORAGE_KEY = 'tenant_read_announcements';
@@ -212,51 +215,368 @@ const priorityStyles = {
   Low: { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', icon: 'info-outline' },
 };
 
-const ImageLightbox = ({ visible, imageUri, onClose }) => {
-  if (!imageUri) return null;
+const ImageLightbox = ({ visible, images, initialIndex, onClose }) => {
+  if (!visible || !images || images.length === 0) return null;
+
+  const pan = useRef(new Animated.ValueXY()).current;
+  const imageScale = useRef(new Animated.Value(1)).current;
+  const scaleRef = useRef(1);
+  const [lightboxZoomed, setLightboxZoomed] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const lightboxScrollRef = useRef(null);
+
+  // Keep track of touches for pinch zoom
+  let initialDistance = 0;
+  let initialScale = 1;
+
+  const getDistance = (touches) => {
+    if (!touches || touches.length < 2 || !touches[0] || !touches[1]) return 0;
+    return Math.sqrt(
+      Math.pow(touches[0].pageX - touches[1].pageX, 2) +
+      Math.pow(touches[0].pageY - touches[1].pageY, 2)
+    );
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        const isPinch = gestureState.numberActiveTouches === 2;
+        if (scaleRef.current > 1.05) {
+          return isPinch || Math.abs(gestureState.dy) > 5 || Math.abs(gestureState.dx) > 5;
+        }
+        return isPinch || Math.abs(gestureState.dy) > 10;
+      },
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        const isPinch = gestureState.numberActiveTouches === 2;
+        if (scaleRef.current > 1.05) {
+          return isPinch || Math.abs(gestureState.dy) > 5 || Math.abs(gestureState.dx) > 5;
+        }
+        return isPinch || Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length === 2 && touches[0] && touches[1]) {
+          initialDistance = getDistance(touches);
+          initialScale = scaleRef.current;
+        } else {
+          initialDistance = 0;
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length === 2 && touches[0] && touches[1]) {
+          const currentDistance = getDistance(touches);
+          if (initialDistance === 0) {
+            initialDistance = currentDistance;
+            initialScale = scaleRef.current;
+          }
+          if (initialDistance > 0 && currentDistance > 0) {
+            let newScale = (currentDistance / initialDistance) * initialScale;
+            if (newScale < 1) newScale = 1;
+            if (newScale > 3) newScale = 3;
+            imageScale.setValue(newScale);
+            scaleRef.current = newScale;
+
+            const shouldZoom = newScale > 1.05;
+            if (shouldZoom !== lightboxZoomed) {
+              setLightboxZoomed(shouldZoom);
+            }
+          }
+        } else if (touches && touches.length === 1) {
+          initialDistance = 0;
+          if (scaleRef.current <= 1.05) {
+            pan.setValue({ x: 0, y: gestureState.dy });
+          } else {
+            pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+          }
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (scaleRef.current <= 1.05) {
+          if (Math.abs(gestureState.dy) > 120) {
+            Animated.timing(pan, {
+              toValue: { x: 0, y: gestureState.dy > 0 ? 800 : -800 },
+              duration: 250,
+              useNativeDriver: true,
+            }).start(onClose);
+          } else {
+            Animated.spring(pan, {
+              toValue: { x: 0, y: 0 },
+              useNativeDriver: true,
+              friction: 6,
+            }).start();
+          }
+        } else {
+          if (scaleRef.current < 1.1) {
+            Animated.spring(imageScale, {
+              toValue: 1,
+              useNativeDriver: true,
+            }).start(() => {
+              scaleRef.current = 1;
+              setLightboxZoomed(false);
+            });
+          }
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: true,
+        }).start();
+        Animated.spring(imageScale, {
+          toValue: 1,
+          useNativeDriver: true,
+        }).start(() => {
+          scaleRef.current = 1;
+          setLightboxZoomed(false);
+        });
+      }
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      setCurrentIndex(initialIndex);
+      setLightboxZoomed(false);
+      pan.setValue({ x: 0, y: 0 });
+      imageScale.setValue(1);
+      scaleRef.current = 1;
+
+      setTimeout(() => {
+        lightboxScrollRef.current?.scrollTo({
+          x: initialIndex * SCREEN_WIDTH,
+          animated: false,
+        });
+      }, 50);
+    }
+  }, [visible, initialIndex]);
+
+  useEffect(() => {
+    pan.setValue({ x: 0, y: 0 });
+    imageScale.setValue(1);
+    scaleRef.current = 1;
+    setLightboxZoomed(false);
+  }, [currentIndex]);
+
+  const handleLightboxScroll = (event) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width || SCREEN_WIDTH;
+    const offset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offset / slideSize);
+    setCurrentIndex(index);
+  };
+
+  const bgOpacity = pan.y.interpolate({
+    inputRange: [-300, 0, 300],
+    outputRange: [0.4, 1, 0.4],
+    extrapolate: 'clamp',
+  });
+
+  const animatedStyle = {
+    transform: [
+      { translateX: pan.x },
+      { translateY: pan.y },
+      { scale: imageScale },
+    ],
+  };
 
   return (
     <Modal
       visible={visible}
       transparent={true}
       animationType="fade"
+      statusBarTranslucent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.lightboxContainer}>
+      <View style={[styles.lightboxContainer, { backgroundColor: 'transparent' }]}>
         <StatusBar barStyle="light-content" backgroundColor="#000" />
         
+        {/* Animated Background Overlay */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'black',
+            opacity: bgOpacity,
+          }}
+        />
+
         {/* Close Button */}
         <TouchableOpacity style={styles.lightboxCloseBtn} onPress={onClose} activeOpacity={0.7}>
           <Ionicons name="close" size={26} color="#fff" />
         </TouchableOpacity>
 
-        {/* Scrollable Zoom Container */}
-        <ScrollView
-          contentContainerStyle={styles.lightboxScrollContainer}
-          maximumZoomScale={3}
-          minimumZoomScale={1}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
+        {/* Zoom and Swipe Area */}
+        <View 
+          style={{
+            flex: 1,
+            width: '100%',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.01)',
+          }}
+          {...panResponder.panHandlers}
         >
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.lightboxImage}
-            resizeMode="contain"
-          />
-        </ScrollView>
+          <ScrollView
+            ref={lightboxScrollRef}
+            horizontal={true}
+            pagingEnabled={true}
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleLightboxScroll}
+            scrollEventThrottle={16}
+            scrollEnabled={!lightboxZoomed}
+            style={{ width: '100%', height: '100%' }}
+          >
+            {images.map((imgUri, index) => {
+              const isActive = index === currentIndex;
+              return (
+                <View
+                  key={index}
+                  style={{
+                    width: SCREEN_WIDTH,
+                    height: '100%',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <View pointerEvents="none" style={{ justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                    <Animated.Image
+                      source={{ uri: imgUri }}
+                      style={[
+                        styles.lightboxImage,
+                        isActive ? animatedStyle : { width: SCREEN_WIDTH, height: '100%' },
+                      ]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Lightbox Page Dots */}
+        {images.length >= 2 && (
+          <View style={{
+            position: 'absolute',
+            bottom: verticalScale(30),
+            flexDirection: 'row',
+            alignSelf: 'center',
+            gap: scale(6),
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            paddingHorizontal: scale(10),
+            paddingVertical: verticalScale(5),
+            borderRadius: scale(12),
+            zIndex: 1001,
+          }}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={{
+                  width: scale(6),
+                  height: scale(6),
+                  borderRadius: scale(3),
+                  backgroundColor: currentIndex === index ? COLORS.white : 'rgba(255, 255, 255, 0.4)',
+                }}
+              />
+            ))}
+          </View>
+        )}
       </View>
     </Modal>
   );
 };
 
 const AnnouncementDetail = ({ item, visible, onClose }) => {
-  const [imageRatio, setImageRatio] = useState(null);
+  const [imageRatios, setImageRatios] = useState({});
   const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxImageUri, setLightboxImageUri] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - scale(16) * 2 - scale(18) * 2);
+  const [isTransitionFinished, setIsTransitionFinished] = useState(false);
   const insets = useSafeAreaInsets();
+
+  const images = useMemo(() => {
+    if (!item) return [];
+    let list = [];
+    if (item.attachments) {
+      list = item.attachments
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean)
+        .filter((path) => {
+          const ext = path.split('.').pop().toLowerCase();
+          return IMAGE_EXTENSIONS.includes(ext);
+        })
+        .map((path) => `${client.defaults.baseURL.replace('/api', '')}/storage/${path}`);
+    }
+    
+    if (item.image) {
+      const isAlreadyInList = list.some((url) => url.toLowerCase() === item.image.toLowerCase());
+      if (!isAlreadyInList) {
+        list = [item.image, ...list];
+      }
+    }
+    return list;
+  }, [item?.attachments, item?.image]);
+
+  const carouselRatio = useMemo(() => {
+    if (images.length === 0) return null;
+    if (images.length === 1) {
+      const uri = images[0];
+      return uri ? imageRatios[uri] : null;
+    }
+    // For 2 or more images, use the first image's ratio as a fixed size so slides are uniform
+    const firstUri = images[0];
+    return (firstUri && imageRatios[firstUri]) ? imageRatios[firstUri] : 1.5;
+  }, [images, imageRatios]);
+
+  const carouselItemWidth = useMemo(() => {
+    return containerWidth;
+  }, [containerWidth]);
+
+  useEffect(() => {
+    if (visible) {
+      setActiveIndex(0);
+      setIsTransitionFinished(false);
+      const timer = setTimeout(() => {
+        setIsTransitionFinished(true);
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTransitionFinished(false);
+    }
+  }, [visible]);
 
   if (!item) return null;
 
   const p = priorityStyles[item.priority] || priorityStyles.Low;
+
+  const handleImageLoad = (uri, event) => {
+    const { width, height } = event.nativeEvent.source;
+    if (width && height) {
+      setImageRatios((prev) => ({
+        ...prev,
+        [uri]: width / height,
+      }));
+    }
+  };
+
+  const handleLayout = (event) => {
+    const { width } = event.nativeEvent.layout;
+    if (width) {
+      setContainerWidth(width);
+    }
+  };
 
   const attachments = item.attachments
     ? item.attachments
@@ -268,6 +588,13 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
           return !IMAGE_EXTENSIONS.includes(ext);
         })
     : [];
+
+  const handleScroll = (event) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width || CAROUSEL_WIDTH;
+    const offset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offset / slideSize);
+    setActiveIndex(index);
+  };
 
   const getFileName = (path) => path.split('/').pop();
 
@@ -300,9 +627,10 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
       visible={visible}
       animationType="slide"
       transparent={false}
-      onRequestClose={onClose}
+      onRequestClose={lightboxVisible ? () => setLightboxVisible(false) : onClose}
     >
-      <View style={[styles.modalRoot, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={{ flex: 1, position: 'relative' }}>
+        <View style={[styles.modalRoot, { paddingTop: Math.max(insets.top, 20) }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.modalScrollContent}
@@ -359,27 +687,83 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
               <Text style={styles.modalContent}>{item.preview}</Text>
             </View>
 
-            {/* ── Cover Image ── */}
-            {item.image ? (
-              <TouchableOpacity
-                style={styles.modalImageWrapper}
-                onPress={() => setLightboxVisible(true)}
-                activeOpacity={0.95}
+            {/* ── Image Carousel ── */}
+            {images.length > 0 ? (
+              <View 
+                onLayout={handleLayout}
+                style={[
+                  styles.modalImageWrapper,
+                  carouselRatio ? { aspectRatio: carouselRatio } : { height: 220 }
+                ]}
               >
-                <Image
-                  source={{ uri: item.image }}
-                  style={[
-                    styles.modalImage,
-                    imageRatio ? { aspectRatio: imageRatio } : { height: 220 },
-                  ]}
-                  resizeMode="cover"
-                  onLoad={(e) => {
-                    const { width, height } = e.nativeEvent.source;
-                    if (width && height) setImageRatio(width / height);
+                {!isTransitionFinished ? (
+                  // Render a static image during modal transition to prevent lag and frame drops
+                  <Image
+                    source={{ uri: images[0] }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  // Render full interactive carousel after transition has finished
+                  <>
+                    <ScrollView
+                      horizontal={true}
+                      pagingEnabled={true}
+                      showsHorizontalScrollIndicator={false}
+                      onScroll={handleScroll}
+                      scrollEventThrottle={16}
+                      style={{ width: '100%' }}
+                    >
+                      {images.map((imgUri, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          activeOpacity={0.95}
+                          onPress={() => {
+                            setLightboxImageUri(imgUri);
+                            setLightboxVisible(true);
+                          }}
+                          style={{ width: carouselItemWidth, height: '100%' }}
+                        >
+                          <Image
+                            source={{ uri: imgUri }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                            onLoad={(e) => handleImageLoad(imgUri, e)}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    
+                    {images.length >= 2 && (
+                      <View style={styles.carouselDotContainer}>
+                        {images.map((_, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.carouselDot,
+                              activeIndex === index ? styles.carouselDotActive : null,
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+                {/* Border overlay to avoid layout rounding pixel gaps */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    borderRadius: 16,
+                    pointerEvents: 'none',
                   }}
-                  onError={() => console.log('image failed:', item.image)}
                 />
-              </TouchableOpacity>
+              </View>
             ) : null}
 
             {attachments.length > 0 && <View style={styles.modalDivider} />}
@@ -425,11 +809,15 @@ const AnnouncementDetail = ({ item, visible, onClose }) => {
         </ScrollView>
       </View>
 
-      <ImageLightbox
-        visible={lightboxVisible}
-        imageUri={item.image}
-        onClose={() => setLightboxVisible(false)}
-      />
+      {lightboxVisible && (
+        <ImageLightbox
+          visible={lightboxVisible}
+          images={images}
+          initialIndex={images.indexOf(lightboxImageUri) !== -1 ? images.indexOf(lightboxImageUri) : activeIndex}
+          onClose={() => setLightboxVisible(false)}
+        />
+      )}
+      </View>
     </Modal>
   );
 };
@@ -698,10 +1086,14 @@ export default function AnnouncementsScreen() {
   }, []);
 
   const openDetail = (item) => {
-    markAnnouncementAsRead(item);
     setSelectedItem(item);
     setShowDetail(true);
     setActionMenuItem(null);
+
+    // Defer markAnnouncementAsRead to avoid blocking the transition animation
+    setTimeout(() => {
+      markAnnouncementAsRead(item);
+    }, 600);
   };
 
   useEffect(() => {

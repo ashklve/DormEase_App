@@ -44,7 +44,7 @@ const fmtTimer = (secs) => {
 // waveform animation component
 const BAR_COUNT = 28;
 
-const Waveform = ({ isRecording }) => {
+const Waveform = ({ isRecording, volumeAnim }) => {
     const anims = useRef(
         Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
     ).current;
@@ -57,12 +57,12 @@ const Waveform = ({ isRecording }) => {
                         Animated.delay(i * 40),
                         Animated.timing(anim, {
                             toValue: Math.random() * 0.7 + 0.3,
-                            duration: 200 + Math.random() * 200,
+                            duration: 180 + Math.random() * 80,
                             useNativeDriver: true,
                         }),
                         Animated.timing(anim, {
-                            toValue: 0.2 + Math.random() * 0.3,
-                            duration: 200 + Math.random() * 200,
+                            toValue: 0.2 + Math.random() * 0.2,
+                            duration: 180 + Math.random() * 80,
                             useNativeDriver: true,
                         }),
                     ])
@@ -83,18 +83,21 @@ const Waveform = ({ isRecording }) => {
 
     return (
         <View style={styles.waveformRow}>
-            {anims.map((anim, i) => (
-                <Animated.View
-                    key={i}
-                    style={{
-                        width: 3,
-                        height: 36,
-                        borderRadius: 2,
-                        backgroundColor: COLORS.primary,
-                        transform: [{ scaleY: anim }],
-                    }}
-                />
-            ))}
+            {anims.map((anim, i) => {
+                const combinedScale = Animated.multiply(anim, volumeAnim);
+                return (
+                    <Animated.View
+                        key={i}
+                        style={{
+                            width: 3,
+                            height: 36,
+                            borderRadius: 2,
+                            backgroundColor: COLORS.primary,
+                            transform: [{ scaleY: combinedScale }],
+                        }}
+                    />
+                );
+            })}
         </View>
     );
 };
@@ -284,8 +287,29 @@ export default function MaintenanceScreen() {
         }
     });
 
+    const volumeAnim = useRef(new Animated.Value(1.0)).current;
+
+    useSpeechRecognitionEvent("volumechange", (event) => {
+        if (recordingStateRef.current !== 'recording') return;
+        const rawVal = event.value;
+        const zeroToOne = Math.max(0, Math.min(1, (rawVal + 2) / 12));
+        const normalized = 0.2 + zeroToOne * 0.8;
+        Animated.timing(volumeAnim, {
+            toValue: normalized,
+            duration: 80,
+            useNativeDriver: true,
+        }).start();
+    });
+
     useEffect(() => {
         recordingStateRef.current = recordingState;
+        if (recordingState !== 'recording') {
+            Animated.timing(volumeAnim, {
+                toValue: 1.0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
     }, [recordingState]);
 
     const isRecording = recordingState === 'recording';
@@ -414,6 +438,10 @@ export default function MaintenanceScreen() {
                 lang: selectedSpeechLanguage.langCode,
                 interimResults: true,
                 continuous: true,
+                volumeChangeEventOptions: {
+                    enabled: true,
+                    intervalMillis: 80,
+                },
             });
             console.log("ExpoSpeechRecognitionModule.start completed successfully.");
         } catch (error) {
@@ -451,6 +479,10 @@ export default function MaintenanceScreen() {
                 lang: selectedSpeechLanguage.langCode,
                 interimResults: true,
                 continuous: true,
+                volumeChangeEventOptions: {
+                    enabled: true,
+                    intervalMillis: 80,
+                },
             });
         } catch (error) {
             console.error("Error resuming speech recognition:", error);
@@ -661,7 +693,7 @@ export default function MaintenanceScreen() {
                                 </>
                             ) : (
                                 <>
-                                    <Waveform isRecording={isRecording} />
+                                    <Waveform isRecording={isRecording} volumeAnim={volumeAnim} />
                                     <Text style={styles.timerText}>{fmtTimer(recordSecs)}</Text>
 
                                     <View style={styles.controlRow}>
