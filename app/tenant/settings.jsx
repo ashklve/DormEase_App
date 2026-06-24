@@ -215,6 +215,15 @@ export default function SettingsScreen() {
                     />
                 </View>
 
+                {/* ── Legal Info group ── */}
+                <View style={styles.groupCard}>
+                    <NavRow
+                        icon={<MaterialIcons name="info-outline" size={18} color={COLORS.primary} />}
+                        label="Legal Info"
+                        onPress={() => router.push('/tenant/legal')}
+                    />
+                </View>
+
                 {/* ── App info group ── */}
                 <View style={styles.groupCard}>
                     <NavRow
