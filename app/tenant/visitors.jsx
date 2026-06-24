@@ -267,10 +267,10 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
 
 // collapsible visitor list
 const CollapsibleVisitorList = ({ visitors, onCancel, onDelete }) => {
-    const [open, setOpen] = useState(true);
-    const animHeight = useRef(new Animated.Value(1)).current;
-    const animOpacity = useRef(new Animated.Value(1)).current;
-    const chevronAnim = useRef(new Animated.Value(1)).current;
+    const [open, setOpen] = useState(false);
+    const animHeight = useRef(new Animated.Value(0)).current;
+    const animOpacity = useRef(new Animated.Value(0)).current;
+    const chevronAnim = useRef(new Animated.Value(0)).current;
 
     const toggle = () => {
         const toOpen = !open;
