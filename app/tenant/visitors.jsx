@@ -186,8 +186,28 @@ const VisitorDetail = ({ icon, label, value }) => {
     );
 };
 
-// compact visitor row
+// compact visitor row — collapsible, closed by default (like a history list item)
 const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
+    const [open, setOpen] = useState(false);
+    const animHeight = useRef(new Animated.Value(0)).current;
+    const animOpacity = useRef(new Animated.Value(0)).current;
+    const chevronAnim = useRef(new Animated.Value(0)).current;
+
+    const toggle = () => {
+        const toOpen = !open;
+        setOpen(toOpen);
+        Animated.parallel([
+            Animated.timing(animHeight, { toValue: toOpen ? 1 : 0, duration: 240, useNativeDriver: false }),
+            Animated.timing(animOpacity, { toValue: toOpen ? 1 : 0, duration: 200, useNativeDriver: false }),
+            Animated.timing(chevronAnim, { toValue: toOpen ? 1 : 0, duration: 220, useNativeDriver: true }),
+        ]).start();
+    };
+
+    const chevronRotate = chevronAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '180deg'],
+    });
+
     const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
     const statusLabel = item.status
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
@@ -209,7 +229,11 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
 
     return (
         <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
-            <View style={styles.visitorRowHeader}>
+            <TouchableOpacity
+                style={styles.visitorRowHeader}
+                onPress={toggle}
+                activeOpacity={0.7}
+            >
                 <View style={styles.visitorAvatar}>
                     <Text style={styles.visitorAvatarText}>
                         {getInitials(item.visitor_name)}
@@ -235,7 +259,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                     {canCancel && (
                         <TouchableOpacity
                             style={styles.cancelBtnHeader}
-                            onPress={() => onCancel(item.id)}
+                            onPress={(e) => { e.stopPropagation(); onCancel(item.id); }}
                             activeOpacity={0.7}
                         >
                             <MaterialIcons name="close" size={12} color="#D32F2F" style={{ marginRight: 2 }} />
@@ -245,22 +269,31 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                     {canDelete && (
                         <TouchableOpacity
                             style={styles.deleteBtnHeader}
-                            onPress={() => onDelete(item.id)}
+                            onPress={(e) => { e.stopPropagation(); onDelete(item.id); }}
                             activeOpacity={0.7}
                         >
                             <MaterialIcons name="delete-outline" size={15} color="#D63375" />
                         </TouchableOpacity>
                     )}
+                    <Animated.View style={{ transform: [{ rotate: chevronRotate }], marginLeft: 4 }}>
+                        <MaterialIcons name="keyboard-arrow-down" size={20} color={COLORS.muted} />
+                    </Animated.View>
                 </View>
-            </View>
-            <View style={styles.visitorDetailsGrid}>
-                <VisitorDetail icon="event" label="Date" value={visitDate} />
-                <VisitorDetail icon="schedule" label="Time" value={visitTime} />
-                <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
-                <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
-                <VisitorDetail icon="login" label="Checked In" value={checkInTime} />
-                <VisitorDetail icon="logout" label="Checked Out" value={checkOutTime} />
-            </View>
+            </TouchableOpacity>
+            <Animated.View style={{
+                opacity: animOpacity,
+                maxHeight: animHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 9999] }),
+                overflow: 'hidden',
+            }}>
+                <View style={styles.visitorDetailsGrid}>
+                    <VisitorDetail icon="event" label="Date" value={visitDate} />
+                    <VisitorDetail icon="schedule" label="Time" value={visitTime} />
+                    <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
+                    <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
+                    <VisitorDetail icon="login" label="Checked In" value={checkInTime} />
+                    <VisitorDetail icon="logout" label="Checked Out" value={checkOutTime} />
+                </View>
+            </Animated.View>
         </View>
     );
 };
