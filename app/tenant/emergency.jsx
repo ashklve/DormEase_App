@@ -571,7 +571,14 @@ export default function EmergencyScreen() {
             transcribedRef.current = '';
             confirmedTranscriptRef.current = '';
         } catch {
-            Alert.alert('Error', 'Failed to submit report. Please try again.');
+            Alert.alert(
+                'Submission Failed',
+                'Failed to submit report. Please try again.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Retry', onPress: () => handleSubmit() },
+                ]
+            );
         } finally {
             setSubmitting(false);
         }
