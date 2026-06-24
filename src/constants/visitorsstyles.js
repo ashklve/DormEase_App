@@ -204,7 +204,7 @@ export default StyleSheet.create({
   visitorRow: {
     backgroundColor: COLORS.card,
     paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(14),
+    paddingVertical: verticalScale(8),
   },
   visitorRowBorder: {
     borderBottomWidth: 0.5,
@@ -212,7 +212,7 @@ export default StyleSheet.create({
   },
   visitorRowHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: scale(10),
     marginBottom: verticalScale(12),
   },
@@ -265,6 +265,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: scale(8),
+    marginTop: verticalScale(12),
   },
   visitorDetailItem: {
     width: '48%',
