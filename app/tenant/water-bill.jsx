@@ -111,13 +111,14 @@ const HistoryRow = ({ month, amount, status, referenceNo, paymentDate, paymentMe
 
     const key = status?.toLowerCase() ?? 'unpaid';
     const STATUS_COLORS = {
-    paid: { dot: '#28A745', text: '#28A745' },
-    unpaid: { dot: '#DC3545', text: '#DC3545' },
-    overdue: { dot: '#DC3545', text: '#DC3545' },
-    pending: { dot: '#D4A017', text: '#D4A017' },
-    partial: { dot: '#D4A017', text: '#D4A017' },
-    rejected: { dot: '#DC3545', text: '#DC3545' },
-};
+        paid: { dot: '#28A745', text: '#28A745' },
+        unpaid: { dot: '#DC3545', text: '#DC3545' },
+        overdue: { dot: '#DC3545', text: '#DC3545' },
+        pending: { dot: '#D4A017', text: '#D4A017' },
+        partial: { dot: '#D4A017', text: '#D4A017' },
+        rejected: { dot: '#DC3545', text: '#DC3545' },
+    };
+    const colors = STATUS_COLORS[key] ?? STATUS_COLORS.unpaid;
     const fallbackText = 'Not available';
 
     const dropdownMaxHeight = detailAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 260] });
