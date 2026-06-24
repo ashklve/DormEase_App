@@ -584,7 +584,14 @@ export default function MaintenanceScreen() {
             const message = errors
                 ? Object.values(errors).flat().join('\n')
                 : (err.response?.data?.message ?? 'Failed to submit maintenance request.');
-            Alert.alert('Error', message);
+            Alert.alert(
+                'Submission Failed',
+                message,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Retry', onPress: () => handleSubmit() },
+                ]
+            );
         } finally {
             setSubmitting(false);
         }
