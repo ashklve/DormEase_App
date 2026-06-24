@@ -41,6 +41,16 @@ const ID_TYPES = [
     'School ID',
 ];
 
+const RELATIONSHIP_OPTIONS = [
+    'Parent',
+    'Sibling',
+    'Relative',
+    'Friend',
+    'Classmate',
+    'Colleague',
+    'Other',
+];
+
 const PURPOSE_OPTIONS = [
     'Family Visit',
     'Friend Visit',
@@ -289,6 +299,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                     <VisitorDetail icon="event" label="Date" value={visitDate} />
                     <VisitorDetail icon="schedule" label="Time" value={visitTime} />
                     <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
+                    <VisitorDetail icon="people" label="Relationship" value={item.relationship} />
                     <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
                     <VisitorDetail icon="login" label="Checked In" value={checkInTime} />
                     <VisitorDetail icon="logout" label="Checked Out" value={checkOutTime} />
@@ -423,6 +434,9 @@ export default function VisitorsScreen() {
     const [contactNo, setContactNo] = useState('');
     const [purpose, setPurpose] = useState('');
     const [purposeOpen, setPurposeOpen] = useState(false);
+    const [relationship, setRelationship] = useState('');
+    const [relationshipOpen, setRelationshipOpen] = useState(false);
+    const [otherRelationship, setOtherRelationship] = useState('');
     const [idType, setIdType] = useState('');
     const [idTypeOpen, setIdTypeOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
@@ -564,6 +578,45 @@ export default function VisitorsScreen() {
     };
 
     const handleUpload = async () => {
+        Alert.alert(
+            'Upload ID Photo',
+            'Choose an option to upload the ID photo:',
+            [
+                {
+                    text: 'Camera',
+                    onPress: handleTakePhoto,
+                },
+                {
+                    text: 'Gallery',
+                    onPress: handleChooseFromGallery,
+                },
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+            ]
+        );
+    };
+
+    const handleTakePhoto = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission Required', 'Permission to access camera is required!');
+                return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
+            if (!result.canceled) setUploadedFile(result.assets[0].uri);
+        } catch (error) {
+            console.error('Image capture error:', error);
+        }
+    };
+
+    const handleChooseFromGallery = async () => {
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permissionResult.granted) {
@@ -617,6 +670,16 @@ export default function VisitorsScreen() {
             return;
         }
 
+        if (!relationship) {
+            Alert.alert('Required Field', 'Relationship to tenant is required.');
+            return;
+        }
+
+        if (relationship === 'Other' && !otherRelationship.trim()) {
+            Alert.alert('Required Field', 'Please specify your relationship.');
+            return;
+        }
+
         if (!idType) {
             Alert.alert('Required Field', 'ID Type is required.');
             return;
@@ -659,6 +722,10 @@ export default function VisitorsScreen() {
             // always submit raw 11-digit number to the API
             formData.append('contact_no', rawDigits.startsWith('63') ? '0' + rawDigits.slice(2) : rawDigits);
             formData.append('purpose', purpose);
+            
+            const finalRelationship = relationship === 'Other' ? otherRelationship.trim() : relationship;
+            formData.append('relationship', finalRelationship);
+            
             formData.append('id_type', idType);
             formData.append('date_of_visit', formatSQLDate(selectedDateTime));
             formData.append('time_of_visit', formatSQLTime(selectedDateTime));
@@ -679,6 +746,8 @@ export default function VisitorsScreen() {
 
             setFullName('');
             setContactNo('');
+            setRelationship('');
+            setOtherRelationship('');
             setPurpose('');
             setIdType('');
             setUploadedFile(null);
@@ -817,11 +886,49 @@ export default function VisitorsScreen() {
                                 maxLength={13} // 0XXX-XXX-XXXX = 13 chars
                             />
 
+                            {/* relationship to tenant */}
+                            <TouchableOpacity
+                                style={styles.pickerWrapper}
+                                activeOpacity={0.8}
+                                onPress={() => { setRelationshipOpen(!relationshipOpen); setPurposeOpen(false); setIdTypeOpen(false); }}
+                            >
+                                <Text style={[styles.pickerText, relationship && styles.pickerTextSelected]}>
+                                    {relationship || 'Relationship to Tenant'}
+                                </Text>
+                                <MaterialIcons name={relationshipOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color={COLORS.muted} />
+                            </TouchableOpacity>
+                            {relationshipOpen && (
+                                <View style={styles.dropdownList}>
+                                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                        {RELATIONSHIP_OPTIONS.map((item) => (
+                                            <TouchableOpacity
+                                                key={item}
+                                                style={[styles.dropdownListItem, relationship === item && styles.dropdownListItemActive]}
+                                                onPress={() => { setRelationship(item); setRelationshipOpen(false); }}
+                                            >
+                                                <Text style={[styles.dropdownListItemText, relationship === item && styles.dropdownListItemTextActive]}>{item}</Text>
+                                                {relationship === item && <MaterialIcons name="check" size={16} color={COLORS.primary} />}
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {relationship === 'Other' && (
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Specify Relationship *"
+                                    placeholderTextColor={COLORS.muted}
+                                    value={otherRelationship}
+                                    onChangeText={setOtherRelationship}
+                                />
+                            )}
+
                             {/* purpose */}
                             <TouchableOpacity
                                 style={styles.pickerWrapper}
                                 activeOpacity={0.8}
-                                onPress={() => { setPurposeOpen(!purposeOpen); setIdTypeOpen(false); }}
+                                onPress={() => { setPurposeOpen(!purposeOpen); setIdTypeOpen(false); setRelationshipOpen(false); }}
                             >
                                 <Text style={[styles.pickerText, purpose && styles.pickerTextSelected]}>
                                     {purpose || 'Purpose of Visit'}
@@ -849,7 +956,7 @@ export default function VisitorsScreen() {
                             <TouchableOpacity
                                 style={styles.pickerWrapper}
                                 activeOpacity={0.8}
-                                onPress={() => { setIdTypeOpen(!idTypeOpen); setPurposeOpen(false); }}
+                                onPress={() => { setIdTypeOpen(!idTypeOpen); setPurposeOpen(false); setRelationshipOpen(false); }}
                             >
                                 <Text style={[styles.pickerText, idType && styles.pickerTextSelected]}>
                                     {idType || 'ID Type'}
@@ -876,12 +983,77 @@ export default function VisitorsScreen() {
                             {/* upload id */}
                             <View style={styles.uploadBox}>
                                 <Text style={styles.uploadHint}>10 MB Maximum file size (.png / .jpg)</Text>
-                                <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
-                                    <MaterialIcons name="upload" size={16} color={COLORS.dark} />
-                                    <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
-                                        {uploadedFile ? uploadedFile.split('/').pop() : 'Upload ID Photo *'}
-                                    </Text>
-                                </TouchableOpacity>
+                                {uploadedFile ? (
+                                    <View style={{ width: '90%', alignItems: 'center' }}>
+                                        <Image
+                                            source={{ uri: uploadedFile }}
+                                            style={{
+                                                width: 160,
+                                                height: 120,
+                                                borderRadius: 8,
+                                                marginBottom: 8,
+                                                borderWidth: 1,
+                                                borderColor: COLORS.border,
+                                                shadowColor: '#000',
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: 0.1,
+                                                shadowRadius: 3,
+                                            }}
+                                        />
+                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 4 }}>
+                                            <TouchableOpacity
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    backgroundColor: COLORS.card,
+                                                    borderRadius: 18,
+                                                    paddingVertical: 6,
+                                                    paddingHorizontal: 12,
+                                                    borderWidth: 1,
+                                                    borderColor: COLORS.border,
+                                                    marginRight: 10,
+                                                    minWidth: 85
+                                                }}
+                                                activeOpacity={0.7}
+                                                onPress={handleUpload}
+                                            >
+                                                <MaterialIcons name="replay" size={14} color={COLORS.dark} style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '500', color: COLORS.dark }}>
+                                                    Change
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    backgroundColor: '#FFF5F5',
+                                                    borderRadius: 18,
+                                                    paddingVertical: 6,
+                                                    paddingHorizontal: 12,
+                                                    borderWidth: 1,
+                                                    borderColor: '#FEB2B2',
+                                                    minWidth: 85
+                                                }}
+                                                activeOpacity={0.7}
+                                                onPress={() => setUploadedFile(null)}
+                                            >
+                                                <MaterialIcons name="delete-outline" size={14} color="#E53E3E" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '500', color: '#E53E3E' }}>
+                                                    Remove
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
+                                        <MaterialIcons name="upload" size={16} color={COLORS.dark} />
+                                        <Text style={styles.uploadBtnText} numberOfLines={1} ellipsizeMode="middle">
+                                            Upload ID Photo *
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
 
                             {/* date & time */}
