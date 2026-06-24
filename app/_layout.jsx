@@ -4,6 +4,7 @@ import PushNotificationBootstrap from '../src/components/PushNotificationBootstr
 import QuickEmergencyTrigger from '../src/components/QuickEmergencyTrigger';
 import LoadingOverlay from '../src/components/LoadingOverlay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { hydrateDashboardCache } from '../src/cache/dashboardCache';
 import React, { useEffect, useState } from 'react';
 
 export default function RootLayout() {
@@ -13,6 +14,7 @@ export default function RootLayout() {
         const initApp = async () => {
             try {
                 await AsyncStorage.getItem('auth_token');
+                await hydrateDashboardCache(); 
             } catch (e) {
                 console.warn('Init error:', e);
             } finally {
