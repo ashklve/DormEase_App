@@ -110,7 +110,14 @@ const HistoryRow = ({ month, amount, status, referenceNo, paymentDate, paymentMe
     };
 
     const key = status?.toLowerCase() ?? 'unpaid';
-    const colors = STATUS_COLORS[key] ?? STATUS_COLORS.unpaid;
+    const STATUS_COLORS = {
+    paid: { dot: '#28A745', text: '#28A745' },
+    unpaid: { dot: '#DC3545', text: '#DC3545' },
+    overdue: { dot: '#DC3545', text: '#DC3545' },
+    pending: { dot: '#D4A017', text: '#D4A017' },
+    partial: { dot: '#D4A017', text: '#D4A017' },
+    rejected: { dot: '#DC3545', text: '#DC3545' },
+};
     const fallbackText = 'Not available';
 
     const dropdownMaxHeight = detailAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 260] });
@@ -311,7 +318,7 @@ export default function WaterBillScreen() {
         fetchWaterBill();
     }, []);
 
-    const isUnpaid = ['unpaid', 'overdue'].includes(billing?.status?.toLowerCase());
+    const isUnpaid = ['unpaid', 'overdue', 'rejected'].includes(billing?.status?.toLowerCase());
 
     const handlePayBill = () => {
         if (!billing || !isUnpaid) return;
@@ -418,6 +425,16 @@ export default function WaterBillScreen() {
                                             <Text style={styles.statusLabel}>Status:</Text>
                                             <StatusBadge status={billing.status ?? 'Unpaid'} />
                                         </View>
+
+                                        {billing.status?.toLowerCase() === 'rejected' && billing.rejection_reason && (
+                                            <View style={styles.rejectionNotice}>
+                                                <MaterialIcons name="error-outline" size={16} color="#DC3545" />
+                                                <Text style={styles.rejectionNoticeText}>
+                                                    Rejected: {billing.rejection_reason}
+                                                </Text>
+                                            </View>
+                                        )}
+
                                         <Text style={styles.billingNote}>
                                             Based on floor consumption and shared usage.
                                         </Text>
@@ -480,7 +497,9 @@ export default function WaterBillScreen() {
                                             disabled={!isUnpaid}
                                             activeOpacity={0.85}
                                         >
-                                            <Text style={styles.payBtnText}>{isUnpaid ? 'Pay Bill' : 'Already Paid'}</Text>
+                                            <Text style={styles.payBtnText}>
+                                                {billing.status?.toLowerCase() === 'rejected' ? 'Resubmit Payment' : (isUnpaid ? 'Pay Bill' : 'Already Paid')}
+                                            </Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : null}
