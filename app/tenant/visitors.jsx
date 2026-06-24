@@ -62,6 +62,11 @@ const STATUS_STYLE = {
     cancelled: { bg: '#F8D7DA', text: '#721C24' },
 };
 
+// Visitor registrations that count against the daily cap.
+// Cancelled/rejected entries are excluded since they never occupied a slot.
+const ACTIVE_STATUSES = ['pending', 'approved', 'inside', 'completed'];
+const MAX_VISITORS_PER_DATE = 5;
+
 const formatDisplayDate = (d) =>
     d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 const formatSQLDate = (d) =>
@@ -77,11 +82,37 @@ const formatShortDate = (dateStr) => {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+// ── FIXED: now handles BOTH plain "HH:MM:SS" strings (tenant's time_of_visit)
+// AND full datetime/timestamp strings like "2026-06-24T14:30:00.000Z" or
+// "2026-06-24 14:30:00" (front desk's arrival_time / departure_time).
+// Previously this always assumed a plain time string, so front-desk timestamps
+// produced "Invalid Date" because splitting on ':' grabbed garbage like
+// "2026-06-24T14" for the "hours" part.
 const formatVisitorTime = (timeStr) => {
     if (!timeStr) return '';
-    const [hours = '0', minutes = '0'] = String(timeStr).split(':');
+
+    const str = String(timeStr);
+
+    // Full datetime string — contains a date portion (dashes) and/or a "T".
+    if (str.includes('T') || str.includes('-')) {
+        // normalize "2026-06-24 14:30:00" -> "2026-06-24T14:30:00" for reliable parsing
+        const normalized = str.includes('T') ? str : str.replace(' ', 'T');
+        const parsed = new Date(normalized);
+        if (!isNaN(parsed.getTime())) {
+            return formatDisplayTime(parsed);
+        }
+        // couldn't parse it — fail quietly instead of showing "Invalid Date"
+        return '';
+    }
+
+    // Plain "HH:MM:SS" or "HH:MM" time string
+    const [hours = '0', minutes = '0'] = str.split(':');
+    const h = Number(hours);
+    const m = Number(minutes);
+    if (Number.isNaN(h) || Number.isNaN(m)) return '';
+
     const d = new Date();
-    d.setHours(Number(hours), Number(minutes), 0, 0);
+    d.setHours(h, m, 0, 0);
     return formatDisplayTime(d);
 };
 
@@ -155,14 +186,38 @@ const VisitorDetail = ({ icon, label, value }) => {
     );
 };
 
-// compact visitor row
+// compact visitor row — collapsible, closed by default (like a history list item)
 const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
+    const [open, setOpen] = useState(false);
+    const animHeight = useRef(new Animated.Value(0)).current;
+    const animOpacity = useRef(new Animated.Value(0)).current;
+    const chevronAnim = useRef(new Animated.Value(0)).current;
+
+    const toggle = () => {
+        const toOpen = !open;
+        setOpen(toOpen);
+        Animated.parallel([
+            Animated.timing(animHeight, { toValue: toOpen ? 1 : 0, duration: 240, useNativeDriver: false }),
+            Animated.timing(animOpacity, { toValue: toOpen ? 1 : 0, duration: 200, useNativeDriver: false }),
+            Animated.timing(chevronAnim, { toValue: toOpen ? 1 : 0, duration: 220, useNativeDriver: true }),
+        ]).start();
+    };
+
+    const chevronRotate = chevronAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '180deg'],
+    });
+
     const s = STATUS_STYLE[item.status?.toLowerCase()] ?? STATUS_STYLE.pending;
     const statusLabel = item.status
         ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
         : 'Pending';
     const visitDate = formatShortDate(item.date_of_visit);
     const visitTime = formatVisitorTime(item.time_of_visit);
+
+    // check-in / check-out timestamps (TC-8.37)
+    const checkInTime = item.arrival_time ? formatVisitorTime(item.arrival_time) : '';
+    const checkOutTime = item.departure_time ? formatVisitorTime(item.departure_time) : '';
 
     const isCompleted = item.status?.toLowerCase() === 'completed';
     const isCancelled = item.status?.toLowerCase() === 'cancelled';
@@ -174,7 +229,11 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
 
     return (
         <View style={[styles.visitorRow, !isLast && styles.visitorRowBorder]}>
-            <View style={styles.visitorRowHeader}>
+            <TouchableOpacity
+                style={styles.visitorRowHeader}
+                onPress={toggle}
+                activeOpacity={0.7}
+            >
                 <View style={styles.visitorAvatar}>
                     <Text style={styles.visitorAvatarText}>
                         {getInitials(item.visitor_name)}
@@ -200,7 +259,7 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                     {canCancel && (
                         <TouchableOpacity
                             style={styles.cancelBtnHeader}
-                            onPress={() => onCancel(item.id)}
+                            onPress={(e) => { e.stopPropagation(); onCancel(item.id); }}
                             activeOpacity={0.7}
                         >
                             <MaterialIcons name="close" size={12} color="#D32F2F" style={{ marginRight: 2 }} />
@@ -210,30 +269,41 @@ const VisitorRow = ({ item, isLast, onCancel, onDelete }) => {
                     {canDelete && (
                         <TouchableOpacity
                             style={styles.deleteBtnHeader}
-                            onPress={() => onDelete(item.id)}
+                            onPress={(e) => { e.stopPropagation(); onDelete(item.id); }}
                             activeOpacity={0.7}
                         >
                             <MaterialIcons name="delete-outline" size={15} color="#D63375" />
                         </TouchableOpacity>
                     )}
+                    <Animated.View style={{ transform: [{ rotate: chevronRotate }], marginLeft: 4 }}>
+                        <MaterialIcons name="keyboard-arrow-down" size={20} color={COLORS.muted} />
+                    </Animated.View>
                 </View>
-            </View>
-            <View style={styles.visitorDetailsGrid}>
-                <VisitorDetail icon="event" label="Date" value={visitDate} />
-                <VisitorDetail icon="schedule" label="Time" value={visitTime} />
-                <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
-                <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
-            </View>
+            </TouchableOpacity>
+            <Animated.View style={{
+                opacity: animOpacity,
+                maxHeight: animHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 9999] }),
+                overflow: 'hidden',
+            }}>
+                <View style={styles.visitorDetailsGrid}>
+                    <VisitorDetail icon="event" label="Date" value={visitDate} />
+                    <VisitorDetail icon="schedule" label="Time" value={visitTime} />
+                    <VisitorDetail icon="flag" label="Purpose" value={item.purpose} />
+                    <VisitorDetail icon="badge" label="ID Type" value={item.id_type} />
+                    <VisitorDetail icon="login" label="Checked In" value={checkInTime} />
+                    <VisitorDetail icon="logout" label="Checked Out" value={checkOutTime} />
+                </View>
+            </Animated.View>
         </View>
     );
 };
 
 // collapsible visitor list
 const CollapsibleVisitorList = ({ visitors, onCancel, onDelete }) => {
-    const [open, setOpen] = useState(true);
-    const animHeight = useRef(new Animated.Value(1)).current;
-    const animOpacity = useRef(new Animated.Value(1)).current;
-    const chevronAnim = useRef(new Animated.Value(1)).current;
+    const [open, setOpen] = useState(false);
+    const animHeight = useRef(new Animated.Value(0)).current;
+    const animOpacity = useRef(new Animated.Value(0)).current;
+    const chevronAnim = useRef(new Animated.Value(0)).current;
 
     const toggle = () => {
         const toOpen = !open;
@@ -286,7 +356,7 @@ const CollapsibleVisitorList = ({ visitors, onCancel, onDelete }) => {
 };
 
 // iOS datetime modal
-const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
+const IOSPickerModal = ({ visible, mode, value, minimumDate, onChange, onDone }) => (
     <Modal transparent animationType="slide" visible={visible}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' }}>
             <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
@@ -295,7 +365,15 @@ const IOSPickerModal = ({ visible, mode, value, onChange, onDone }) => (
                         <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done</Text>
                     </TouchableOpacity>
                 </View>
-                <DateTimePicker value={value} mode={mode} display="spinner" onChange={onChange} style={{ height: 200 }} textColor="#000" />
+                <DateTimePicker
+                    value={value}
+                    mode={mode}
+                    display="spinner"
+                    minimumDate={minimumDate}
+                    onChange={onChange}
+                    style={{ height: 200 }}
+                    textColor="#000"
+                />
             </View>
         </View>
     </Modal>
@@ -541,6 +619,31 @@ export default function VisitorsScreen() {
 
         if (!uploadedFile) {
             Alert.alert('Required Field', "Please upload a photo of the visitor's ID.");
+            return;
+        }
+
+        // ── Block past date/time (covers same-day-but-already-passed times) ──
+        const now = new Date();
+        if (selectedDateTime.getTime() < now.getTime()) {
+            Alert.alert(
+                'Invalid Date/Time',
+                'The selected date and time of visit have already passed. Please choose a current or future date and time.'
+            );
+            return;
+        }
+
+        // ── Max visitors per date (TC-8.41) ──
+        const targetDateStr = formatSQLDate(selectedDateTime);
+        const sameDateCount = visitors.filter((v) => {
+            const status = (v.status || '').toLowerCase();
+            return v.date_of_visit === targetDateStr && ACTIVE_STATUSES.includes(status);
+        }).length;
+
+        if (sameDateCount >= MAX_VISITORS_PER_DATE) {
+            Alert.alert(
+                'Visitor Limit Reached',
+                `You can only register up to ${MAX_VISITORS_PER_DATE} visitors for a single date. Please choose a different date.`
+            );
             return;
         }
 
@@ -831,10 +934,23 @@ export default function VisitorsScreen() {
 
             {/* iOS pickers */}
             {Platform.OS === 'ios' && (
-                <IOSPickerModal visible={showDatePicker} mode="date" value={tempDateTime} onChange={onIOSChange} onDone={confirmIOSDate} />
+                <IOSPickerModal
+                    visible={showDatePicker}
+                    mode="date"
+                    value={tempDateTime}
+                    minimumDate={new Date()}
+                    onChange={onIOSChange}
+                    onDone={confirmIOSDate}
+                />
             )}
             {Platform.OS === 'ios' && (
-                <IOSPickerModal visible={showTimePicker} mode="time" value={tempDateTime} onChange={onIOSChange} onDone={confirmIOSTime} />
+                <IOSPickerModal
+                    visible={showTimePicker}
+                    mode="time"
+                    value={tempDateTime}
+                    onChange={onIOSChange}
+                    onDone={confirmIOSTime}
+                />
             )}
 
             {/* loading overlay — shown on every focus while data is fetching */}
