@@ -17,7 +17,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import styles from '../../src/constants/water-billstyles';
 import { COLORS } from '../../src/constants/colors';
 import { clearSession } from '../../api/auth';
-import { dashboardCache } from '../../src/cache/dashboardCache.js';
+import { dashboardCache, persistDashboardCache } from '../../src/cache/dashboardCache.js';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -261,39 +261,38 @@ export default function WaterBillScreen() {
     const [isOffline, setIsOffline] = useState(false);
 
     const fetchWaterBill = async () => {
-        if (user?.is_on_vacation) return;
-        try {
-            const res = await client.get('/water-bill');
-            const payload = {
-                current_billing: res.data.current_billing ?? null,
-                breakdown: res.data.breakdown ?? null,
-                payment_history: res.data.payment_history ?? [],
-            };
-            setBilling(payload.current_billing);
-            setBreakdown(payload.breakdown);
-            setHistory(payload.payment_history);
+    if (user?.is_on_vacation) return;
+    try {
+        const res = await client.get('/water-bill');
+        const currentBilling = res.data.current_billing ?? null;
+        const breakdownData = res.data.breakdown ?? null;
+        const historyData = res.data.payment_history ?? [];
+
+        setBilling(currentBilling);
+        setBreakdown(breakdownData);
+        setHistory(historyData);
+        setIsOffline(false);
+
+        dashboardCache.waterBilling = currentBilling;
+        dashboardCache.waterBreakdown = breakdownData;
+        dashboardCache.waterPaymentHistory = historyData;
+        await persistDashboardCache();
+    } catch (err) {
+        const status = err.response?.status;
+        if (status === 404) {
+            setBilling(null);
+            setBreakdown(null);
+            setHistory([]);
             setIsOffline(false);
-            await dashboardCache.save(payload); // cache the fresh data
-        } catch (err) {
-            const status = err.response?.status;
-            if (status === 404) {
-                setBilling(null);
-                setBreakdown(null);
-                setHistory([]);
-                setIsOffline(false);
-            } else {
-                // Likely offline / network error — fall back to cache
-                const cached = await dashboardCache.load();
-                if (cached) {
-                    setBilling(cached.current_billing ?? null);
-                    setBreakdown(cached.breakdown ?? null);
-                    setHistory(cached.payment_history ?? []);
-                    setIsOffline(true);
-                } else {
-                    console.error('fetch water bill error:', err.message);
-                    Alert.alert('Error', 'Failed to load water billing data.');
-                }
-            }
+        } else if (dashboardCache.waterBilling || dashboardCache.waterPaymentHistory.length) {
+            setBilling(dashboardCache.waterBilling);
+            setBreakdown(dashboardCache.waterBreakdown);
+            setHistory(dashboardCache.waterPaymentHistory);
+            setIsOffline(true);
+        } else {
+            console.error('fetch water bill error:', err.message);
+            Alert.alert('Error', 'Failed to load water billing data.');
+        }
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -370,7 +369,7 @@ export default function WaterBillScreen() {
                         </View>
                         <Text style={styles.headerSub}>View your current share and payment status</Text>
                     </View>
-                    
+
                     {isOffline && (
                         <View style={styles.offlineBanner}>
                             <MaterialIcons name="wifi-off" size={16} color={COLORS.muted} />
