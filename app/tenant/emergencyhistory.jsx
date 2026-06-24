@@ -217,7 +217,7 @@ const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
 };
 
 // ── Request Card ──────────────────────────────────────────────────────────────
-const RequestCard = ({ item, onDelete }) => {
+const RequestCard = React.memo(({ item, onDelete, isSelectionMode, isSelected, onToggleSelect, onLongPress }) => {
     const statusKey = item.status?.toLowerCase();
     const urgencyKey = item.urgency?.toLowerCase();
     const isCritical = urgencyKey === 'critical' || urgencyKey === 'urgent';
@@ -228,6 +228,7 @@ const RequestCard = ({ item, onDelete }) => {
     const rotateAnim = useRef(new Animated.Value(expanded ? 1 : 0)).current;
 
     const toggle = () => {
+        if (isSelectionMode) return;
         const toValue = expanded ? 0 : 1;
         Animated.timing(rotateAnim, {
             toValue,
@@ -270,127 +271,193 @@ const RequestCard = ({ item, onDelete }) => {
         );
     };
 
-    const cardContent = (
-        <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
-            {/* ── Card Header ── */}
-            <View style={styles.cardHeader}>
-                {/* Category chip + req id row */}
-                <View style={styles.chipIdRow}>
-                    <View style={styles.categoryChip}>
-                        <MaterialCommunityIcons name={categoryIcon} size={12} color={COLORS.primary} />
-                        <Text style={styles.categoryChipText}>{item.category}</Text>
-                    </View>
-                    
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        {isCritical && (
-                            <View style={styles.criticalBadge}>
-                                <Text style={styles.criticalText}>CRITICAL</Text>
-                            </View>
-                        )}
-                        <View style={styles.reqIdPill}>
-                            <MaterialIcons name="tag" size={11} color={COLORS.muted} />
-                            <Text style={styles.reqIdPillText}>{item.req_id}</Text>
-                        </View>
-                    </View>
-                </View>
+    const handlePress = () => {
+        if (isSelectionMode) {
+            onToggleSelect(item.id);
+        }
+    };
 
-                {/* Title + collapse button */}
-                <View style={styles.cardTitleRow}>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {isCritical && (
-                            <View style={styles.pulseDot} />
-                        )}
-                        <Text style={styles.cardTitle}>{item.title}</Text>
-                    </View>
-                    <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
-                        <Animated.View style={{ transform: [{ rotate }] }}>
-                            <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
-                        </Animated.View>
-                    </TouchableOpacity>
-                </View>
+    const handleCardLongPress = () => {
+        if (!isSelectionMode) {
+            onLongPress(item.id);
+        }
+    };
 
-                {/* Status + Urgency badges */}
-                <View style={styles.badgeRow}>
-                    <View style={[styles.badge, { backgroundColor: ss.bg }]}>
-                        <View style={styles.badgeInner}>
-                            <View style={[styles.badgeDot, { backgroundColor: ss.text }]} />
-                            <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
+    const isCardExpanded = !isSelectionMode && expanded;
+
+    const headerContent = (
+        <>
+            {/* Category chip + req id row */}
+            <View style={styles.chipIdRow}>
+                <View style={styles.categoryChip}>
+                    <MaterialCommunityIcons name={categoryIcon} size={12} color={COLORS.primary} />
+                    <Text style={styles.categoryChipText}>{item.category}</Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {isCritical && (
+                        <View style={styles.criticalBadge}>
+                            <Text style={styles.criticalText}>CRITICAL</Text>
                         </View>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: us.bg }]}>
-                        <Text style={[styles.badgeText, { color: us.text }]}>{urgencyLabel} Urgency</Text>
+                    )}
+                    <View style={styles.reqIdPill}>
+                        <MaterialIcons name="tag" size={11} color={COLORS.muted} />
+                        <Text style={styles.reqIdPillText}>{item.req_id}</Text>
                     </View>
                 </View>
             </View>
 
-            {/* ── Divider (only when expanded) ── */}
-            {expanded && <View style={styles.cardDivider} />}
-
-            {/* ── Expandable Body ── */}
-            {expanded && (
-                <View style={styles.cardBody}>
-                    <View style={styles.bodyDetailCard}>
-                        <View style={styles.bodyDetailHeader}>
-                            <MaterialIcons name="location-on" size={14} color={COLORS.primary} />
-                            <Text style={styles.bodyDetailLabel}>Location</Text>
-                        </View>
-                        <Text style={styles.bodyDetailValue}>{item.location || 'Not specified'}</Text>
-                    </View>
-
-                    <View style={styles.bodyDetailCard}>
-                        <View style={styles.bodyDetailHeader}>
-                            <MaterialIcons name="chat-bubble-outline" size={13} color={COLORS.primary} />
-                            <Text style={styles.bodyDetailLabel}>Description</Text>
-                        </View>
-                        <Text style={styles.bodyDetailValue}>{item.description || 'No description provided.'}</Text>
-                    </View>
-
-                    {item.resolved_at && (
-                        <View style={styles.bodyDetailCard}>
-                            <View style={styles.bodyDetailHeader}>
-                                <MaterialIcons name="check-circle" size={13} color="#15803D" />
-                                <Text style={[styles.bodyDetailLabel, { color: '#15803D' }]}>Resolved Date</Text>
-                            </View>
-                            <Text style={styles.bodyDetailValue}>{formatDateTime(item.resolved_at)}</Text>
-                        </View>
+            {/* Title + collapse button */}
+            <View style={styles.cardTitleRow}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {isCritical && (
+                        <View style={styles.pulseDot} />
                     )}
-
-                    {/* Admin response notes section */}
-                    <View style={styles.adminResponseCard}>
-                        <View style={styles.adminResponseHeader}>
-                            <MaterialIcons name="support-agent" size={16} color={COLORS.primary} />
-                            <Text style={styles.adminResponseTitle}>Staff Response Notes</Text>
-                        </View>
-                        {item.admin_notes ? (
-                            <Text style={styles.adminResponseText}>{item.admin_notes}</Text>
-                        ) : (
-                            <Text style={[styles.adminResponseText, { color: COLORS.muted, fontStyle: 'italic' }]}>
-                                No response notes from staff yet.
-                            </Text>
-                        )}
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                </View>
+                {!isSelectionMode && (
+                    <View style={styles.collapseBtn}>
+                        <Animated.View style={{ transform: [{ rotate }] }}>
+                            <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
+                        </Animated.View>
                     </View>
+                )}
+            </View>
+
+            {/* Status + Urgency badges */}
+            <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: ss.bg }]}>
+                    <View style={styles.badgeInner}>
+                        <View style={[styles.badgeDot, { backgroundColor: ss.text }]} />
+                        <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
+                    </View>
+                </View>
+                <View style={[styles.badge, { backgroundColor: us.bg }]}>
+                    <Text style={[styles.badgeText, { color: us.text }]}>{urgencyLabel} Urgency</Text>
+                </View>
+            </View>
+        </>
+    );
+
+    const bodyContent = (
+        <>
+            <View style={styles.bodyDetailCard}>
+                <View style={styles.bodyDetailHeader}>
+                    <MaterialIcons name="location-on" size={14} color={COLORS.primary} />
+                    <Text style={styles.bodyDetailLabel}>Location</Text>
+                </View>
+                <Text style={styles.bodyDetailValue}>{item.location || 'Not specified'}</Text>
+            </View>
+
+            <View style={styles.bodyDetailCard}>
+                <View style={styles.bodyDetailHeader}>
+                    <MaterialIcons name="chat-bubble-outline" size={13} color={COLORS.primary} />
+                    <Text style={styles.bodyDetailLabel}>Description</Text>
+                </View>
+                <Text style={styles.bodyDetailValue}>{item.description || 'No description provided.'}</Text>
+            </View>
+
+            {item.resolved_at && (
+                <View style={styles.bodyDetailCard}>
+                    <View style={styles.bodyDetailHeader}>
+                        <MaterialIcons name="check-circle" size={13} color="#15803D" />
+                        <Text style={[styles.bodyDetailLabel, { color: '#15803D' }]}>Resolved Date</Text>
+                    </View>
+                    <Text style={styles.bodyDetailValue}>{formatDateTime(item.resolved_at)}</Text>
                 </View>
             )}
 
-            {/* Divider (only when expanded) */}
-            {expanded && <View style={styles.cardDivider} />}
-
-            {/* Card Footer */}
-            <View style={styles.cardFooter}>
-                <View style={styles.footerDateRow}>
-                    <Ionicons name="calendar-outline" size={14} color="#4B5563" />
-                    <Text style={styles.footerDate}>Reported {item.date_submitted}</Text>
+            {/* Admin response notes section */}
+            <View style={styles.adminResponseCard}>
+                <View style={styles.adminResponseHeader}>
+                    <MaterialIcons name="support-agent" size={16} color={COLORS.primary} />
+                    <Text style={styles.adminResponseTitle}>Staff Response Notes</Text>
                 </View>
-                <TouchableOpacity onPress={toggle}>
-                    <Text style={styles.footerToggleText}>
-                        {expanded ? 'Hide details' : 'View details'}
+                {item.admin_notes ? (
+                    <Text style={styles.adminResponseText}>{item.admin_notes}</Text>
+                ) : (
+                    <Text style={[styles.adminResponseText, { color: COLORS.muted, fontStyle: 'italic' }]}>
+                        No response notes from staff yet.
                     </Text>
-                </TouchableOpacity>
+                )}
+            </View>
+        </>
+    );
+
+    const innerCard = (
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            {isSelectionMode && (
+                <View style={{ paddingLeft: 14 }}>
+                    <MaterialCommunityIcons
+                        name={isSelected ? "checkbox-marked" : "checkbox-blank-outline"}
+                        size={22}
+                        color={isSelected ? COLORS.primary : COLORS.muted}
+                    />
+                </View>
+            )}
+            <View style={{ flex: 1 }}>
+                {isSelectionMode ? (
+                    <View style={styles.cardHeader}>
+                        {headerContent}
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={toggle}
+                        onLongPress={handleCardLongPress}
+                        style={styles.cardHeader}
+                    >
+                        {headerContent}
+                    </TouchableOpacity>
+                )}
+
+                {isCardExpanded && <View style={styles.cardDivider} />}
+
+                {isCardExpanded && (
+                    <View style={styles.cardBody}>
+                        {bodyContent}
+                    </View>
+                )}
+
+                {isCardExpanded && <View style={styles.cardDivider} />}
+
+                {/* Card Footer */}
+                <View style={styles.cardFooter}>
+                    <View style={styles.footerDateRow}>
+                        <Ionicons name="calendar-outline" size={14} color="#4B5563" />
+                        <Text style={styles.footerDate}>Reported {item.date_submitted}</Text>
+                    </View>
+                    {!isSelectionMode && (
+                        <TouchableOpacity onPress={toggle}>
+                            <Text style={styles.footerToggleText}>
+                                {expanded ? 'Hide details' : 'View details'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
         </View>
     );
 
-    if (statusKey === 'active') {
+    const cardContent = isSelectionMode ? (
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handlePress}
+            style={[
+                styles.requestCard,
+                { borderLeftColor: accentColor },
+                isSelected && { backgroundColor: '#FFF2F6', borderColor: COLORS.primaryLight }
+            ]}
+        >
+            {innerCard}
+        </TouchableOpacity>
+    ) : (
+        <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
+            {innerCard}
+        </View>
+    );
+
+    if (isSelectionMode || statusKey === 'active') {
         return cardContent;
     }
 
@@ -399,7 +466,7 @@ const RequestCard = ({ item, onDelete }) => {
             {cardContent}
         </SwipeableWrapper>
     );
-};
+});
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function EmergencyHistoryScreen() {
@@ -418,6 +485,47 @@ export default function EmergencyHistoryScreen() {
     const [activeUrgency, setActiveUrgency] = useState('All Urgency');
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showUrgencyDropdown, setShowUrgencyDropdown] = useState(false);
+
+    // Selection Mode states
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    const toggleSelectReport = useCallback((reportId) => {
+        setSelectedIds((prev) => {
+            if (prev.includes(reportId)) {
+                const next = prev.filter(id => id !== reportId);
+                if (next.length === 0) {
+                    setIsSelectionMode(false);
+                }
+                return next;
+            } else {
+                return [...prev, reportId];
+            }
+        });
+    }, []);
+
+    const enterSelectionMode = useCallback((reportId) => {
+        setIsSelectionMode(true);
+        setSelectedIds([reportId]);
+    }, []);
+
+    const handleSelectAll = useCallback(() => {
+        const deletableReports = filteredReports.filter(r => r.status?.toLowerCase() !== 'active');
+        const deletableIds = deletableReports.map(r => r.id);
+
+        if (deletableIds.length === 0) {
+            Alert.alert('No Deletable Reports', 'There are no resolved or closed reports in the current list to select.');
+            return;
+        }
+
+        const allSelected = deletableIds.every(id => selectedIds.includes(id));
+        if (allSelected) {
+            setSelectedIds([]);
+            setIsSelectionMode(false);
+        } else {
+            setSelectedIds(deletableIds);
+        }
+    }, [filteredReports, selectedIds]);
 
     // Derived statistics
     const totalCount = reports.length;
@@ -470,6 +578,47 @@ export default function EmergencyHistoryScreen() {
         }
     }, [fetchReports]);
 
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedIds.length === 0) return;
+
+        const activeSelected = reports.filter(r => selectedIds.includes(r.id) && r.status?.toLowerCase() === 'active');
+        if (activeSelected.length > 0) {
+            Alert.alert(
+                'Invalid Selection',
+                'Active emergency reports cannot be removed from history. Please deselect active reports first.'
+            );
+            return;
+        }
+
+        Alert.alert(
+            'Delete Selected',
+            `Are you sure you want to remove the ${selectedIds.length} selected report(s) from your history?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await Promise.all(selectedIds.map(id => client.delete(`/emergency/${id}`)));
+                            Alert.alert('Success', 'Selected reports removed from history.');
+                            setSelectedIds([]);
+                            setIsSelectionMode(false);
+                            fetchReports();
+                        } catch (err) {
+                            console.error('bulk delete error:', err.response?.data ?? err.message);
+                            Alert.alert('Error', 'Failed to delete some reports. Please try again.');
+                            fetchReports();
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [selectedIds, reports, fetchReports]);
+
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -477,7 +626,7 @@ export default function EmergencyHistoryScreen() {
             <PremiumPullToRefresh
                 ref={pullToRefreshRef}
                 refreshing={refreshing}
-                onRefresh={onRefresh}
+                onRefresh={isSelectionMode ? undefined : onRefresh}
                 iconName="warning"
                 headerHeight={56}
                 onScrollEnabledChange={setScrollEnabled}
@@ -553,93 +702,173 @@ export default function EmergencyHistoryScreen() {
                             </View>
                         </View>
 
-                        {/* ── Filter Controls ── */}
+                        {/* ── Filter Controls & Selection Actions ── */}
                         <View style={styles.filterRow}>
-                            {/* Status dropdown */}
-                            <View style={styles.dropdownWrapper}>
-                                <TouchableOpacity
-                                    style={styles.filterBtn}
-                                    onPress={() => {
-                                        setShowStatusDropdown(!showStatusDropdown);
-                                        setShowUrgencyDropdown(false);
-                                    }}
-                                    activeOpacity={0.85}
-                                >
-                                    <Text style={styles.filterBtnText}>{activeStatus}</Text>
-                                    <MaterialIcons
-                                        name={showStatusDropdown ? 'expand-less' : 'expand-more'}
-                                        size={16}
-                                        color={COLORS.white}
-                                    />
-                                </TouchableOpacity>
-
-                                {showStatusDropdown && (
-                                    <View style={styles.filterDropdown}>
-                                        {STATUS_OPTIONS.map((opt) => (
-                                            <TouchableOpacity
-                                                key={opt}
-                                                style={styles.dropdownItem}
-                                                onPress={() => {
-                                                    setActiveStatus(opt);
-                                                    setShowStatusDropdown(false);
-                                                }}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.dropdownItemText,
-                                                        activeStatus === opt && styles.dropdownItemTextActive,
-                                                    ]}
-                                                >
-                                                    {opt}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
+                            {isSelectionMode ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, gap: 10 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <TouchableOpacity
+                                            style={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 16,
+                                                backgroundColor: COLORS.white,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                borderWidth: 1,
+                                                borderColor: COLORS.border,
+                                            }}
+                                            onPress={() => {
+                                                setIsSelectionMode(false);
+                                                setSelectedIds([]);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <MaterialIcons name="close" size={16} color={COLORS.dark} />
+                                        </TouchableOpacity>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.dark }}>
+                                            {selectedIds.length} Selected
+                                        </Text>
                                     </View>
-                                )}
-                            </View>
-
-                            {/* Urgency level dropdown */}
-                            <View style={styles.dropdownWrapper}>
-                                <TouchableOpacity
-                                    style={styles.filterBtn}
-                                    onPress={() => {
-                                        setShowUrgencyDropdown(!showUrgencyDropdown);
-                                        setShowStatusDropdown(false);
-                                    }}
-                                    activeOpacity={0.85}
-                                >
-                                    <Text style={styles.filterBtnText}>{activeUrgency}</Text>
-                                    <MaterialIcons
-                                        name={showUrgencyDropdown ? 'expand-less' : 'expand-more'}
-                                        size={16}
-                                        color={COLORS.white}
-                                    />
-                                </TouchableOpacity>
-
-                                {showUrgencyDropdown && (
-                                    <View style={styles.filterDropdown}>
-                                        {URGENCY_OPTIONS.map((opt) => (
-                                            <TouchableOpacity
-                                                key={opt}
-                                                style={styles.dropdownItem}
-                                                onPress={() => {
-                                                    setActiveUrgency(opt);
-                                                    setShowUrgencyDropdown(false);
-                                                }}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.dropdownItemText,
-                                                        activeUrgency === opt && styles.dropdownItemTextActive,
-                                                    ]}
-                                                >
-                                                    {opt}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                    
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <TouchableOpacity
+                                            style={{
+                                                paddingHorizontal: 10,
+                                                paddingVertical: 6,
+                                                borderRadius: 14,
+                                                backgroundColor: COLORS.lightPink,
+                                                borderWidth: 1,
+                                                borderColor: COLORS.border,
+                                            }}
+                                            onPress={handleSelectAll}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
+                                                {filteredReports.filter(r => r.status?.toLowerCase() !== 'active').length === selectedIds.length
+                                                    ? 'Deselect All'
+                                                    : 'Select All'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 16,
+                                                backgroundColor: selectedIds.length > 0 ? '#FEE2E2' : COLORS.white,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                borderWidth: 1,
+                                                borderColor: selectedIds.length > 0 ? '#FCA5A5' : COLORS.border,
+                                            }}
+                                            onPress={handleBulkDelete}
+                                            disabled={selectedIds.length === 0}
+                                            activeOpacity={0.7}
+                                        >
+                                            <MaterialIcons
+                                                name="delete-outline"
+                                                size={18}
+                                                color={selectedIds.length > 0 ? "#DC2626" : COLORS.muted}
+                                            />
+                                        </TouchableOpacity>
                                     </View>
-                                )}
-                            </View>
+                                </View>
+                            ) : (
+                                <>
+                                    {/* Status dropdown */}
+                                    <View style={styles.dropdownWrapper}>
+                                        <TouchableOpacity
+                                            style={styles.filterBtn}
+                                            onPress={() => {
+                                                setShowStatusDropdown(!showStatusDropdown);
+                                                setShowUrgencyDropdown(false);
+                                            }}
+                                            activeOpacity={0.85}
+                                        >
+                                            <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
+                                            <Text style={styles.filterBtnText}>{activeStatus}</Text>
+                                            <MaterialIcons
+                                                name={showStatusDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                                size={16}
+                                                color={COLORS.white}
+                                            />
+                                        </TouchableOpacity>
+
+                                        {showStatusDropdown && (
+                                            <View style={styles.filterDropdown}>
+                                                {STATUS_OPTIONS.map((opt) => (
+                                                    <TouchableOpacity
+                                                        key={opt}
+                                                        style={styles.dropdownItem}
+                                                        onPress={() => {
+                                                            setActiveStatus(opt);
+                                                            setShowStatusDropdown(false);
+                                                        }}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.dropdownItemText,
+                                                                activeStatus === opt && styles.dropdownItemTextActive,
+                                                            ]}
+                                                        >
+                                                            {opt}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Urgency level dropdown */}
+                                    <View style={styles.dropdownWrapper}>
+                                        <TouchableOpacity
+                                            style={styles.urgencyBtn}
+                                            onPress={() => {
+                                                setShowUrgencyDropdown(!showUrgencyDropdown);
+                                                setShowStatusDropdown(false);
+                                            }}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Ionicons name="flag-outline" size={14} color={COLORS.primary} />
+                                            <Text style={styles.urgencyBtnText}>{activeUrgency}</Text>
+                                            <MaterialIcons
+                                                name={showUrgencyDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                                size={16}
+                                                color={COLORS.primary}
+                                            />
+                                        </TouchableOpacity>
+
+                                        {showUrgencyDropdown && (
+                                            <View style={styles.filterDropdown}>
+                                                {URGENCY_OPTIONS.map((opt) => (
+                                                    <TouchableOpacity
+                                                        key={opt}
+                                                        style={styles.dropdownItem}
+                                                        onPress={() => {
+                                                            setActiveUrgency(opt);
+                                                            setShowUrgencyDropdown(false);
+                                                        }}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.dropdownItemText,
+                                                                activeUrgency === opt && styles.dropdownItemTextActive,
+                                                            ]}
+                                                        >
+                                                            {opt}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Result count */}
+                                    <Text style={styles.resultCount}>
+                                        {filteredReports.length} {filteredReports.length === 1 ? 'report' : 'reports'}
+                                    </Text>
+                                </>
+                            )}
                         </View>
 
                         {/* List of Cards */}
@@ -649,6 +878,10 @@ export default function EmergencyHistoryScreen() {
                                     key={report.id}
                                     item={report}
                                     onDelete={handleDeleteReport}
+                                    isSelectionMode={isSelectionMode}
+                                    isSelected={selectedIds.includes(report.id)}
+                                    onToggleSelect={toggleSelectReport}
+                                    onLongPress={enterSelectionMode}
                                 />
                             ))
                         ) : (

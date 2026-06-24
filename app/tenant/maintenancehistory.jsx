@@ -12,7 +12,7 @@ import {
     Alert,
     PanResponder,
 } from 'react-native';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -247,17 +247,27 @@ const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
 };
 
 // ── Request Card ──────────────────────────────────────────────────────────────
-const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
+const RequestCard = React.memo(({
+    item,
+    onDelete,
+    onResubmitPhoto,
+    isSelectionMode,
+    isSelected,
+    onToggleSelect,
+    onLongPress
+}) => {
     const statusKey = item.status?.toLowerCase();
     const priorityKey = item.priority?.toLowerCase();
 
-    // Resolved/Closed cards start collapsed; others start expanded
+    // Resolved/Closed cards start collapsed; Pending/In Progress start expanded
     const isClosedStatus = statusKey === 'resolved' || statusKey === 'closed';
     const [expanded, setExpanded] = useState(!isClosedStatus);
-    const [submittingPhoto, setSubmittingPhoto] = useState(false);
     const rotateAnim = useRef(new Animated.Value(expanded ? 1 : 0)).current;
 
+    const [submittingPhoto, setSubmittingPhoto] = useState(false);
+
     const toggle = () => {
+        if (isSelectionMode) return;
         const toValue = expanded ? 0 : 1;
         Animated.timing(rotateAnim, {
             toValue,
@@ -273,7 +283,7 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
     });
 
     const ss = STATUS_STYLE[statusKey] ?? STATUS_STYLE.pending;
-    const ps = PRIORITY_STYLE[priorityKey] ?? PRIORITY_STYLE.moderate;
+    const ps = PRIORITY_STYLE[priorityKey] ?? PRIORITY_STYLE.low;
     const accentColor = STATUS_ACCENT[statusKey] ?? COLORS.primary;
 
     const statusLabel = item.status
@@ -281,26 +291,22 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
         : 'Pending';
     const priorityLabel = item.priority
         ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1)
-        : 'Moderate';
+        : 'Low';
 
     const categoryIcon = CATEGORY_ICON[item.category] ?? 'build';
-    const needsResubmission = !!item.resubmission_requested_at;
+    const needsResubmission = item.resubmission_requested_at && !item.photo_url;
 
     const handleDelete = () => {
-        const isPending = statusKey === 'pending';
-        const title = isPending ? 'Cancel Request' : 'Remove from History';
-        const message = isPending
-            ? 'Are you sure you want to cancel this pending maintenance request? This will cancel it on the admin side as well.'
-            : 'Are you sure you want to remove this resolved request from your history?';
-        const buttonText = isPending ? 'Cancel Request' : 'Remove';
-
+        const isPendingVal = statusKey === 'pending';
         Alert.alert(
-            title,
-            message,
+            isPendingVal ? 'Cancel Request' : 'Remove from History',
+            isPendingVal
+                ? 'Are you sure you want to cancel this pending maintenance request?'
+                : 'Are you sure you want to remove this resolved/closed maintenance request from your history?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: buttonText,
+                    text: isPendingVal ? 'Cancel Request' : 'Remove',
                     style: 'destructive',
                     onPress: () => onDelete(item.id),
                 },
@@ -311,26 +317,20 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission Required', 'Camera access is needed to take a photo.');
+            Alert.alert('Permission Denied', 'Camera permission is required to take a photo.');
             return;
         }
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 1,
-            allowsEditing: false,
+            allowsEditing: true,
+            quality: 0.7,
         });
 
-        if (!result.canceled && result.assets?.length > 0) {
-            const asset = result.assets[0];
-            const compressed = await ImageManipulator.manipulateAsync(
-                asset.uri,
-                [{ resize: { width: 1024 } }],
-                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-            );
+        if (!result.canceled && result.assets?.[0]?.uri) {
             const photo = {
-                uri: compressed.uri,
-                fileName: asset.fileName ?? `photo_${Date.now()}.jpg`,
+                uri: result.assets[0].uri,
+                name: 'photo.jpg',
                 type: 'image/jpeg',
             };
             setSubmittingPhoto(true);
@@ -339,150 +339,213 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
         }
     };
 
-    const isPending = statusKey === 'pending';
-    const actionIconName = isPending ? 'close' : 'delete-outline';
+    const handlePress = () => {
+        if (isSelectionMode) {
+            onToggleSelect(item.id);
+        }
+    };
 
-    const cardContent = (
-        <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
+    const handleCardLongPress = () => {
+        if (!isSelectionMode) {
+            onLongPress(item.id);
+        }
+    };
 
-            {/* ── Card Header ── */}
-            <View style={styles.cardHeader}>
+    const isCardExpanded = !isSelectionMode && expanded;
+    const isPendingStatus = statusKey === 'pending';
+    const actionIconName = isPendingStatus ? 'close' : 'delete-outline';
 
-                {/* Category chip + req id row */}
-                <View style={styles.chipIdRow}>
-                    <View style={styles.categoryChip}>
-                        <MaterialIcons name={categoryIcon} size={12} color={COLORS.primary} />
-                        <Text style={styles.categoryChipText}>{item.category}</Text>
-                    </View>
-                    <View style={styles.reqIdPill}>
-                        <MaterialIcons name="tag" size={11} color={COLORS.muted} />
-                        <Text style={styles.reqIdPillText}>{item.req_id}</Text>
-                    </View>
+    const headerContent = (
+        <>
+            {/* Category chip + req id row */}
+            <View style={styles.chipIdRow}>
+                <View style={styles.categoryChip}>
+                    <MaterialIcons name={categoryIcon} size={12} color={COLORS.primary} />
+                    <Text style={styles.categoryChipText}>{item.category}</Text>
                 </View>
-
-                {/* Title + collapse button */}
-                <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity style={styles.collapseBtn} onPress={toggle}>
-                            <Animated.View style={{ transform: [{ rotate }] }}>
-                                <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
-                            </Animated.View>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Status + Priority badges */}
-                <View style={styles.badgeRow}>
-                    <View style={[styles.badge, { backgroundColor: ss.bg }]}>
-                        <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: ps.bg }]}>
-                        <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
-                    </View>
-
-                    {/* Resubmission indicator badge in collapsed state */}
-                    {needsResubmission && !expanded && (
-                        <View style={styles.resubmitIndicatorBadge}>
-                            <MaterialIcons name="camera-alt" size={10} color="#92400E" />
-                            <Text style={styles.resubmitIndicatorText}>Photo needed</Text>
-                        </View>
-                    )}
+                <View style={styles.reqIdPill}>
+                    <MaterialIcons name="tag" size={11} color={COLORS.muted} />
+                    <Text style={styles.reqIdPillText}>{item.req_id}</Text>
                 </View>
             </View>
 
-            {/* ── Divider (only when expanded) ── */}
-            {expanded && <View style={styles.cardDivider} />}
+            {/* Title + collapse button */}
+            <View style={styles.cardTitleRow}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                {!isSelectionMode && (
+                    <View style={styles.collapseBtn}>
+                        <Animated.View style={{ transform: [{ rotate }] }}>
+                            <MaterialIcons name="expand-less" size={20} color={COLORS.primary} />
+                        </Animated.View>
+                    </View>
+                )}
+            </View>
 
-            {/* ── Expandable Body ── */}
-            {expanded && (
-                <View style={styles.cardBody}>
+            {/* Status + Priority badges */}
+            <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: ss.bg }]}>
+                    <Text style={[styles.badgeText, { color: ss.text }]}>{statusLabel}</Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: ps.bg }]}>
+                    <Text style={[styles.badgeText, { color: ps.text }]}>{priorityLabel}</Text>
+                </View>
 
-                    {/* ── Attached Photo (only shown when photo exists) ── */}
-                    {item.photo_url ? (
-                        <View style={styles.photoBlock}>
-                            <View style={styles.photoBlockHeader}>
-                                <MaterialIcons name="photo" size={12} color={COLORS.primary} />
-                                <Text style={styles.photoBlockLabel}>Attached photo</Text>
+                {/* Resubmission indicator badge in collapsed state */}
+                {needsResubmission && !isCardExpanded && (
+                    <View style={styles.resubmitIndicatorBadge}>
+                        <MaterialIcons name="camera-alt" size={10} color="#92400E" />
+                        <Text style={styles.resubmitIndicatorText}>Photo needed</Text>
+                    </View>
+                )}
+            </View>
+        </>
+    );
+
+    const bodyContent = (
+        <>
+            {/* Attached Photo */}
+            {item.photo_url ? (
+                <View style={styles.photoBlock}>
+                    <View style={styles.photoBlockHeader}>
+                        <MaterialIcons name="photo" size={12} color={COLORS.primary} />
+                        <Text style={styles.photoBlockLabel}>Attached photo</Text>
+                    </View>
+                    <Image
+                        source={{ uri: item.photo_url }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                    />
+                </View>
+            ) : null}
+
+            {/* Resubmission Banner */}
+            {needsResubmission && (
+                <View style={styles.resubmitBanner}>
+                    <View style={styles.resubmitBannerHeader}>
+                        <MaterialIcons name="camera-alt" size={14} color="#92400E" />
+                        <Text style={styles.resubmitBannerTitle}>Photo resubmission requested</Text>
+                    </View>
+                    <View style={styles.resubmitBannerBody}>
+                        {item.resubmission_reason ? (
+                            <View style={styles.resubmitReasonBox}>
+                                <Text style={styles.resubmitReason}>
+                                    <Text style={styles.resubmitReasonBold}>Reason: </Text>
+                                    {item.resubmission_reason}
+                                </Text>
                             </View>
-                            <Image
-                                source={{ uri: item.photo_url }}
-                                style={styles.photoImage}
-                                resizeMode="cover"
-                            />
-                        </View>
-                    ) : null}
-
-                    {/* ── Resubmission Banner (amber tone) ── */}
-                    {needsResubmission && (
-                        <View style={styles.resubmitBanner}>
-                            <View style={styles.resubmitBannerHeader}>
-                                <MaterialIcons name="camera-alt" size={14} color="#92400E" />
-                                <Text style={styles.resubmitBannerTitle}>Photo resubmission requested</Text>
-                            </View>
-                            <View style={styles.resubmitBannerBody}>
-                                {item.resubmission_reason ? (
-                                    <View style={styles.resubmitReasonBox}>
-                                        <Text style={styles.resubmitReason}>
-                                            <Text style={styles.resubmitReasonBold}>Reason: </Text>
-                                            {item.resubmission_reason}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                                <TouchableOpacity
-                                    style={[styles.resubmitBtn, submittingPhoto && { opacity: 0.7 }]}
-                                    onPress={handleTakePhoto}
-                                    disabled={submittingPhoto}
-                                    activeOpacity={0.85}
-                                >
-                                    {submittingPhoto ? (
-                                        <ActivityIndicator size="small" color={COLORS.white} />
-                                    ) : (
-                                        <>
-                                            <MaterialIcons name="camera-alt" size={16} color={COLORS.white} />
-                                            <Text style={styles.resubmitBtnText}>Take & submit new photo</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* ── Admin Notes ── */}
-                    <View style={styles.notesBlock}>
-                        <View style={styles.notesBlockHeader}>
-                            <MaterialIcons name="sticky-note-2" size={12} color={COLORS.muted} />
-                            <Text style={styles.notesLabel}>Admin notes</Text>
-                        </View>
-                        {item.admin_notes && item.admin_notes.length > 0 ? (
-                            item.admin_notes.map((note, idx) => (
-                                <View key={idx} style={styles.noteItem}>
-                                    <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
-                                    <Text style={styles.noteText}>
-                                        {note.bold
-                                            ? <Text style={styles.noteBold}>{note.text}</Text>
-                                            : note.text
-                                        }
-                                    </Text>
-                                </View>
-                            ))
-                        ) : (
-                            <Text style={styles.noNotesText}>No admin notes yet.</Text>
-                        )}
+                        ) : null}
+                        <TouchableOpacity
+                            style={[styles.resubmitBtn, submittingPhoto && { opacity: 0.7 }]}
+                            onPress={handleTakePhoto}
+                            disabled={submittingPhoto}
+                            activeOpacity={0.85}
+                        >
+                            {submittingPhoto ? (
+                                <ActivityIndicator size="small" color={COLORS.white} />
+                            ) : (
+                                <>
+                                    <MaterialIcons name="camera-alt" size={16} color={COLORS.white} />
+                                    <Text style={styles.resubmitBtnText}>Take & submit new photo</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </View>
             )}
 
-            {/* ── Footer: date only (req id moved to top) ── */}
-            <View style={styles.cardFooter}>
-                <View style={styles.footerDateRow}>
-                    <Ionicons name="calendar-outline" size={13} color={COLORS.muted} />
-                    <Text style={styles.footerDate}>Submitted {item.date_submitted}</Text>
+            {/* Admin Notes */}
+            <View style={styles.notesBlock}>
+                <View style={styles.notesBlockHeader}>
+                    <MaterialIcons name="sticky-note-2" size={12} color={COLORS.muted} />
+                    <Text style={styles.notesLabel}>Admin notes</Text>
                 </View>
-                <TouchableOpacity onPress={toggle} style={styles.footerToggle}>
-                    <Text style={styles.footerToggleText}>{expanded ? 'Hide details' : 'View details'}</Text>
-                </TouchableOpacity>
+                {item.admin_notes && item.admin_notes.length > 0 ? (
+                    item.admin_notes.map((note, idx) => (
+                        <View key={idx} style={styles.noteItem}>
+                            <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
+                            <Text style={styles.noteText}>
+                                {note.bold
+                                    ? <Text style={styles.noteBold}>{note.text}</Text>
+                                    : note.text
+                                }
+                            </Text>
+                        </View>
+                    ))
+                ) : (
+                    <Text style={styles.noNotesText}>No admin notes yet.</Text>
+                )}
             </View>
+        </>
+    );
+
+    const innerCard = (
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            {isSelectionMode && (
+                <View style={{ paddingLeft: 14 }}>
+                    <MaterialCommunityIcons
+                        name={isSelected ? "checkbox-marked" : "checkbox-blank-outline"}
+                        size={22}
+                        color={isSelected ? COLORS.primary : COLORS.muted}
+                    />
+                </View>
+            )}
+            <View style={{ flex: 1 }}>
+                {isSelectionMode ? (
+                    <View style={styles.cardHeader}>
+                        {headerContent}
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={toggle}
+                        onLongPress={handleCardLongPress}
+                        style={styles.cardHeader}
+                    >
+                        {headerContent}
+                    </TouchableOpacity>
+                )}
+
+                {isCardExpanded && <View style={styles.cardDivider} />}
+
+                {isCardExpanded && (
+                    <View style={styles.cardBody}>
+                        {bodyContent}
+                    </View>
+                )}
+
+                {isCardExpanded && <View style={styles.cardDivider} />}
+
+                {/* Card Footer */}
+                <View style={styles.cardFooter}>
+                    <View style={styles.footerDateRow}>
+                        <Ionicons name="calendar-outline" size={14} color="#4B5563" />
+                        <Text style={[styles.footerDate, { color: '#4B5563', fontSize: 13 }]}>Submitted {item.date_submitted}</Text>
+                    </View>
+                    {!isSelectionMode && (
+                        <TouchableOpacity onPress={toggle} style={styles.footerToggle}>
+                            <Text style={styles.footerToggleText}>{expanded ? 'Hide details' : 'View details'}</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        </View>
+    );
+
+    const cardContent = isSelectionMode ? (
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handlePress}
+            style={[
+                styles.requestCard,
+                { borderLeftColor: accentColor },
+                isSelected && { backgroundColor: '#FFF2F6', borderColor: COLORS.primaryLight }
+            ]}
+        >
+            {innerCard}
+        </TouchableOpacity>
+    ) : (
+        <View style={[styles.requestCard, { borderLeftColor: accentColor }]}>
+            {innerCard}
         </View>
     );
 
@@ -498,7 +561,7 @@ const RequestCard = ({ item, onResubmitPhoto, onDelete }) => {
             {cardContent}
         </SwipeableWrapper>
     );
-};
+});
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function MaintenanceHistoryScreen() {
@@ -517,6 +580,10 @@ export default function MaintenanceHistoryScreen() {
     const [activePriority, setActivePriority] = useState('All Priority');
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+
+    // Selection Mode states
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     // ── Derived stats
     const totalCount = requests.length;
@@ -594,6 +661,85 @@ export default function MaintenanceHistoryScreen() {
         }
     }, [fetchRequests]);
 
+    // ── Selection helper callbacks
+    const toggleSelectRequest = useCallback((requestId) => {
+        setSelectedIds((prev) => {
+            if (prev.includes(requestId)) {
+                const next = prev.filter(id => id !== requestId);
+                if (next.length === 0) {
+                    setIsSelectionMode(false);
+                }
+                return next;
+            } else {
+                return [...prev, requestId];
+            }
+        });
+    }, []);
+
+    const enterSelectionMode = useCallback((requestId) => {
+        setIsSelectionMode(true);
+        setSelectedIds([requestId]);
+    }, []);
+
+    const handleSelectAll = useCallback(() => {
+        const deletableRequests = filtered.filter(r => r.status?.toLowerCase() !== 'in progress');
+        const deletableIds = deletableRequests.map(r => r.id);
+
+        if (deletableIds.length === 0) {
+            Alert.alert('No Deletable Requests', 'There are no deletable requests in the current list to select.');
+            return;
+        }
+
+        const allSelected = deletableIds.every(id => selectedIds.includes(id));
+        if (allSelected) {
+            setSelectedIds([]);
+            setIsSelectionMode(false);
+        } else {
+            setSelectedIds(deletableIds);
+        }
+    }, [filtered, selectedIds]);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedIds.length === 0) return;
+
+        const inProgressSelected = requests.filter(r => selectedIds.includes(r.id) && r.status?.toLowerCase() === 'in progress');
+        if (inProgressSelected.length > 0) {
+            Alert.alert(
+                'Invalid Selection',
+                'Requests in progress cannot be deleted. Please deselect them first.'
+            );
+            return;
+        }
+
+        Alert.alert(
+            'Delete Selected',
+            `Are you sure you want to delete the ${selectedIds.length} selected request(s)?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await Promise.all(selectedIds.map(id => client.delete(`/maintenance/${id}`)));
+                            Alert.alert('Success', 'Selected requests deleted successfully.');
+                            setSelectedIds([]);
+                            setIsSelectionMode(false);
+                            fetchRequests();
+                        } catch (err) {
+                            console.error('bulk delete error:', err.response?.data ?? err.message);
+                            Alert.alert('Error', 'Failed to delete some requests. Please try again.');
+                            fetchRequests();
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [selectedIds, requests, fetchRequests]);
+
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -602,7 +748,7 @@ export default function MaintenanceHistoryScreen() {
             <PremiumPullToRefresh
                 ref={pullToRefreshRef}
                 refreshing={refreshing}
-                onRefresh={onRefresh}
+                onRefresh={isSelectionMode ? undefined : onRefresh}
                 iconName="build"
                 headerHeight={56}
                 onScrollEnabledChange={setScrollEnabled}
@@ -679,104 +825,177 @@ export default function MaintenanceHistoryScreen() {
 
                     {/* ── Filter Row ── */}
                     <View style={styles.filterRow}>
-                        {/* Status dropdown */}
-                        <View style={styles.dropdownWrapper}>
-                            <TouchableOpacity
-                                style={styles.filterBtn}
-                                onPress={() => {
-                                    setShowStatusDropdown(!showStatusDropdown);
-                                    setShowPriorityDropdown(false);
-                                }}
-                            >
-                                <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
-                                <Text style={styles.filterBtnText}>{activeStatus}</Text>
-                                <MaterialIcons
-                                    name={showStatusDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                    size={16}
-                                    color={COLORS.white}
-                                />
-                            </TouchableOpacity>
-
-                            {showStatusDropdown && (
-                                <View style={styles.filterDropdown}>
-                                    {STATUS_OPTIONS.map((status) => (
-                                        <TouchableOpacity
-                                            key={status}
-                                            style={[
-                                                styles.filterDropdownItem,
-                                                activeStatus === status && styles.filterDropdownItemActive,
-                                            ]}
-                                            onPress={() => {
-                                                setActiveStatus(status);
-                                                setShowStatusDropdown(false);
-                                            }}
-                                        >
-                                            <Text style={[
-                                                styles.filterDropdownText,
-                                                activeStatus === status && styles.filterDropdownTextActive,
-                                            ]}>
-                                                {status}
-                                            </Text>
-                                            {activeStatus === status && (
-                                                <MaterialIcons name="check" size={14} color={COLORS.primary} />
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
+                        {isSelectionMode ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, gap: 10 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: 16,
+                                            backgroundColor: COLORS.white,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            borderWidth: 1,
+                                            borderColor: COLORS.border,
+                                        }}
+                                        onPress={() => {
+                                            setIsSelectionMode(false);
+                                            setSelectedIds([]);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <MaterialIcons name="close" size={16} color={COLORS.dark} />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.dark }}>
+                                        {selectedIds.length} Selected
+                                    </Text>
                                 </View>
-                            )}
-                        </View>
 
-                        {/* Priority dropdown */}
-                        <View style={styles.dropdownWrapper}>
-                            <TouchableOpacity
-                                style={styles.priorityBtn}
-                                onPress={() => {
-                                    setShowPriorityDropdown(!showPriorityDropdown);
-                                    setShowStatusDropdown(false);
-                                }}
-                            >
-                                <Ionicons name="flag-outline" size={14} color={COLORS.primary} />
-                                <Text style={styles.priorityBtnText}>{activePriority}</Text>
-                                <MaterialIcons
-                                    name={showPriorityDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                    size={16}
-                                    color={COLORS.primary}
-                                />
-                            </TouchableOpacity>
-
-                            {showPriorityDropdown && (
-                                <View style={styles.filterDropdown}>
-                                    {PRIORITY_OPTIONS.map((priority) => (
-                                        <TouchableOpacity
-                                            key={priority}
-                                            style={[
-                                                styles.filterDropdownItem,
-                                                activePriority === priority && styles.filterDropdownItemActive,
-                                            ]}
-                                            onPress={() => {
-                                                setActivePriority(priority);
-                                                setShowPriorityDropdown(false);
-                                            }}
-                                        >
-                                            <Text style={[
-                                                styles.filterDropdownText,
-                                                activePriority === priority && styles.filterDropdownTextActive,
-                                            ]}>
-                                                {priority}
-                                            </Text>
-                                            {activePriority === priority && (
-                                                <MaterialIcons name="check" size={14} color={COLORS.primary} />
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <TouchableOpacity
+                                        style={{
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 6,
+                                            borderRadius: 14,
+                                            backgroundColor: COLORS.lightPink,
+                                            borderWidth: 1,
+                                            borderColor: COLORS.border,
+                                        }}
+                                        onPress={handleSelectAll}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
+                                            {filtered.filter(r => r.status?.toLowerCase() !== 'in progress').length === selectedIds.length
+                                                ? 'Deselect All'
+                                                : 'Select All'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: 16,
+                                            backgroundColor: selectedIds.length > 0 ? '#FEE2E2' : COLORS.white,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            borderWidth: 1,
+                                            borderColor: selectedIds.length > 0 ? '#FCA5A5' : COLORS.border,
+                                        }}
+                                        onPress={handleBulkDelete}
+                                        disabled={selectedIds.length === 0}
+                                        activeOpacity={0.7}
+                                    >
+                                        <MaterialIcons
+                                            name="delete-outline"
+                                            size={18}
+                                            color={selectedIds.length > 0 ? "#DC2626" : COLORS.muted}
+                                        />
+                                    </TouchableOpacity>
                                 </View>
-                            )}
-                        </View>
+                            </View>
+                        ) : (
+                            <>
+                                {/* Status dropdown */}
+                                <View style={styles.dropdownWrapper}>
+                                    <TouchableOpacity
+                                        style={styles.filterBtn}
+                                        onPress={() => {
+                                            setShowStatusDropdown(!showStatusDropdown);
+                                            setShowPriorityDropdown(false);
+                                        }}
+                                    >
+                                        <MaterialIcons name="filter-list" size={16} color={COLORS.white} />
+                                        <Text style={styles.filterBtnText}>{activeStatus}</Text>
+                                        <MaterialIcons
+                                            name={showStatusDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                            size={16}
+                                            color={COLORS.white}
+                                        />
+                                    </TouchableOpacity>
 
-                        {/* Result count */}
-                        <Text style={styles.resultCount}>
-                            {filtered.length} {filtered.length === 1 ? 'request' : 'requests'}
-                        </Text>
+                                    {showStatusDropdown && (
+                                        <View style={styles.filterDropdown}>
+                                            {STATUS_OPTIONS.map((status) => (
+                                                <TouchableOpacity
+                                                    key={status}
+                                                    style={[
+                                                        styles.filterDropdownItem,
+                                                        activeStatus === status && styles.filterDropdownItemActive,
+                                                    ]}
+                                                    onPress={() => {
+                                                        setActiveStatus(status);
+                                                        setShowStatusDropdown(false);
+                                                    }}
+                                                >
+                                                    <Text style={[
+                                                        styles.filterDropdownText,
+                                                        activeStatus === status && styles.filterDropdownTextActive,
+                                                    ]}>
+                                                        {status}
+                                                    </Text>
+                                                    {activeStatus === status && (
+                                                        <MaterialIcons name="check" size={14} color={COLORS.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Priority dropdown */}
+                                <View style={styles.dropdownWrapper}>
+                                    <TouchableOpacity
+                                        style={styles.priorityBtn}
+                                        onPress={() => {
+                                            setShowPriorityDropdown(!showPriorityDropdown);
+                                            setShowStatusDropdown(false);
+                                        }}
+                                    >
+                                        <Ionicons name="flag-outline" size={14} color={COLORS.primary} />
+                                        <Text style={styles.priorityBtnText}>{activePriority}</Text>
+                                        <MaterialIcons
+                                            name={showPriorityDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                                            size={16}
+                                            color={COLORS.primary}
+                                        />
+                                    </TouchableOpacity>
+
+                                    {showPriorityDropdown && (
+                                        <View style={styles.filterDropdown}>
+                                            {PRIORITY_OPTIONS.map((priority) => (
+                                                <TouchableOpacity
+                                                    key={priority}
+                                                    style={[
+                                                        styles.filterDropdownItem,
+                                                        activePriority === priority && styles.filterDropdownItemActive,
+                                                    ]}
+                                                    onPress={() => {
+                                                        setActivePriority(priority);
+                                                        setShowPriorityDropdown(false);
+                                                    }}
+                                                >
+                                                    <Text style={[
+                                                        styles.filterDropdownText,
+                                                        activePriority === priority && styles.filterDropdownTextActive,
+                                                    ]}>
+                                                        {priority}
+                                                    </Text>
+                                                    {activePriority === priority && (
+                                                        <MaterialIcons name="check" size={14} color={COLORS.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Result count */}
+                                <Text style={styles.resultCount}>
+                                    {filtered.length} {filtered.length === 1 ? 'request' : 'requests'}
+                                </Text>
+                            </>
+                        )}
                     </View>
 
                     {/* ── Request Cards ── */}
@@ -797,6 +1016,10 @@ export default function MaintenanceHistoryScreen() {
                                 item={item}
                                 onResubmitPhoto={handleResubmitPhoto}
                                 onDelete={handleDeleteRequest}
+                                isSelectionMode={isSelectionMode}
+                                isSelected={selectedIds.includes(item.id)}
+                                onToggleSelect={toggleSelectRequest}
+                                onLongPress={enterSelectionMode}
                             />
                         ))
                     )}
