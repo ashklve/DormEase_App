@@ -18,7 +18,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -204,6 +205,20 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
         }
     };
 
+    // ── FIXED: handleShareFile ──────────────────────────────────────────────
+    // Root cause: FileSystem.downloadAsync makes its own raw network request,
+    // completely separate from the `client` axios instance. The auth token is
+    // attached to normal API calls via client.js's request interceptor, which
+    // reads it fresh from AsyncStorage('auth_token') on every call — it is
+    // never stored on `client.defaults.headers`. Since downloadAsync bypasses
+    // that interceptor entirely, the download to the protected /storage route
+    // had no Authorization header at all, so it likely got back a 401/403 (or
+    // an HTML error page) instead of the real file — and the bare `catch {}`
+    // swallowed the real error, always showing the same generic alert.
+    //
+    // Fix: read the token directly from AsyncStorage (same key, same way the
+    // interceptor does) and pass it explicitly into downloadAsync's headers.
+    // Also log the real error so future issues are debuggable.
     const handleShareFile = async (path, label) => {
         try {
             const isAvailable = await Sharing.isAvailableAsync();
@@ -216,9 +231,28 @@ const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
             const fileName = path.split('/').pop();
             const localUri = `${FileSystem.cacheDirectory}${fileName}`;
 
-            const { uri } = await FileSystem.downloadAsync(buildFileUrl(path), localUri);
-            await Sharing.shareAsync(uri, { dialogTitle: label ?? 'Share Document' });
-        } catch {
+            // client.js attaches the auth token via a request interceptor that reads
+            // it fresh from AsyncStorage on every call — it's never stored on
+            // client.defaults.headers. So we read it the same way here, since
+            // downloadAsync makes its own request and won't go through client's
+            // interceptor at all.
+            const token = await AsyncStorage.getItem('auth_token');
+
+            const downloadResult = await FileSystem.downloadAsync(
+                buildFileUrl(path),
+                localUri,
+                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+            );
+
+            if (downloadResult.status && downloadResult.status >= 400) {
+                throw new Error(`Download failed with status ${downloadResult.status}`);
+            }
+
+            await Sharing.shareAsync(downloadResult.uri, { dialogTitle: label ?? 'Share Document' });
+        } catch (err) {
+            // Log the real error instead of swallowing it silently — makes future
+            // debugging possible instead of guessing blind.
+            console.error('share file error:', err?.message ?? err);
             Alert.alert('Error', 'Could not share file. Please try again.');
         } finally {
             setSharingPath(null);
