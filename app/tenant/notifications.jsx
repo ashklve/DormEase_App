@@ -64,7 +64,7 @@ const TYPE_META = {
         icon: 'warning',
         avatarBg: NOTIF_COLORS.avatarRed,
         iconColor: NOTIF_COLORS.iconEmergency,
-        route: '/tenant/emergency',
+        route: '/tenant/emergencyhistory',
     },
     visitor: {
         label: 'Visitor',
