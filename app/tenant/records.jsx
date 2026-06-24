@@ -16,6 +16,7 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import DrawerMenu from '../../src/components/DrawerMenu';
@@ -32,6 +33,7 @@ const STATUS_CONFIG = {
     approved: { label: 'Approved', color: COLORS.success, bg: COLORS.successLight, icon: 'check-circle' },
     ready: { label: 'Ready', color: COLORS.ready, bg: COLORS.readyLight, icon: 'inventory' },
     denied: { label: 'Denied', color: COLORS.denied, bg: COLORS.deniedLight, icon: 'cancel' },
+    resubmission: { label: 'Resubmit', color: COLORS.denied, bg: COLORS.deniedLight, icon: 'upload-file' },
 };
 
 const FILTERS = [
@@ -41,6 +43,7 @@ const FILTERS = [
     { key: 'approved', label: 'Approved' },
     { key: 'ready', label: 'Ready' },
     { key: 'denied', label: 'Denied' },
+    { key: 'resubmission', label: 'Resubmit' },
 ];
 
 const fmtDate = (d) => {
@@ -176,7 +179,7 @@ const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
 };
 
 // record card
-const RecordCard = ({ item, index, onDelete }) => {
+const RecordCard = ({ item, index, onDelete, onResubmit, resubmitting }) => {
     const fade = useRef(new Animated.Value(0)).current;
     const slide = useRef(new Animated.Value(16)).current;
 
@@ -220,6 +223,7 @@ const RecordCard = ({ item, index, onDelete }) => {
     const hasFulfilled = !!item.fulfilled_file;
     const hasAttachment = !!item.attachment;
     const isDownloadableForm = item.category === 'form';
+    const needsResubmission = item.status === 'resubmission';
     const canDelete = ['pending', 'approved', 'ready', 'denied'].includes(item.status);
 
     const isPending = item.status === 'pending';
@@ -297,6 +301,33 @@ const RecordCard = ({ item, index, onDelete }) => {
 
                 <View style={styles.divider} />
 
+                {/* resubmission needed — show resubmit button instead of awaiting placeholder */}
+                {needsResubmission && (
+                    <TouchableOpacity
+                        style={[styles.fileBtn, styles.fileBtnAttachment]}
+                        activeOpacity={0.75}
+                        onPress={() => onResubmit(item.doc_request_id)}
+                        disabled={resubmitting}
+                    >
+                        <View style={[styles.fileBtnIcon, styles.fileBtnIconAttachment]}>
+                            {resubmitting ? (
+                                <ActivityIndicator size="small" color={COLORS.white} />
+                            ) : (
+                                <MaterialIcons name="upload-file" size={18} color={COLORS.white} />
+                            )}
+                        </View>
+                        <View style={styles.fileBtnTextWrap}>
+                            <Text style={[styles.fileBtnTitle, styles.fileBtnTitlePrimary]}>
+                                {resubmitting ? 'Resubmitting...' : 'Resubmit File'}
+                            </Text>
+                            <Text style={[styles.fileBtnSub, styles.fileBtnSubAttachment]}>
+                                Tap to upload a corrected file
+                            </Text>
+                        </View>
+                        {!resubmitting && <MaterialIcons name="chevron-right" size={16} color={COLORS.primary} />}
+                    </TouchableOpacity>
+                )}
+
                 {/* fulfilled document from admin */}
                 {hasFulfilled ? (
                     <TouchableOpacity
@@ -313,8 +344,8 @@ const RecordCard = ({ item, index, onDelete }) => {
                         </View>
                         <MaterialIcons name="open-in-new" size={16} color={COLORS.success} />
                     </TouchableOpacity>
-                ) : !isDownloadableForm && (
-                    /* only show "awaiting" placeholder for certificate requests, not downloadable forms */
+                ) : !isDownloadableForm && !needsResubmission && (
+                    /* only show "awaiting" placeholder for certificate requests, not downloadable forms, not when resubmission is needed */
                     <View style={[styles.fileBtn, styles.fileBtnAwaiting]}>
                         <View style={[styles.fileBtnIcon, styles.fileBtnIconAwaiting]}>
                             <MaterialIcons name="hourglass-empty" size={18} color={COLORS.muted} />
@@ -400,6 +431,7 @@ export default function TenantRecordsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [scrollEnabled, setScrollEnabled] = useState(true);
     const [activeFilter, setActiveFilter] = useState('all');
+    const [resubmittingId, setResubmittingId] = useState(null);
 
     const fetchRecords = useCallback(async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
@@ -426,6 +458,46 @@ export default function TenantRecordsScreen() {
             console.error('delete request error:', err.response?.data ?? err.message);
             const message = err.response?.data?.message ?? 'Failed to delete request. Please try again.';
             Alert.alert('Error', message);
+        }
+    }, [fetchRecords]);
+
+    const handleResubmit = useCallback(async (requestId) => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ],
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) return;
+
+            const asset = result.assets[0];
+            const formData = new FormData();
+            formData.append('file', {
+                uri: asset.uri,
+                name: asset.name,
+                type: asset.mimeType || 'application/octet-stream',
+            });
+
+            setResubmittingId(requestId);
+            await client.post(`/document-requests/${requestId}/resubmit`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data', Accept: 'application/json' },
+                transformRequest: (data) => data,
+            });
+
+            Alert.alert('Done', 'File resubmitted successfully.');
+            fetchRecords();
+        } catch (err) {
+            console.error('resubmit error:', err.response?.data ?? err.message);
+            const message = err.response?.data?.message ?? 'Failed to resubmit file. Please try again.';
+            Alert.alert('Error', message);
+        } finally {
+            setResubmittingId(null);
         }
     }, [fetchRecords]);
 
@@ -565,7 +637,14 @@ export default function TenantRecordsScreen() {
                         <EmptyState />
                     ) : (
                         filtered.map((item, index) => (
-                            <RecordCard key={item.doc_request_id} item={item} index={index} onDelete={handleDeleteRequest} />
+                            <RecordCard
+                                key={item.doc_request_id}
+                                item={item}
+                                index={index}
+                                onDelete={handleDeleteRequest}
+                                onResubmit={handleResubmit}
+                                resubmitting={resubmittingId === item.doc_request_id}
+                            />
                         ))
                     )}
                     </ScrollView>
