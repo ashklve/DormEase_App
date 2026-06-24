@@ -66,7 +66,7 @@ const isGibberish = (text) => {
 
 // ── Manual pickup instructions ────────────────────────────────────────────────
 const PICKUP_INFO = {
-    address: 'DormEase Admin Office, Ground Floor, Building A',
+    address: 'DormEase Admin Office, Second Floor',
     hours: 'Monday – Friday, 8:00 AM – 5:00 PM',
     note: 'Bring a valid ID and be ready to sign upon claiming your document.',
 };
