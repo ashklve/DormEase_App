@@ -8,6 +8,7 @@ export const dashboardCache = {
     pendingRequests: 0,
     user: null,
     loaded: false,
+    firstLoadDone: false,
 
     waterBilling: null,
     waterBreakdown: null,
@@ -25,6 +26,7 @@ export async function hydrateDashboardCache() {
         console.error('hydrateDashboardCache error:', err);
     } finally {
         dashboardCache.loaded = true;
+        dashboardCache.firstLoadDone = false;
     }
 }
 
@@ -48,6 +50,7 @@ export async function clearDashboardCache() {
         dashboardCache.pendingRequests = 0;
         dashboardCache.user = null;
         dashboardCache.loaded = false;
+        dashboardCache.firstLoadDone = false;
         dashboardCache.waterBilling = null;
         dashboardCache.waterBreakdown = null;
         dashboardCache.waterPaymentHistory = [];
