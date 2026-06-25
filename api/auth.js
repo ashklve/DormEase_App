@@ -1,5 +1,6 @@
 import client from './client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearDashboardCache } from '../src/cache/dashboardCache';
 
 export const loginTenant = async (identifier, password) => {
     const response = await client.post('/login', { identifier, password });
@@ -26,6 +27,7 @@ export const clearSession = async () => {
     await AsyncStorage.removeItem('auth_user');
     await AsyncStorage.removeItem('keep_logged_in');
     await AsyncStorage.removeItem('background_timestamp');
+    await clearDashboardCache();
 };
 
 // keep this if anything else in your app still calls logoutTenant
