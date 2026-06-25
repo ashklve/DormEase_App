@@ -35,3 +35,21 @@ export async function persistDashboardCache() {
         console.error('persistDashboardCache error:', err);
     }
 }
+
+export async function clearDashboardCache() {
+    try {
+        await AsyncStorage.removeItem(CACHE_KEY);
+    } catch (err) {
+        console.error('clearDashboardCache error:', err);
+    } finally {
+        dashboardCache.announcements = [];
+        dashboardCache.currentBill = '0.00';
+        dashboardCache.pastDueAmount = 0;
+        dashboardCache.pendingRequests = 0;
+        dashboardCache.user = null;
+        dashboardCache.loaded = false;
+        dashboardCache.waterBilling = null;
+        dashboardCache.waterBreakdown = null;
+        dashboardCache.waterPaymentHistory = [];
+    }
+}
