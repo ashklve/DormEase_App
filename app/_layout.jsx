@@ -5,6 +5,10 @@ import LoadingOverlay from '../src/components/LoadingOverlay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hydrateDashboardCache } from '../src/cache/dashboardCache';
 import React, { useEffect, useState } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we initialize the app
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
     const [showOverlay, setShowOverlay] = useState(true);
@@ -18,6 +22,7 @@ export default function RootLayout() {
                 console.warn('Init error:', e);
             } finally {
                 setShowOverlay(false);
+                await SplashScreen.hideAsync().catch(() => {});
             }
         };
 
