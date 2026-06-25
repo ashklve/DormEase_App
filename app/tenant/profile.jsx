@@ -12,15 +12,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, FlipType } from 'expo-image-manipulator';
 import styles, { COLORS } from '../../src/constants/profilestyles';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const buildAvatarUrl = (path) => {
   if (!path) return null;
@@ -213,8 +216,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [user, setUser] = useState(null);
-  const { setUser: setGlobalUser } = useUser();
+  const { user: globalUser, setUser: setGlobalUser } = useUser();
+  const [user, setUser] = useState(globalUser);
   const [refreshing, setRefreshing] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const pullToRefreshRef = useRef(null);
@@ -236,6 +239,7 @@ export default function ProfileScreen() {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwError, setPwError] = useState('');
 
+  const [isPhotoZoomed, setIsPhotoZoomed] = useState(false);
   const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
   const toastTimer = useRef(null);
 
@@ -284,7 +288,9 @@ export default function ProfileScreen() {
 
   const fetchProfile = async ({ isRefresh = false } = {}) => {
     try {
-      if (isRefresh) setRefreshing(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      }
       const res = await client.get('/user');
       setUser(res.data);
       setGlobalUser(res.data);
@@ -296,7 +302,7 @@ export default function ProfileScreen() {
     } catch (err) {
       console.error('profile fetch error:', err.message);
     } finally {
-      if (isRefresh) setRefreshing(false);
+      setRefreshing(false);
     }
   };
 
@@ -438,9 +444,16 @@ export default function ProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
+        cameraType: ImagePicker.CameraType.front,
       });
       if (!result.canceled) {
-        await uploadPhoto(result.assets[0].uri);
+        // Mirror the camera photo horizontally to fix inversion
+        const flipped = await manipulateAsync(
+          result.assets[0].uri,
+          [{ flip: FlipType.Horizontal }],
+          { compress: 0.7 }
+        );
+        await uploadPhoto(flipped.uri);
       }
     } catch (error) {
       console.error('Profile photo capture error:', error);
@@ -560,10 +573,12 @@ export default function ProfileScreen() {
             {/* ── Hero / Avatar ── */}
             <View style={styles.heroSection}>
               <View style={styles.avatarWrapper}>
-                <Image
-                  source={avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png')}
-                  style={styles.avatar}
-                />
+                <TouchableOpacity onPress={() => setIsPhotoZoomed(true)} activeOpacity={0.95}>
+                  <Image
+                    source={avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png')}
+                    style={styles.avatar}
+                  />
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.avatarEditBtn} onPress={handlePickPhoto}>
                   <Ionicons name="camera" size={14} color={COLORS.white} />
                 </TouchableOpacity>
@@ -726,23 +741,23 @@ export default function ProfileScreen() {
                 </View>
               )}
               <PwInput label="Confirm new password" value={confirmPw} onChangeText={setConfirmPw} matchStatus={pwMatchStatus} />
-            </View>
 
-            <TouchableOpacity
-              style={[styles.saveBtn, (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled]}
-              onPress={handleChangePassword}
-              disabled={savingPw || pwMatchStatus === 'mismatch'}
-              activeOpacity={0.85}
-            >
-              {savingPw ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
-                  <Text style={styles.saveBtnText}>Update Password</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled, { marginHorizontal: 0, marginTop: 16, marginBottom: 0 }]}
+                onPress={handleChangePassword}
+                disabled={savingPw || pwMatchStatus === 'mismatch'}
+                activeOpacity={0.85}
+              >
+                {savingPw ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
+                    <Text style={styles.saveBtnText}>Update Password</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
 
             {/* ── Logout ── */}
             <TouchableOpacity
@@ -768,6 +783,49 @@ export default function ProfileScreen() {
         <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
         <NavItem iconName="account-circle" label="Profile" isActive onPress={() => router.push('/tenant/profile')} />
       </View>
+
+      <Modal
+        visible={isPhotoZoomed}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPhotoZoomed(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setIsPhotoZoomed(false)}
+        >
+          <View style={{
+            width: 280,
+            height: 280,
+            borderRadius: 140,
+            borderWidth: 4,
+            borderColor: '#FFFFFF',
+            overflow: 'hidden',
+            backgroundColor: '#FFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 10,
+            elevation: 10,
+          }}>
+            <Image
+              source={avatarUri ? { uri: avatarUri } : require('../../assets/def_icon.png')}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
+          </View>
+          <Text style={{ color: '#FFFFFF', marginTop: 20, fontSize: 14, fontWeight: '600' }}>
+            Tap anywhere to close
+          </Text>
+        </TouchableOpacity>
+      </Modal>
+      <LoadingOverlay visible={saving || savingPw || vacationSaving} />
     </SafeAreaView>
   );
 }

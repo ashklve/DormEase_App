@@ -157,7 +157,7 @@ const Dashboard = () => {
     const [pastDueAmount, setPastDueAmount] = useState(dashboardCache.pastDueAmount ?? 0);
     const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
     const [refreshing, setRefreshing] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!dashboardCache.firstLoadDone);
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -228,20 +228,6 @@ const Dashboard = () => {
         dashboardCache.loaded = true;
     }, []);
 
-    useEffect(() => {
-        const init = async () => {
-            try {
-                setLoading(true);
-                await Promise.all([fetchUser(), fetchDashboardData()]);
-            } catch (e) {
-                console.error('Dashboard init error:', e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        init();
-    }, []);
-
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         fetchUser();
@@ -256,15 +242,25 @@ const Dashboard = () => {
         }, [])
     );
 
-    // refetch fresh data whenever the dashboard regains focus (e.g. coming back from another tab),
-    // but only after the initial load has already happened, since that's handled separately above.
-    // this reuses onRefresh so the same pull-to-refresh spinner shows briefly while it updates.
+    // refetch fresh data whenever the dashboard gains focus (initial mount or coming back from another screen),
+    // showing the premium LoadingOverlay ONLY on initial mount (not on subsequent screen transitions).
     useFocusEffect(
         useCallback(() => {
-            // Refetch silently on focus if cache is already loaded (initial mount handled separately)
-            if (dashboardCache.loaded) {
-                fetchDashboardData();
-            }
+            const init = async () => {
+                const showLoader = !dashboardCache.firstLoadDone;
+                try {
+                    if (showLoader) {
+                        setLoading(true);
+                    }
+                    await Promise.all([fetchUser(), fetchDashboardData()]);
+                } catch (e) {
+                    console.error('Dashboard focus fetch error:', e);
+                } finally {
+                    setLoading(false);
+                    dashboardCache.firstLoadDone = true;
+                }
+            };
+            init();
 
             // Listen for app foregrounding to trigger a refetch with loading overlay
             const handleAppStateChange = async (nextAppState) => {
