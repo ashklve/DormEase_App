@@ -9,6 +9,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { loginTenant, saveSession } from '../../api/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '../../src/services/pushNotifications';
+import { useUser } from '../../src/context/UserContext';
+import { clearDashboardCache } from '../../src/cache/dashboardCache';
 
 const { width } = Dimensions.get('window');
 const PINK_PRIMARY = '#D63375';
@@ -20,6 +22,7 @@ const ID_PREFIX = 'TNT-';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { fetchUser } = useUser();
 
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
@@ -81,6 +84,7 @@ export default function LoginScreen() {
             const res = await loginTenant(fullIdentifier, password);
 
             await AsyncStorage.setItem('auth_token', res.token);
+            await clearDashboardCache();
 
             if (res.user.role === 'tenant') {
                 registerForPushNotificationsAsync();
@@ -92,6 +96,9 @@ export default function LoginScreen() {
             } else {
                 await AsyncStorage.setItem('keep_logged_in', 'false');
             }
+
+            // Fetch the user data so it's populated in UserContext immediately!
+            await fetchUser();
 
             // redirect to change password first if temp
             if (res.user.is_temp_password) {

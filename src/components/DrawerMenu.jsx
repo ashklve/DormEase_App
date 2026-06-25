@@ -35,7 +35,7 @@ const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron
 // ── DrawerMenu ────────────────────────────────────────────────────────────────
 const DrawerMenu = React.forwardRef((_props, ref) => {
     const router = useRouter();
-    const { user, avatarUri } = useUser();
+    const { user, avatarUri, setUser } = useUser();
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [documentsExpanded, setDocumentsExpanded] = useState(false);
@@ -209,6 +209,7 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
                     onPress={async () => {
                         close();
                         await clearSession();
+                        setUser(null);
                         setTimeout(() => router.replace('/auth/login'), 260);
                     }}
                 >
