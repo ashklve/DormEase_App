@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../../api/client';
 import { AppState, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { clearDashboardCache } from '../cache/dashboardCache';
 
 // ── Build full avatar URL from a storage path ─────────────────────────────────
 export const buildAvatarUrl = (path) => {
@@ -31,6 +32,7 @@ export function UserProvider({ children }) {
                 await AsyncStorage.removeItem('auth_user');
                 await AsyncStorage.removeItem('keep_logged_in');
                 await AsyncStorage.removeItem('background_timestamp');
+                await clearDashboardCache();
                 setUser(null);
                 setLoading(false);
                 return;
@@ -65,6 +67,7 @@ export function UserProvider({ children }) {
                         await AsyncStorage.removeItem('auth_user');
                         await AsyncStorage.removeItem('keep_logged_in');
                         await AsyncStorage.removeItem('background_timestamp');
+                        await clearDashboardCache();
                         setUser(null);
                         Alert.alert(
                             'Session Expired',
@@ -84,7 +87,7 @@ export function UserProvider({ children }) {
         };
     }, []);
 
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
             setLoading(true);
             const res = await client.get('/user');
@@ -99,7 +102,7 @@ export function UserProvider({ children }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Call this after a successful profile photo upload to update globally
     const updateProfilePhoto = (newPhotoPath) => {
