@@ -157,7 +157,7 @@ const Dashboard = () => {
     const [pastDueAmount, setPastDueAmount] = useState(dashboardCache.pastDueAmount ?? 0);
     const [pendingRequests, setPendingRequests] = useState(dashboardCache.pendingRequests);
     const [refreshing, setRefreshing] = useState(false);
-    const [loading, setLoading] = useState(!dashboardCache.loaded);
+    const [loading, setLoading] = useState(true);
 
     const userData = {
         firstName: user?.first_name ?? '',
@@ -229,11 +229,15 @@ const Dashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (dashboardCache.loaded) return;
         const init = async () => {
-            await fetchUser();
-            await fetchDashboardData();
-            setLoading(false);
+            try {
+                setLoading(true);
+                await Promise.all([fetchUser(), fetchDashboardData()]);
+            } catch (e) {
+                console.error('Dashboard init error:', e);
+            } finally {
+                setLoading(false);
+            }
         };
         init();
     }, []);
@@ -243,7 +247,7 @@ const Dashboard = () => {
         fetchUser();
         await fetchDashboardData();
         setRefreshing(false);
-    }, [fetchDashboardData]);
+    }, [fetchDashboardData, fetchUser]);
 
     const [activeTab, setActiveTab] = useState('home');
     useFocusEffect(
@@ -262,10 +266,17 @@ const Dashboard = () => {
                 fetchDashboardData();
             }
 
-            // Listen for app foregrounding to trigger a silent refetch
-            const handleAppStateChange = (nextAppState) => {
+            // Listen for app foregrounding to trigger a refetch with loading overlay
+            const handleAppStateChange = async (nextAppState) => {
                 if (nextAppState === 'active') {
-                    fetchDashboardData();
+                    try {
+                        setLoading(true);
+                        await Promise.all([fetchUser(), fetchDashboardData()]);
+                    } catch (e) {
+                        console.error('Foreground update error:', e);
+                    } finally {
+                        setLoading(false);
+                    }
                 }
             };
             const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -273,7 +284,7 @@ const Dashboard = () => {
             return () => {
                 subscription.remove();
             };
-        }, [fetchDashboardData])
+        }, [fetchDashboardData, fetchUser, setLoading])
     );
 
     const drawerRef = useRef(null);
