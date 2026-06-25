@@ -274,7 +274,7 @@ export default function DocumentsScreen() {
     const handlePickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: ['application/pdf'],
+                type: ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'],
                 copyToCacheDirectory: true,
             });
             if (!result.canceled && result.assets?.length > 0) {
@@ -704,7 +704,7 @@ export default function DocumentsScreen() {
                         {isForm && (
                             <>
                                 <Text style={styles.fieldHint}>
-                                    Download the form above, fill it out, then upload it here as PDF.
+                                    Download the form above, fill it out, then upload it here (PDF, PNG, or JPG).
                                 </Text>
                                 <TouchableOpacity
                                     style={[styles.uploadBox, uploadedFile && styles.uploadBoxFilled]}
@@ -721,12 +721,12 @@ export default function DocumentsScreen() {
                                         numberOfLines={1}
                                         ellipsizeMode="middle"
                                     >
-                                        {uploadedFile ? uploadedFile.name : 'Tap to upload PDF'}
+                                        {uploadedFile ? uploadedFile.name : 'Tap to upload file (PDF/Image)'}
                                     </Text>
                                     <Text style={styles.uploadBoxSub}>
                                         {uploadedFile && uploadedFile.size
                                             ? `${(uploadedFile.size / 1024).toFixed(1)} KB  ·  tap to change`
-                                            : 'Max 10 MB  ·  PDF only'}
+                                            : 'Max 10 MB  ·  PDF, PNG, JPG'}
                                     </Text>
                                 </TouchableOpacity>
                             </>
