@@ -517,11 +517,10 @@ const RecordCard = React.memo(({
     );
 });
 
-// empty state
 const EmptyState = () => (
     <View style={styles.emptyWrap}>
         <View style={styles.emptyIcon}>
-            <MaterialIcons name="folder-open" size={34} color={COLORS.primaryLight} />
+            <MaterialIcons name="history" size={34} color={COLORS.primary} />
         </View>
         <Text style={styles.emptyTitle}>No Records Yet</Text>
         <Text style={styles.emptyText}>
