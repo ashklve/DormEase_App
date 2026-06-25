@@ -23,6 +23,7 @@ import styles, { COLORS } from '../../src/constants/profilestyles';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const buildAvatarUrl = (path) => {
   if (!path) return null;
@@ -215,8 +216,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [user, setUser] = useState(null);
-  const { setUser: setGlobalUser } = useUser();
+  const { user: globalUser, setUser: setGlobalUser } = useUser();
+  const [user, setUser] = useState(globalUser);
   const [refreshing, setRefreshing] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const pullToRefreshRef = useRef(null);
@@ -287,7 +288,9 @@ export default function ProfileScreen() {
 
   const fetchProfile = async ({ isRefresh = false } = {}) => {
     try {
-      if (isRefresh) setRefreshing(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      }
       const res = await client.get('/user');
       setUser(res.data);
       setGlobalUser(res.data);
@@ -299,7 +302,7 @@ export default function ProfileScreen() {
     } catch (err) {
       console.error('profile fetch error:', err.message);
     } finally {
-      if (isRefresh) setRefreshing(false);
+      setRefreshing(false);
     }
   };
 
@@ -738,23 +741,23 @@ export default function ProfileScreen() {
                 </View>
               )}
               <PwInput label="Confirm new password" value={confirmPw} onChangeText={setConfirmPw} matchStatus={pwMatchStatus} />
-            </View>
 
-            <TouchableOpacity
-              style={[styles.saveBtn, (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled]}
-              onPress={handleChangePassword}
-              disabled={savingPw || pwMatchStatus === 'mismatch'}
-              activeOpacity={0.85}
-            >
-              {savingPw ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
-                  <Text style={styles.saveBtnText}>Update Password</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, (savingPw || pwMatchStatus === 'mismatch') && styles.saveBtnDisabled, { marginHorizontal: 0, marginTop: 16, marginBottom: 0 }]}
+                onPress={handleChangePassword}
+                disabled={savingPw || pwMatchStatus === 'mismatch'}
+                activeOpacity={0.85}
+              >
+                {savingPw ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="lock-closed-outline" size={18} color={COLORS.white} />
+                    <Text style={styles.saveBtnText}>Update Password</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
 
             {/* ── Logout ── */}
             <TouchableOpacity
@@ -822,6 +825,7 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
       </Modal>
+      <LoadingOverlay visible={saving || savingPw || vacationSaving} />
     </SafeAreaView>
   );
 }
