@@ -7,22 +7,27 @@ import { hydrateDashboardCache } from '../src/cache/dashboardCache';
 import React, { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Keep the splash screen visible while we initialize the app
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 export default function RootLayout() {
     const [showOverlay, setShowOverlay] = useState(true);
 
     useEffect(() => {
         const initApp = async () => {
+            const startTime = Date.now();
             try {
                 await AsyncStorage.getItem('auth_token');
-                await hydrateDashboardCache(); 
+                await hydrateDashboardCache();
             } catch (e) {
                 console.warn('Init error:', e);
             } finally {
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, 2000 - elapsed);
+                if (remaining > 0) {
+                    await new Promise(resolve => setTimeout(resolve, remaining));
+                }
                 setShowOverlay(false);
-                await SplashScreen.hideAsync().catch(() => {});
+                await SplashScreen.hideAsync().catch(() => { });
             }
         };
 
