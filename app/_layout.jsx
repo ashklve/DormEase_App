@@ -37,7 +37,7 @@ export default function RootLayout() {
     return (
         <UserProvider>
             <PushNotificationBootstrap />
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="welcome" />
                 <Stack.Screen name="auth/login" />
