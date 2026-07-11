@@ -27,6 +27,7 @@ import DrawerMenu from '../../src/components/DrawerMenu';
 import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
+import * as WebBrowser from 'expo-web-browser';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 
@@ -114,10 +115,10 @@ export default function PaymentDetailScreen() {
     const isCash = paymentMethod === 'cash';
     const isBank = paymentMethod === 'bank';
     const methodLabel = {
-        gcash: 'GCash',
+        gcash: 'QR Ph (GCash, Maya, Banks, etc.)',
         bank: 'Bank Transfer',
         cash: 'Cash (Admin Office)',
-    }[paymentMethod] ?? 'GCash';
+    }[paymentMethod] ?? 'QR Ph (GCash, Maya, Banks, etc.)';
 
     // ── Form state
     const [proofUri, setProofUri] = useState(null);
@@ -125,6 +126,40 @@ export default function PaymentDetailScreen() {
     const [refFocused, setRefFocused] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [downloadingQr, setDownloadingQr] = useState(false);
+    const [launchingPaymongo, setLaunchingPaymongo] = useState(false);
+
+    const baseAmount = parseFloat(billing?.amount_due || billing?.amount_paid || 0);
+    const totalAmount = parseFloat((baseAmount / 0.984992).toFixed(2));
+    const surchargeAmount = parseFloat((totalAmount - baseAmount).toFixed(2));
+
+    const handlePayOnline = async () => {
+        setLaunchingPaymongo(true);
+        global.paymentRedirected = false;
+        try {
+            const res = await client.post('/water-bill/checkout', {
+                billing_id: billing?.id ?? billing?.billing_id,
+            });
+            
+            if (res.data && res.data.checkout_url) {
+                await WebBrowser.openBrowserAsync(res.data.checkout_url);
+                
+                // Wait briefly to check if a deep link success/cancelled screen has handled this.
+                // If not, redirect directly to the water bill screen.
+                setTimeout(() => {
+                    if (!global.paymentRedirected) {
+                        router.replace('/tenant/water-bill');
+                    }
+                }, 150);
+            } else {
+                Alert.alert('Error', 'Invalid response from payment gateway.');
+            }
+        } catch (err) {
+            const msg = err.response?.data?.message ?? 'Failed to connect to payment gateway. Please try again.';
+            Alert.alert('Gateway Error', msg);
+        } finally {
+            setLaunchingPaymongo(false);
+        }
+    };
 
     // ── Upload proof of payment ───────────────────────────────────────────────
     const handleUploadProof = async () => {
@@ -483,102 +518,104 @@ export default function PaymentDetailScreen() {
 
                     ) : (
                         <>
-                            {/* ── GCASH: Step 1: Scan QR ── */}
+                            {/* ── ONLINE PAYMENT BREAKDOWN ── */}
                             <View style={styles.stepSection}>
-                                <Text style={styles.stepTitle}>Step 1: Scan QR Code</Text>
-                                <View style={styles.qrCard}>
-                                    <TouchableOpacity
-                                        style={styles.qrDownloadBtn}
-                                        onPress={handleDownloadQr}
-                                        disabled={downloadingQr}
-                                        activeOpacity={0.75}
-                                    >
-                                        {downloadingQr ? (
-                                            <ActivityIndicator size="small" color={COLORS.primary} />
-                                        ) : (
-                                            <Ionicons name="download-outline" size={20} color={COLORS.primary} />
-                                        )}
-                                    </TouchableOpacity>
-                                    <Image
-                                        source={QR_IMAGES[paymentMethod]}
-                                        style={styles.qrImage}
-                                    />
-                                    <Text style={styles.qrHint}>
-                                        {QR_HINTS[paymentMethod]}
-                                    </Text>
-                                </View>
-                            </View>
+                                <Text style={styles.stepTitle}>Payment Method: Unified QR Ph</Text>
+                                <View style={styles.bankCard}>
+                                    <View style={styles.bankCardHeader}>
+                                        <View style={styles.bankIconCircle}>
+                                            <Ionicons name="qr-code-outline" size={18} color={COLORS.white} />
+                                        </View>
+                                        <View>
+                                            <Text style={styles.bankCardTitle}>Scan to Pay via QR Ph</Text>
+                                            <Text style={styles.bankCardSubtitle}>Supports GCash, Maya, & Bank Apps</Text>
+                                        </View>
+                                    </View>
 
-                            {/* ── Step 2: Upload Proof ── */}
-                            <View style={styles.stepSection}>
-                                <Text style={styles.stepTitle}>Step 2: Upload Proof of Payment</Text>
-                                <TouchableOpacity
-                                    style={[styles.uploadBox, proofUri && styles.uploadBoxWithImage]}
-                                    onPress={handleUploadProof}
-                                    activeOpacity={0.75}
-                                >
-                                    {proofUri ? (
-                                        <Image
-                                            source={{ uri: proofUri }}
-                                            style={styles.uploadedImage}
-                                        />
-                                    ) : (
-                                        <>
-                                            <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
-                                            <Text style={styles.uploadText}>Upload Screenshot / Photo</Text>
-                                            <Text style={styles.uploadHint}>
-                                                Upload screenshot of GCash receipt / photo of payment confirmation
-                                            </Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                                {proofUri ? (
-                                    <TouchableOpacity
-                                        onPress={handleUploadProof}
-                                        style={{ marginTop: verticalScale(6), alignSelf: 'flex-end' }}
-                                    >
-                                        <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
-                                            Change Photo
+                                    <View style={styles.bankDivider} />
+
+                                    <View style={{ paddingVertical: 4 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                                            <Text style={{ color: COLORS.muted, fontSize: 13 }}>Water Bill Amount</Text>
+                                            <Text style={{ color: COLORS.dark, fontSize: 13, fontWeight: '500' }}>₱{baseAmount.toFixed(2)}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                                            <Text style={{ color: COLORS.muted, fontSize: 13 }}>Convenience Fee (1.34% Surcharge)</Text>
+                                            <Text style={{ color: COLORS.dark, fontSize: 13, fontWeight: '500' }}>₱{surchargeAmount.toFixed(2)}</Text>
+                                        </View>
+                                        <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 8 }} />
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                                            <Text style={{ color: COLORS.dark, fontSize: 14, fontWeight: '600' }}>Total Amount Due</Text>
+                                            <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '700' }}>₱{totalAmount.toFixed(2)}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.bankAmountNotice}>
+                                        <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+                                        <Text style={styles.bankAmountNoticeText}>
+                                            The convenience fee is charged by the secure digital payment gateway to process the transaction.
                                         </Text>
-                                    </TouchableOpacity>
-                                ) : null}
-                            </View>
+                                    </View>
+                                </View>
 
-                            {/* ── Step 3: Reference Number ── */}
-                            <View style={styles.stepSection}>
-                                <Text style={styles.stepTitle}>Step 3: Enter Reference Code</Text>
-                                <TextInput
-                                    style={[styles.refInput, refFocused && styles.refInputFocused]}
-                                    placeholder="Reference Number"
-                                    placeholderTextColor={COLORS.muted}
-                                    value={refNumber}
-                                    onChangeText={setRefNumber}
-                                    onFocus={() => setRefFocused(true)}
-                                    onBlur={() => setRefFocused(false)}
-                                    keyboardType="phone-pad"
-                                />
+                                {/* Instructions */}
+                                <View style={styles.bankStepsCard}>
+                                    <Text style={styles.bankStepsTitle}>How to pay:</Text>
+                                    {[
+                                         'Click the "Proceed to Online Payment" button below.',
+                                         'A secure window will open displaying your unified QR Ph code.',
+                                         'Scan the QR code on screen or upload a saved screenshot to GCash, Maya, or your bank app.',
+                                         'Complete the payment. The system will mark the bill PAID instantly.'
+                                    ].map((step, i) => (
+                                        <View key={i} style={styles.bankStepRow}>
+                                            <View style={styles.bankStepBullet}>
+                                                <Text style={styles.bankStepBulletText}>{i + 1}</Text>
+                                            </View>
+                                            <Text style={styles.bankStepText}>{step}</Text>
+                                        </View>
+                                    ))}
+                                </View>
                             </View>
                         </>
                     )}
 
-                    {/* ── Submit Button ── */}
+                    {/* ── Submit / Checkout Button ── */}
                     <View style={styles.submitBtnWrapper}>
-                        <TouchableOpacity
-                            style={[
-                                styles.submitBtn,
-                                { alignSelf: 'center', width: '70%' },
-                                submitting && styles.submitBtnDisabled,
-                            ]}
-                            onPress={handleSubmit}
-                            disabled={submitting}
-                            activeOpacity={0.85}
-                        >
-                            {submitting ? (
-                                <ActivityIndicator size="small" color={COLORS.white} />
-                            ) : (
-                                <Text style={styles.submitBtnText}>Submit</Text>
-                            )}
-                        </TouchableOpacity>
+                        {!isCash && !isBank ? (
+                            <TouchableOpacity
+                                style={[
+                                    styles.submitBtn,
+                                    { alignSelf: 'center', width: '70%', backgroundColor: COLORS.primary },
+                                    launchingPaymongo && styles.submitBtnDisabled,
+                                ]}
+                                onPress={handlePayOnline}
+                                disabled={launchingPaymongo}
+                                activeOpacity={0.85}
+                            >
+                                {launchingPaymongo ? (
+                                    <ActivityIndicator size="small" color={COLORS.white} />
+                                ) : (
+                                    <Text style={styles.submitBtnText}>Proceed to Online Payment</Text>
+                                )}
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={[
+                                    styles.submitBtn,
+                                    { alignSelf: 'center', width: '70%' },
+                                    submitting && styles.submitBtnDisabled,
+                                ]}
+                                onPress={handleSubmit}
+                                disabled={submitting}
+                                activeOpacity={0.85}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator size="small" color={COLORS.white} />
+                                ) : (
+                                    <Text style={styles.submitBtnText}>Submit</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                 </ScrollView>
