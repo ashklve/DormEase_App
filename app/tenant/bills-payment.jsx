@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import styles from '../../src/constants/bills-paymentstyles';
 import { COLORS } from '../../src/constants/colors';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 
@@ -33,30 +34,7 @@ const STATUS_COLORS = {
     pending: { dot: '#D4A017', text: '#D4A017' },
 };
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-    <TouchableOpacity
-        style={[styles.navItem, isCenter && styles.navCenter]}
-        onPress={onPress}
-    >
-        {isCenter ? (
-            <View style={styles.navCenterCircle}>
-                <MaterialIcons name={iconName} size={26} color={COLORS.white} />
-            </View>
-        ) : (
-            <>
-                <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={isActive ? COLORS.primary : COLORS.muted}
-                />
-                <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
-                    {label}
-                </Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
+
 
 // ── Breakdown Row ─────────────────────────────────────────────────────────────
 const BreakdownRow = ({ label, value, accent }) => (
@@ -282,42 +260,7 @@ export default function BillsPaymentScreen() {
 
             </ScrollView>
 
-            {/* ── Bottom Nav ── */}
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
-                <NavItem
-                    iconName="home"
-                    label="Home"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/dashboard')}
-                />
-                <NavItem
-                    iconName="person-outline"
-                    label="Visitor"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/visitors')}
-                />
-                <NavItem
-                    iconName="warning"
-                    label="Emergency"
-                    isCenter
-                    onPress={() => router.push('/tenant/emergency')}
-                />
-                <NavItem
-                    iconName="water-drop"
-                    label="Water Bill"
-                    isActive={true}
-                    onPress={() => router.push('/tenant/water-bill')}
-                />
-                <NavItem
-                    iconName="account-circle"
-                    label="Profile"
-                    isActive={false}
-                    onPress={() => router.push('/tenant/profile')}
-                />
-            </View>
+            <BottomNavigation activeTab="billing" />
 
             {/* ── Drawer ── */}
             <DrawerMenu ref={drawerRef} />
