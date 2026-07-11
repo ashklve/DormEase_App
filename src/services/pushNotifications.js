@@ -67,6 +67,16 @@ export const registerForPushNotificationsAsync = async () => {
                 lightColor: '#CA5D86',
                 showBadge: true,
             });
+
+            await Notifications.setNotificationChannelAsync('emergency_alert', {
+                name: 'Emergency Alerts',
+                importance: Notifications.AndroidImportance.MAX,
+                sound: 'siren.wav',
+                vibrationPattern: [0, 500, 250, 500],
+                lightColor: '#FF0000',
+                showBadge: true,
+                bypassDnd: true,
+            });
         }
 
         const existingPermission = await Notifications.getPermissionsAsync();
@@ -79,6 +89,7 @@ export const registerForPushNotificationsAsync = async () => {
                     allowAlert: true,
                     allowBadge: true,
                     allowSound: true,
+                    allowCriticalAlerts: true,
                 },
             });
             finalStatus = requestedPermission.status;
