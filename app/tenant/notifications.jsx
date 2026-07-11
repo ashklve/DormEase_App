@@ -16,6 +16,7 @@ import styles, { NOTIF_COLORS } from '../../src/constants/notificationsstyles';
 import { useUser } from '../../src/context/UserContext';
 import client from '../../api/client';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import { addNotificationReceivedListener, setBadgeCount } from '../../src/services/pushNotifications';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -290,34 +291,7 @@ const EmptyState = () => (
 );
 
 /* ─── Bottom nav item ─── */
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-    <TouchableOpacity
-        style={[styles.navItem, isCenter && styles.navCenter]}
-        onPress={onPress}
-    >
-        {isCenter ? (
-            <View style={styles.navCenterCircle}>
-                <MaterialIcons name={iconName} size={26} color={NOTIF_COLORS.white} />
-            </View>
-        ) : (
-            <>
-                <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={isActive ? NOTIF_COLORS.primary : '#9E9E9E'}
-                />
-                <Text
-                    style={[
-                        styles.navLabel,
-                        isActive && { color: NOTIF_COLORS.primary },
-                    ]}
-                >
-                    {label}
-                </Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
+
 
 /* ═══════════════════════════════════════════ */
 /*                 Main screen                */
@@ -329,7 +303,7 @@ export default function NotificationsScreen() {
     const insets = useSafeAreaInsets();
     const pullToRefreshRef = useRef(null);
     const [scrollEnabled, setScrollEnabled] = useState(true);
-    const [activeTab, setActiveTab] = useState('notifications');
+
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -445,10 +419,7 @@ export default function NotificationsScreen() {
         }
     }, [router]);
 
-    const tabNavigate = (tab, route) => {
-        setActiveTab(tab);
-        if (route) router.push(route);
-    };
+
 
     const filteredNotifications = activeFilter === 'all'
         ? notifications
@@ -603,45 +574,7 @@ export default function NotificationsScreen() {
                     </ScrollView>
             </PremiumPullToRefresh>
 
-            {/* ─── Bottom nav ─── */}
-            <View
-                style={[
-                    styles.bottomNav,
-                    { paddingBottom: Math.max(insets.bottom, 24) },
-                ]}
-            >
-                <NavItem
-                    iconName="home"
-                    label="Home"
-                    isActive={activeTab === 'home'}
-                    onPress={() => tabNavigate('home', '/tenant/dashboard')}
-                />
-                <NavItem
-                    iconName="person-outline"
-                    label="Visitor"
-                    isActive={activeTab === 'visitor'}
-                    onPress={() => tabNavigate('visitor', '/tenant/visitors')}
-                />
-                <NavItem
-                    iconName="warning"
-                    label="Emergency"
-                    isCenter
-                    isActive={activeTab === 'emergency'}
-                    onPress={() => tabNavigate('emergency', '/tenant/emergency')}
-                />
-                <NavItem
-                    iconName="water-drop"
-                    label="Water Bill"
-                    isActive={activeTab === 'bill'}
-                    onPress={() => tabNavigate('bill', '/tenant/water-bill')}
-                />
-                <NavItem
-                    iconName="person"
-                    label="Profile"
-                    isActive={activeTab === 'profile'}
-                    onPress={() => tabNavigate('profile', '/tenant/profile')}
-                />
-            </View>
+            <BottomNavigation activeTab="none" />
             <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
