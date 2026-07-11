@@ -11,6 +11,7 @@ import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import { dashboardCache } from '../../src/cache/dashboardCache.js';
 import DrawerMenu from '../../src/components/DrawerMenu';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
 
@@ -81,29 +82,7 @@ const QuickActionCard = ({ iconName, title, description, onPress }) => (
     </TouchableOpacity>
 );
 
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-    <TouchableOpacity
-        style={[styles.navItem, isCenter && styles.navCenter]}
-        onPress={onPress}
-    >
-        {isCenter ? (
-            <View style={styles.navCenterCircle}>
-                <MaterialIcons name={iconName} size={26} color={COLORS.white} />
-            </View>
-        ) : (
-            <>
-                <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={isActive ? COLORS.primary : COLORS.grayText}
-                />
-                <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
-                    {label}
-                </Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
+
 
 const AnnouncementItem = ({ title, date, preview, onPress }) => (
     <View style={styles.announcementCard}>
@@ -235,12 +214,7 @@ const Dashboard = () => {
         setRefreshing(false);
     }, [fetchDashboardData, fetchUser]);
 
-    const [activeTab, setActiveTab] = useState('home');
-    useFocusEffect(
-        useCallback(() => {
-            setActiveTab('home');
-        }, [])
-    );
+
 
     // refetch fresh data whenever the dashboard gains focus (initial mount or coming back from another screen),
     // showing the premium LoadingOverlay ONLY on initial mount (not on subsequent screen transitions).
@@ -286,10 +260,7 @@ const Dashboard = () => {
     const drawerRef = useRef(null);
     const photoSource = avatarUri ? { uri: avatarUri } : defaultPhoto;
 
-    const tabNavigate = (tab, route) => {
-        setActiveTab(tab);
-        if (route) router.push(route);
-    };
+
 
     // sort by priority first (high > moderate > low); API already returns newest-first within that
     const priorityRank = { high: 0, moderate: 1, low: 2 };
@@ -476,41 +447,7 @@ const Dashboard = () => {
                 </ScrollView>
             </PremiumPullToRefresh>
 
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
-                <NavItem
-                    iconName="home"
-                    label="Home"
-                    isActive={activeTab === 'home'}
-                    onPress={() => tabNavigate('home')}
-                />
-                <NavItem
-                    iconName="person-outline"
-                    label="Visitor"
-                    isActive={activeTab === 'visitor'}
-                    onPress={() => tabNavigate('visitor', '/tenant/visitors')}
-                />
-                <NavItem
-                    iconName="warning"
-                    label="Emergency"
-                    isCenter
-                    onPress={() => router.push('/tenant/emergency')}
-                />
-                <NavItem
-                    iconName="water-drop"
-                    label="Water Bill"
-                    isActive={activeTab === 'billing'}
-                    onPress={() => tabNavigate('billing', '/tenant/water-bill')}
-                />
-                <NavItem
-                    iconName="account-circle"
-                    label="Profile"
-                    isActive={activeTab === 'profile'}
-                    onPress={() => tabNavigate('profile', '/tenant/profile')}
-                />
-            </View>
+            <BottomNavigation activeTab="home" />
 
             <DrawerMenu ref={drawerRef} />
             <LoadingOverlay visible={loading} />

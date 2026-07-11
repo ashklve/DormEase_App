@@ -4,6 +4,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import styles, { COLORS } from '../../src/constants/announcementsstyles';
 import NotificationBell from '../../src/components/NotificationBell';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -49,29 +50,6 @@ const HOTLINES = [
     },
 ];
 
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-    <TouchableOpacity
-        style={[styles.navItem, isCenter && styles.navCenter]}
-        onPress={onPress}
-    >
-        {isCenter ? (
-            <View style={styles.navCenterCircle}>
-                <MaterialIcons name={iconName} size={26} color={COLORS.white} />
-            </View>
-        ) : (
-            <>
-                <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={isActive ? COLORS.primary : COLORS.grayText}
-                />
-                <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
-                    {label}
-                </Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
 
 export default function HotlinesScreen() {
     const router = useRouter();
@@ -197,16 +175,7 @@ export default function HotlinesScreen() {
                 ))}
             </ScrollView>
 
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
-                <NavItem iconName="home" label="Home" onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor" onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop" label="Water Bill" onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile" onPress={() => router.push('/tenant/profile')} />
-            </View>
+            <BottomNavigation activeTab="none" />
         </SafeAreaView>
     );
 }

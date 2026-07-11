@@ -22,6 +22,7 @@ import client from '../../api/client';
 import { useUser } from '../../src/context/UserContext';
 import NotificationBell from '../../src/components/NotificationBell';
 import PremiumPullToRefresh from '../../src/components/PremiumPullToRefresh';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import LoadingOverlay from '../../src/components/LoadingOverlay';
 
 const defaultPhoto = require('../../assets/def_icon.png');
@@ -124,30 +125,7 @@ const mapMaintenanceRequest = (request) => ({
         : [],
 });
 
-// ── Bottom Nav Item ───────────────────────────────────────────────────────────
-const NavItem = ({ iconName, label, isActive, isCenter, onPress }) => (
-    <TouchableOpacity
-        style={[styles.navItem, isCenter && styles.navCenter]}
-        onPress={onPress}
-    >
-        {isCenter ? (
-            <View style={styles.navCenterCircle}>
-                <MaterialIcons name={iconName} size={26} color={COLORS.white} />
-            </View>
-        ) : (
-            <>
-                <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={isActive ? COLORS.primary : COLORS.grayText}
-                />
-                <Text style={[styles.navLabel, isActive && { color: COLORS.primary }]}>
-                    {label}
-                </Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
+
 
 // ── Swipeable Wrapper ────────────────────────────────────────────────────────
 const SwipeableWrapper = ({ children, onAction, actionIconName }) => {
@@ -1026,17 +1004,7 @@ export default function MaintenanceHistoryScreen() {
                     </ScrollView>
             </PremiumPullToRefresh>
 
-            {/* ── Bottom Nav ── */}
-            <View style={[
-                styles.bottomNav,
-                { paddingBottom: Math.max(insets.bottom, 24) },
-            ]}>
-                <NavItem iconName="home" label="Home" isActive={false} onPress={() => router.push('/tenant/dashboard')} />
-                <NavItem iconName="person-outline" label="Visitor" isActive={false} onPress={() => router.push('/tenant/visitors')} />
-                <NavItem iconName="warning" label="Emergency" isCenter onPress={() => router.push('/tenant/emergency')} />
-                <NavItem iconName="water-drop" label="Water Bill" isActive={false} onPress={() => router.push('/tenant/water-bill')} />
-                <NavItem iconName="account-circle" label="Profile" isActive={false} onPress={() => router.push('/tenant/profile')} />
-            </View>
+            <BottomNavigation activeTab="none" />
             <LoadingOverlay visible={loading} />
         </SafeAreaView>
     );
