@@ -31,7 +31,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
         "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.USE_FULL_SCREEN_INTENT"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/spicon.png",
@@ -49,7 +50,10 @@
         "expo-notifications",
         {
           "color": "#CA5D86",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/siren.wav"
+          ]
         }
       ],
       "@react-native-community/datetimepicker",
@@ -80,7 +84,8 @@
           ]
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-audio"
     ],
     "extra": {
       "router": {},
