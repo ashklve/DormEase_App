@@ -15,6 +15,7 @@ import { useUser } from '../../src/context/UserContext';
 
 const defaultPhoto = require('../../assets/def_icon.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.72;
 
 // ── single drawer row ─────────────────────────────────────────────────────────
 const DrawerItem = ({ iconName, iconLib = 'Ionicons', label, onPress, hasChevron = true }) => (
@@ -39,7 +40,8 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [documentsExpanded, setDocumentsExpanded] = useState(false);
-    const drawerAnim = useRef(new Animated.Value(-400)).current;
+    const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH - 50)).current;
+    const overlayAnim = useRef(new Animated.Value(0)).current;
 
     const [userData, setUserData] = useState({
         username: '',
@@ -65,19 +67,33 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
 
     const open = () => {
         setDrawerOpen(true);
-        Animated.timing(drawerAnim, {
-            toValue: 0,
-            duration: 280,
-            useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+            Animated.timing(drawerAnim, {
+                toValue: 0,
+                duration: 280,
+                useNativeDriver: true,
+            }),
+            Animated.timing(overlayAnim, {
+                toValue: 1,
+                duration: 280,
+                useNativeDriver: true,
+            })
+        ]).start();
     };
 
     const close = () => {
-        Animated.timing(drawerAnim, {
-            toValue: -400,
-            duration: 250,
-            useNativeDriver: true,
-        }).start(() => setDrawerOpen(false));
+        Animated.parallel([
+            Animated.timing(drawerAnim, {
+                toValue: -DRAWER_WIDTH - 50,
+                duration: 250,
+                useNativeDriver: true,
+            }),
+            Animated.timing(overlayAnim, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: true,
+            })
+        ]).start(() => setDrawerOpen(false));
     };
 
     const navigate = (route) => {
@@ -91,11 +107,18 @@ const DrawerMenu = React.forwardRef((_props, ref) => {
         <>
             {/* dark overlay — tap to close */}
             {drawerOpen && (
-                <TouchableOpacity
-                    style={drawerStyles.overlay}
-                    activeOpacity={1}
-                    onPress={close}
-                />
+                <Animated.View
+                    style={[
+                        drawerStyles.overlay,
+                        { opacity: overlayAnim }
+                    ]}
+                >
+                    <TouchableOpacity
+                        style={{ flex: 1 }}
+                        activeOpacity={1}
+                        onPress={close}
+                    />
+                </Animated.View>
             )}
 
             {/* sliding drawer panel */}
@@ -231,7 +254,8 @@ const drawerStyles = {
         right: 0,
         bottom: 0,
         backgroundColor: 'rgba(0,0,0,0.4)',
-        zIndex: 10,
+        zIndex: 1000,
+        elevation: 100,
     },
     drawer: {
         position: 'absolute',
@@ -240,7 +264,8 @@ const drawerStyles = {
         bottom: 0,
         width: SCREEN_WIDTH * 0.72,
         backgroundColor: COLORS.primary,
-        zIndex: 20,
+        zIndex: 1001,
+        elevation: 101,
         paddingBottom: 30,
     },
     drawerTop: {
