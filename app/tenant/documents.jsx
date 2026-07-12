@@ -577,7 +577,7 @@ export default function DocumentsScreen() {
                             placeholder="Full Name"
                             placeholderTextColor={COLORS.muted}
                             value={fullName}
-                            onChangeText={setFullName}
+                            editable={false}
                         />
 
                         <View style={styles.inlineRow}>
@@ -587,14 +587,7 @@ export default function DocumentsScreen() {
                                     placeholder="Contact No."
                                     placeholderTextColor={COLORS.muted}
                                     value={contactNo}
-                                    onChangeText={(text) => {
-                                        const digits = text.replace(/\D/g, '');
-                                        const maxLen = digits.startsWith('63') ? 12 : 11;
-                                        const capped = digits.slice(0, maxLen);
-                                        setContactNo(formatPHPhone(capped));
-                                    }}
-                                    keyboardType="phone-pad"
-                                    maxLength={13}
+                                    editable={false}
                                 />
                                 <Ionicons
                                     name="call-outline"
@@ -608,7 +601,7 @@ export default function DocumentsScreen() {
                                 placeholder="Room No."
                                 placeholderTextColor={COLORS.muted}
                                 value={roomNo}
-                                onChangeText={setRoomNo}
+                                editable={false}
                             />
                         </View>
 
