@@ -82,6 +82,7 @@ const formatDateTime = (value) => {
 
 const mapEmergencyReport = (report) => ({
     id: report.id,
+    tenant_id: report.tenant_id,
     req_id: `EMG-${String(report.id ?? '').padStart(3, '0')}`,
     title: report.is_panic_alert ? 'Panic Alert' : (report.emergency_type || 'Emergency Report'),
     category: report.is_panic_alert ? 'Panic Alert' : (report.emergency_type || 'Other'),
@@ -93,6 +94,7 @@ const mapEmergencyReport = (report) => ({
     description: report.description,
     location: report.location,
     admin_notes: report.admin_notes || null,
+    reported_by: report.tenant_id ? 'Tenant (Me)' : 'Front Desk Staff',
 });
 
 
@@ -250,13 +252,13 @@ const RequestCard = React.memo(({ item, onDelete, isSelectionMode, isSelected, o
     };
 
     const handlePress = () => {
-        if (isSelectionMode) {
+        if (isSelectionMode && item.tenant_id) {
             onToggleSelect(item.id);
         }
     };
 
     const handleCardLongPress = () => {
-        if (!isSelectionMode) {
+        if (!isSelectionMode && item.tenant_id) {
             onLongPress(item.id);
         }
     };
@@ -319,6 +321,14 @@ const RequestCard = React.memo(({ item, onDelete, isSelectionMode, isSelected, o
 
     const bodyContent = (
         <>
+            <View style={styles.bodyDetailCard}>
+                <View style={styles.bodyDetailHeader}>
+                    <MaterialIcons name="person" size={14} color={COLORS.primary} />
+                    <Text style={styles.bodyDetailLabel}>Reported By</Text>
+                </View>
+                <Text style={styles.bodyDetailValue}>{item.reported_by}</Text>
+            </View>
+
             <View style={styles.bodyDetailCard}>
                 <View style={styles.bodyDetailHeader}>
                     <MaterialIcons name="location-on" size={14} color={COLORS.primary} />
@@ -435,7 +445,7 @@ const RequestCard = React.memo(({ item, onDelete, isSelectionMode, isSelected, o
         </View>
     );
 
-    if (isSelectionMode || statusKey === 'active') {
+    if (isSelectionMode || statusKey === 'active' || !item.tenant_id) {
         return cardContent;
     }
 
@@ -488,7 +498,7 @@ export default function EmergencyHistoryScreen() {
     }, []);
 
     const handleSelectAll = useCallback(() => {
-        const deletableReports = filteredReports.filter(r => r.status?.toLowerCase() !== 'active');
+        const deletableReports = filteredReports.filter(r => r.status?.toLowerCase() !== 'active' && r.tenant_id);
         const deletableIds = deletableReports.map(r => r.id);
 
         if (deletableIds.length === 0) {
