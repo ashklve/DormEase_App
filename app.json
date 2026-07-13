@@ -22,7 +22,8 @@
         "NSCameraUsageDescription": "DormEase needs camera access to take photos of maintenance issues.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.dormease.app"
+      "bundleIdentifier": "com.dormease.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
