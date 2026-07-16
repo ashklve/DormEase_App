@@ -23,7 +23,7 @@ export const CATEGORY_COLORS = {
     'Electrical Hazard':{ bg: '#FFFDE7', icon: '#F9A825', label: '#F57F17' },
     Security:          { bg: '#EDE7F6', icon: '#7B1FA2', label: '#6A1B9A' },
     'Flood/Water Leak':{ bg: '#E0F7FA', icon: '#00838F', label: '#006064' },
-    Other:             { bg: '#F9FBE7', icon: '#827717', label: '#827717' },
+    Unknown:           { bg: '#F9FBE7', icon: '#827717', label: '#827717' },
 };
 
 export default StyleSheet.create({
