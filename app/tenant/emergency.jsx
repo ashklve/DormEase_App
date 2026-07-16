@@ -39,7 +39,7 @@ const CATEGORIES = [
     { key: 'Electrical Hazard', label: 'Electrical Hazard', icon: 'lightning-bolt', lib: 'community' },
     { key: 'Security', label: 'Security', icon: 'shield-account', lib: 'community' },
     { key: 'Flood/Water Leak', label: 'Flood/Water Leak', icon: 'pipe-leak', lib: 'community' },
-    { key: 'Other', label: 'Other', icon: 'dots-horizontal-circle', lib: 'community' },
+    { key: 'Unknown', label: 'Unknown', icon: 'dots-horizontal-circle', lib: 'community' },
 ];
 
 const BAR_COUNT = 28;

@@ -52,7 +52,7 @@ const CATEGORY_ICON = {
     'Electrical Hazard': 'lightning-bolt',
     'Security': 'shield-account',
     'Flood/Water Leak': 'pipe-leak',
-    'Other': 'dots-horizontal-circle',
+    'Unknown': 'dots-horizontal-circle',
     'Panic Alert': 'alert',
 };
 
@@ -85,7 +85,7 @@ const mapEmergencyReport = (report) => ({
     tenant_id: report.tenant_id,
     req_id: `EMG-${String(report.id ?? '').padStart(3, '0')}`,
     title: report.is_panic_alert ? 'Panic Alert' : (report.emergency_type || 'Emergency Report'),
-    category: report.is_panic_alert ? 'Panic Alert' : (report.emergency_type || 'Other'),
+    category: report.is_panic_alert ? 'Panic Alert' : (report.emergency_type || 'Unknown'),
     status: report.status || 'active',
     urgency: report.urgency_level || 'moderate',
     date_submitted: formatDate(report.reported_at),
